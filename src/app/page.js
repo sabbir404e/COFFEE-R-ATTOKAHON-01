@@ -181,10 +181,7 @@ export default function HomePage() {
 
       {/* NAV */}
       <nav>
-        <Link className="nav-brand" href="/" style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-          <img src="/logo.png" alt="Coffee-r Attokahon" style={{ height:'40px', width:'auto' }} />
-          <span><em>Coffee-r</em> Attokahon</span>
-        </Link>
+        <Link className="nav-brand" href="/"><em>Coffee-r</em> Attokahon</Link>
         <div className={`nav-links${mobileOpen ? ' mobile-open' : ''}`}>
           <a href="#about">About</a>
           <a href="#menu">Menu</a>
@@ -260,7 +257,7 @@ export default function HomePage() {
               <div className="about-visual-ring r2" />
               <div className="about-visual-ring r3" />
               <div className="about-visual-inner">
-                <img src="/logo.png" alt="Coffee-r Attokahon Logo" style={{ width:'180px', height:'auto', margin:'0 auto 12px', display:'block' }} />
+                <div className="about-visual-logo"><em>Coffee-r</em><br />Attokahon</div>
                 <div className="about-visual-tag">Est. 2018 &nbsp;·&nbsp; Dhaka, BD</div>
                 <div className="about-since">
                   <div className="about-since-num">6+</div>
