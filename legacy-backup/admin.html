@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coffee-r Attokahon — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════
+   THEME
+═══════════════════════════════════════ */
+:root { --tt: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; }
+
+[data-theme="dark"] {
+  --bg:#1A1410; --bg2:#211A12; --card:#2A2115;
+  --border:rgba(200,148,56,0.18); --border-h:rgba(200,148,56,0.42);
+  --gold:#C89438; --gold-h:#E0AE58;
+  --text:#F2E8D4; --text2:#C8B898; --muted:#7D6E56;
+  --input-bg:#1A1410; --shadow:0 4px 24px rgba(0,0,0,0.30);
+  --pill-bg:rgba(200,148,56,0.13); --hover-row:rgba(200,148,56,0.04);
+  --d-bg:rgba(192,64,64,0.14); --d-bd:rgba(192,64,64,0.28); --d-tx:#E08080;
+  --w-bg:rgba(168,112,32,0.14); --w-bd:rgba(168,112,32,0.28); --w-tx:#D4A040;
+  --o-bg:rgba(42,114,72,0.14);  --o-bd:rgba(42,114,72,0.28);  --o-tx:#60C890;
+  --x-bg:rgba(80,80,80,0.14);   --x-bd:rgba(80,80,80,0.20);   --x-tx:#888;
+  --b-bg:rgba(70,100,180,0.14); --b-bd:rgba(70,100,180,0.28); --b-tx:#90A8E0;
+}
+[data-theme="light"] {
+  --bg:#F0E8D8; --bg2:#E8DEC8; --card:#FAF4E8;
+  --border:rgba(160,108,40,0.18); --border-h:rgba(160,108,40,0.45);
+  --gold:#A06C28; --gold-h:#8A5A18;
+  --text:#2A1A08; --text2:#5A3E20; --muted:#9A7850;
+  --input-bg:#E8DEC8; --shadow:0 4px 24px rgba(100,60,10,0.10);
+  --pill-bg:rgba(160,108,40,0.12); --hover-row:rgba(160,108,40,0.04);
+  --d-bg:rgba(176,48,48,0.10); --d-bd:rgba(176,48,48,0.25); --d-tx:#B03030;
+  --w-bg:rgba(138,92,16,0.10); --w-bd:rgba(138,92,16,0.25); --w-tx:#8A5C10;
+  --o-bg:rgba(34,96,64,0.10);  --o-bd:rgba(34,96,64,0.25);  --o-tx:#226040;
+  --x-bg:rgba(80,80,80,0.08);  --x-bd:rgba(80,80,80,0.15);  --x-tx:#888;
+  --b-bg:rgba(50,80,160,0.10); --b-bd:rgba(50,80,160,0.25); --b-tx:#4060C0;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:var(--tt);}
+button,input,select,textarea{font-family:'Outfit',sans-serif;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:var(--bg2);}::-webkit-scrollbar-thumb{background:var(--border-h);border-radius:4px;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+@keyframes slideUp{from{opacity:0;transform:translateY(32px);}to{opacity:1;transform:none;}}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── LOGIN ─────────────────────────────────────────────────────── */
+#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;}
+.glow{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 40% at 50% 10%,rgba(200,148,56,0.09) 0%,transparent 70%);}
+[data-theme="light"] .glow{background:radial-gradient(ellipse 60% 40% at 50% 10%,rgba(160,108,40,0.07) 0%,transparent 70%);}
+.login-wrap{width:100%;max-width:340px;position:relative;z-index:1;}
+.login-brand{text-align:center;margin-bottom:28px;}
+.login-brand .wm{font-family:'Playfair Display',serif;font-size:36px;}
+.login-brand .wm em{color:var(--gold);font-style:normal;}
+.login-brand .sub{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-top:6px;}
+.login-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px;animation:slideUp 0.35s;box-shadow:var(--shadow);transition:var(--tt);}
+.login-card h2{font-family:'Playfair Display',serif;font-size:20px;margin-bottom:20px;}
+.field{margin-bottom:13px;}
+.field label{display:block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:5px;}
+.inp{width:100%;background:var(--input-bg);border:1px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;color:var(--text);outline:none;transition:border-color 0.2s;}
+.inp:focus{border-color:var(--gold);}
+.inp::placeholder{color:var(--muted);}
+select.inp option{background:var(--card);}
+textarea.inp{resize:vertical;min-height:68px;}
+.btn-login{width:100%;padding:12px;background:var(--gold);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;transition:background 0.2s;margin-top:4px;}
+.btn-login:hover{background:var(--gold-h);}
+.login-err{background:var(--d-bg);border:1px solid var(--d-bd);border-radius:9px;padding:9px 12px;font-size:13px;color:var(--d-tx);margin-bottom:12px;display:none;}
+.login-hint{margin-top:14px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;font-size:12px;color:var(--muted);text-align:center;}
+.login-hint b{color:var(--text2);}
+.login-theme{position:absolute;top:16px;right:16px;display:flex;align-items:center;gap:8px;}
+
+/* ── THEME TOGGLE ──────────────────────────────────────────────── */
+.theme-label{font-size:14px;}
+.theme-toggle{width:40px;height:22px;background:var(--border-h);border-radius:11px;border:none;cursor:pointer;position:relative;transition:background 0.3s;flex-shrink:0;}
+.theme-toggle::after{content:'';position:absolute;width:16px;height:16px;background:var(--card);border-radius:50%;top:3px;left:3px;transition:transform 0.3s;}
+[data-theme="light"] .theme-toggle::after{transform:translateX(18px);}
+
+/* ── APP SHELL ─────────────────────────────────────────────────── */
+#appScreen{display:none;min-height:100vh;flex-direction:column;}
+.topbar{background:var(--card);border-bottom:1px solid var(--border);height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);transition:var(--tt);}
+.brand{font-family:'Playfair Display',serif;font-size:20px;}
+.brand em{color:var(--gold);font-style:normal;}
+.topbar-r{display:flex;align-items:center;gap:10px;}
+.role-badge{background:var(--pill-bg);border:1px solid var(--border-h);border-radius:20px;padding:3px 12px;font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:1px;}
+.logout-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:12px;color:var(--muted);cursor:pointer;transition:all 0.18s;}
+.logout-btn:hover{border-color:var(--border-h);color:var(--text);}
+
+/* LAYOUT */
+.app-body{display:flex;flex:1;min-height:0;height:calc(100vh - 58px);}
+.sidebar{width:205px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);padding:14px 10px;display:flex;flex-direction:column;gap:3px;overflow-y:auto;transition:var(--tt);}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all 0.16s;border:none;background:none;width:100%;text-align:left;}
+.nav-item:hover{background:rgba(200,148,56,0.07);color:var(--text);}
+.nav-item.active{background:rgba(200,148,56,0.12);color:var(--gold);}
+.nav-sep{border:none;border-top:1px solid var(--border);margin:8px 0;}
+.content{flex:1;padding:24px;overflow-y:auto;}
+
+/* HEADINGS */
+.pg-title{font-family:'Playfair Display',serif;font-size:26px;margin-bottom:4px;}
+.pg-sub{font-size:13px;color:var(--muted);margin-bottom:22px;}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:12px;margin-bottom:26px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;transition:var(--tt);}
+.stat-lbl{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:8px;}
+.stat-val{font-family:'Playfair Display',serif;font-size:30px;line-height:1;}
+.stat-val small{font-size:15px;color:var(--gold);}
+
+/* TABLE */
+.tbl-wrap{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:var(--tt);}
+.tbl-wrap table{width:100%;border-collapse:collapse;font-size:13px;}
+.tbl-wrap thead th{text-align:left;padding:11px 16px;background:var(--bg2);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1.2px;border-bottom:1px solid var(--border);font-weight:600;}
+.tbl-wrap tbody td{padding:11px 16px;color:var(--text2);border-bottom:1px solid var(--border);}
+.tbl-wrap tbody tr:last-child td{border-bottom:none;}
+.tbl-wrap tbody tr:hover td{background:var(--hover-row);}
+
+/* BADGES */
+.badge{display:inline-block;padding:3px 9px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;border:1px solid;}
+.b-new      {background:var(--d-bg);border-color:var(--d-bd);color:var(--d-tx);}
+.b-preparing{background:var(--w-bg);border-color:var(--w-bd);color:var(--w-tx);}
+.b-ready    {background:var(--o-bg);border-color:var(--o-bd);color:var(--o-tx);}
+.b-done     {background:var(--x-bg);border-color:var(--x-bd);color:var(--x-tx);}
+.b-admin    {background:var(--pill-bg);border-color:var(--border-h);color:var(--gold);}
+.b-kitchen  {background:var(--o-bg);border-color:var(--o-bd);color:var(--o-tx);}
+.b-customer {background:var(--b-bg);border-color:var(--b-bd);color:var(--b-tx);}
+
+/* TOOLBAR */
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+.toolbar-info{font-size:13px;color:var(--muted);}
+.btn-add{padding:9px 18px;background:var(--gold);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.18s;display:flex;align-items:center;gap:6px;}
+.btn-add:hover{background:var(--gold-h);}
+.btn-edit{padding:4px 10px;border-radius:7px;border:1px solid var(--border-h);background:none;font-size:12px;color:var(--gold);cursor:pointer;transition:all 0.15s;}
+.btn-edit:hover{background:rgba(200,148,56,0.15);}
+.btn-del{padding:4px 10px;border-radius:7px;border:1px solid var(--d-bd);background:none;font-size:12px;color:var(--d-tx);cursor:pointer;transition:all 0.15s;}
+.btn-del:hover{background:var(--d-bg);}
+.avail-btn{padding:3px 10px;border-radius:10px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.18s;}
+.avail-on {background:var(--o-bg);border-color:var(--o-bd);color:var(--o-tx);}
+.avail-on:hover{background:rgba(42,114,72,0.3);}
+.avail-off{background:var(--d-bg);border-color:var(--d-bd);color:var(--d-tx);}
+.avail-off:hover{background:rgba(192,64,64,0.3);}
+
+/* PANEL ANIMATION */
+.panel{display:none;}
+.panel.active{display:block;animation:fadeIn 0.22s;}
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:500;align-items:center;justify-content:center;padding:20px;}
+.overlay.open{display:flex;animation:fadeIn 0.2s;}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px;width:100%;max-width:420px;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow);transition:var(--tt);}
+.modal h3{font-family:'Playfair Display',serif;font-size:22px;margin-bottom:18px;}
+.modal-btns{display:flex;gap:10px;margin-top:18px;}
+.btn-cancel{flex:1;padding:10px;background:none;border:1px solid var(--border);border-radius:9px;color:var(--muted);font-size:13px;cursor:pointer;transition:all 0.18s;}
+.btn-cancel:hover{border-color:var(--border-h);color:var(--text);}
+.btn-save{flex:2;padding:10px;background:var(--gold);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.18s;}
+.btn-save:hover{background:var(--gold-h);}
+.confirm-box{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px;width:100%;max-width:310px;text-align:center;box-shadow:var(--shadow);}
+.confirm-box h3{font-family:'Playfair Display',serif;font-size:20px;margin-bottom:10px;}
+.confirm-box p{font-size:14px;color:var(--muted);margin-bottom:22px;line-height:1.6;}
+.btn-del-ok{flex:1;padding:10px;background:#C04040;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-del-ok:hover{background:#D05050;}
+
+/* EMPTY */
+.empty-tbl{text-align:center;padding:28px;color:var(--muted);font-size:13px;}
+
+@media(max-width:768px){
+  .sidebar{display:none;}
+  .content{padding:16px;}
+  .topbar{padding:0 14px;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="glow"></div>
+  <div class="login-theme">
+    <span class="theme-label">🌙</span>
+    <button class="theme-toggle" onclick="toggleTheme()"></button>
+    <span class="theme-label">☀️</span>
+  </div>
+  <div class="login-wrap">
+    <div class="login-brand">
+      <div class="wm"><em>Coffee-r</em> Attokahon</div>
+      <div class="sub">Admin Portal</div>
+    </div>
+    <div class="login-card">
+      <h2>Admin Login</h2>
+      <div class="login-err" id="loginErr">Incorrect credentials. Admin only.</div>
+      <div class="field"><label>Username</label><input class="inp" type="text" id="lUser" placeholder="username" autocomplete="off" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div class="field"><label>Password</label><input class="inp" type="password" id="lPass" placeholder="password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn-login" onclick="doLogin()">Sign In →</button>
+      <div class="login-hint">Default: <b>admin</b> / <b>admin123</b></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appScreen">
+  <div class="topbar">
+    <div class="brand"><em>Coffee-r</em> Attokahon</div>
+    <div class="topbar-r">
+      <div class="role-badge">Admin</div>
+      <span class="theme-label">🌙</span>
+      <button class="theme-toggle" onclick="toggleTheme()"></button>
+      <span class="theme-label">☀️</span>
+      <button class="logout-btn" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+  <div class="app-body">
+    <nav class="sidebar">
+      <button class="nav-item active" data-p="dashboard" onclick="goTo('dashboard',this)">📊 Dashboard</button>
+      <button class="nav-item" data-p="products"  onclick="goTo('products',this)">🛍 Products</button>
+      <button class="nav-item" data-p="orders"    onclick="goTo('orders',this)">📋 Orders</button>
+      <button class="nav-item" data-p="payments"   onclick="goTo('payments',this)">💳 Payments</button>
+      <button class="nav-item" data-p="accounts"  onclick="goTo('accounts',this)">👥 Accounts</button>
+      <hr class="nav-sep">
+      <button class="nav-item" onclick="window.open('index.html','_blank')">👁 Preview Menu</button>
+      <button class="nav-item" onclick="window.open('kitchen.html','_blank')">👨‍🍳 Kitchen View</button>
+    </nav>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<!-- PRODUCT MODAL -->
+<div class="overlay" id="ovProduct" onclick="if(event.target===this)closeOv('ovProduct')">
+  <div class="modal">
+    <h3 id="prodModalTitle">Add Product</h3>
+    <div class="field"><label>Product Name</label><input class="inp" type="text" id="pName" placeholder="e.g. Caramel Latte"></div>
+    <div class="field"><label>Category</label>
+      <select class="inp" id="pCat"><option>Coffee</option><option>Specialty</option><option>Food</option><option>Dessert</option><option>Drinks</option></select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="field"><label>Price (৳)</label><input class="inp" type="number" id="pPrice" placeholder="120" min="1"></div>
+      <div class="field"><label>Emoji</label><input class="inp" type="text" id="pEmoji" placeholder="☕" maxlength="4"></div>
+    </div>
+    <div class="field"><label>Description</label><textarea class="inp" id="pDesc" rows="2" placeholder="Short description visible to customers..."></textarea></div>
+    <div class="field"><label>Availability</label>
+      <select class="inp" id="pAvail"><option value="1">Available</option><option value="0">Unavailable</option></select>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeOv('ovProduct')">Cancel</button>
+      <button class="btn-save" onclick="saveProduct()">Save Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- ACCOUNT MODAL -->
+<div class="overlay" id="ovAccount" onclick="if(event.target===this)closeOv('ovAccount')">
+  <div class="modal">
+    <h3 id="accModalTitle">Add Account</h3>
+    <div class="field"><label>Username</label><input class="inp" type="text" id="aUser" placeholder="username"></div>
+    <div class="field"><label>Password</label><input class="inp" type="password" id="aPass" placeholder="password"></div>
+    <div class="field"><label>Role</label>
+      <select class="inp" id="aRole"><option value="customer">Customer</option><option value="kitchen">Kitchen</option><option value="admin">Admin</option></select>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeOv('ovAccount')">Cancel</button>
+      <button class="btn-save" onclick="saveAccount()">Save Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="overlay" id="ovConfirm" onclick="if(event.target===this)closeOv('ovConfirm')">
+  <div class="confirm-box">
+    <h3>Confirm Delete</h3>
+    <p id="confirmMsg">Are you sure?</p>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeOv('ovConfirm')">Cancel</button>
+      <button class="btn-del-ok" id="confirmOk">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── THEME ─────────────────────────────────────────────────────── */
+const savedTheme = localStorage.getItem('ca_theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+function toggleTheme() {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('ca_theme', next);
+}
+
+/* ── DEFAULTS ──────────────────────────────────────────────────── */
+const DEF_PRODUCTS = [
+  {id:'1', name:'Espresso',        cat:'Coffee',    price:80,  emoji:'☕', desc:'Rich double shot, bold and intense.',           avail:true},
+  {id:'2', name:'Cappuccino',      cat:'Coffee',    price:120, emoji:'🥛', desc:'Espresso with velvety steamed milk foam.',      avail:true},
+  {id:'3', name:'Caramel Latte',   cat:'Coffee',    price:140, emoji:'🍵', desc:'Smooth latte with house caramel drizzle.',      avail:true},
+  {id:'4', name:'Cold Brew',       cat:'Coffee',    price:150, emoji:'🧊', desc:'Slow-steeped, refreshing cold coffee.',         avail:true},
+  {id:'5', name:'Iced Mocha',      cat:'Coffee',    price:155, emoji:'🍫', desc:'Espresso, chocolate, cold milk over ice.',      avail:true},
+  {id:'6', name:'Matcha Latte',    cat:'Specialty', price:145, emoji:'🍃', desc:'Ceremonial matcha blended with oat milk.',      avail:true},
+  {id:'7', name:'Mango Smoothie',  cat:'Specialty', price:130, emoji:'🥭', desc:'Fresh mango blended with yogurt and honey.',    avail:true},
+  {id:'8', name:'Croissant',       cat:'Food',      price:100, emoji:'🥐', desc:'Buttery and flaky, baked fresh every morning.', avail:true},
+  {id:'9', name:'Club Sandwich',   cat:'Food',      price:180, emoji:'🥪', desc:'Chicken, lettuce, tomato, toasted bread.',      avail:true},
+  {id:'10',name:'Blueberry Muffin',cat:'Food',      price:90,  emoji:'🧁', desc:'Soft muffin loaded with blueberries.',         avail:true},
+  {id:'11',name:'Cheesecake',      cat:'Dessert',   price:190, emoji:'🍰', desc:'New York style with seasonal berry compote.',   avail:true},
+  {id:'12',name:'Avocado Toast',   cat:'Food',      price:160, emoji:'🥑', desc:'Sourdough, smashed avocado, chilli flakes.',   avail:true},
+];
+const DEF_USERS = [{username:'admin',password:'admin123',role:'admin'},{username:'chef',password:'chef123',role:'kitchen'}];
+
+/* ── STORAGE ───────────────────────────────────────────────────── */
+function getProducts(){ try{return JSON.parse(localStorage.getItem('ca_products'))||DEF_PRODUCTS;}catch{return DEF_PRODUCTS;} }
+function saveProducts(p){ localStorage.setItem('ca_products',JSON.stringify(p)); }
+function getOrders()  { try{return JSON.parse(localStorage.getItem('ca_paid_orders'))||[];}catch{return[];} }
+function getPayments(){ try{return JSON.parse(localStorage.getItem('ca_payments'))||[];}catch{return[];} }
+function getUsers()   { try{return JSON.parse(localStorage.getItem('ca_users'))||DEF_USERS;}catch{return DEF_USERS;} }
+function saveUsers(u) { localStorage.setItem('ca_users',JSON.stringify(u)); }
+
+/* ── AUTH ──────────────────────────────────────────────────────── */
+let me = null;
+let currentTab = 'dashboard';
+let editPid = null, editAccIdx = null;
+
+function doLogin() {
+  const u = document.getElementById('lUser').value.trim();
+  const p = document.getElementById('lPass').value;
+  const found = getUsers().find(x=>x.username===u&&x.password===p);
+  if (!found || found.role!=='admin') { document.getElementById('loginErr').style.display='block'; return; }
+  me = found;
+  document.getElementById('loginScreen').style.display = 'none';
+  const app = document.getElementById('appScreen');
+  app.style.display='flex'; app.style.flexDirection='column';
+  // Seed default products if none exist
+  if (!localStorage.getItem('ca_products')) saveProducts(DEF_PRODUCTS);
+  goTo('dashboard', document.querySelector('.nav-item'));
+}
+
+function doLogout() {
+  me = null;
+  document.getElementById('appScreen').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('lUser').value='';
+  document.getElementById('lPass').value='';
+}
+
+/* ── NAVIGATION ────────────────────────────────────────────────── */
+function goTo(page, btn) {
+  currentTab = page;
+  document.querySelectorAll('.nav-item[data-p]').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  render();
+}
+
+function render() {
+  const el = document.getElementById('content');
+  el.innerHTML = '';
+  if (currentTab==='dashboard') renderDashboard(el);
+  if (currentTab==='products')  renderProducts(el);
+  if (currentTab==='orders')    renderOrders(el);
+  if (currentTab==='payments')   renderPayments(el);
+  if (currentTab==='accounts')  renderAccounts(el);
+}
+
+/* ── DASHBOARD ─────────────────────────────────────────────────── */
+function renderDashboard(el) {
+  const orders = getOrders(), products = getProducts(), users = getUsers(), payments = getPayments();
+  const tot = orders.length;
+  const active = orders.filter(o=>o.status!=='served').length;
+  const served = orders.filter(o=>o.status==='served').length;
+  const rev = orders.reduce((s,o)=>s+(o.total||0),0);
+  const today = new Date().toDateString();
+  const todayRev = orders.filter(o=>new Date(o.time).toDateString()===today).reduce((s,o)=>s+(o.total||0),0);
+  const todayOrders = orders.filter(o=>new Date(o.time).toDateString()===today).length;
+  el.innerHTML = `
+    <div class="pg-title">Dashboard</div>
+    <div class="pg-sub">Live overview of Coffee-r Attokahon operations.</div>
+    <div class="stats-grid">
+      ${[
+        ["Today's Orders", todayOrders, ''],
+        ["Today's Revenue", '৳'+todayRev.toLocaleString(), ''],
+        ['Active Orders', active, ''],
+        ['Served Today', served, ''],
+        ['Total Revenue', '৳'+rev.toLocaleString(), ''],
+        ['Menu Items', products.length, ''],
+      ].map(([l,v])=>`
+        <div class="stat-card"><div class="stat-lbl">${l}</div><div class="stat-val">${v}</div></div>
+      `).join('')}
+    </div>
+    <div class="pg-title" style="font-size:20px;margin-bottom:12px;margin-top:8px;">Recent Paid Orders</div>
+    ${ordersTable(orders.slice(0,8))}
+    <div class="pg-title" style="font-size:20px;margin-bottom:12px;margin-top:24px;">Recent Payments</div>
+    ${paymentsTable(payments.slice(0,6))}`;
+}
+
+/* ── PRODUCTS ──────────────────────────────────────────────────── */
+function renderProducts(el) {
+  const products = getProducts();
+  el.innerHTML = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:6px;">
+      <div><div class="pg-title">Products</div><div class="pg-sub">Add, edit or remove menu items. Changes appear instantly for customers.</div></div>
+      <button class="btn-add" onclick="openProductModal(null)">+ Add Product</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Availability</th><th>Actions</th></tr></thead>
+        <tbody>${products.length ? products.map(p=>`
+          <tr>
+            <td><strong style="color:var(--text)">${p.emoji||'☕'} ${esc(p.name)}</strong><br><span style="font-size:11px;color:var(--muted)">${esc((p.desc||'').slice(0,52))}</span></td>
+            <td>${esc(p.cat)}</td>
+            <td style="color:var(--gold);font-weight:600;">৳${p.price}</td>
+            <td><button class="avail-btn ${p.avail?'avail-on':'avail-off'}" onclick="toggleAvail('${p.id||p._key}')">${p.avail?'✓ Available':'✗ Unavailable'}</button></td>
+            <td><div style="display:flex;gap:6px;">
+              <button class="btn-edit" onclick="openProductModal('${p.id||p._key}')">Edit</button>
+              <button class="btn-del" onclick="confirmDelete('Delete this product from the menu?',()=>deleteProduct('${p.id||p._key}'))">Delete</button>
+            </div></td>
+          </tr>`).join('') : `<tr><td colspan="5" class="empty-tbl">No products yet. Click "Add Product" to get started.</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function openProductModal(id) {
+  editPid = id;
+  document.getElementById('prodModalTitle').textContent = id?'Edit Product':'Add Product';
+  if (id) {
+    const p = getProducts().find(x=>(x.id||x._key)===id);
+    if(p){
+      document.getElementById('pName').value=p.name;
+      document.getElementById('pCat').value=p.cat;
+      document.getElementById('pPrice').value=p.price;
+      document.getElementById('pEmoji').value=p.emoji||'☕';
+      document.getElementById('pDesc').value=p.desc||'';
+      document.getElementById('pAvail').value=p.avail?'1':'0';
+    }
+  } else {
+    document.getElementById('pName').value='';
+    document.getElementById('pCat').value='Coffee';
+    document.getElementById('pPrice').value='';
+    document.getElementById('pEmoji').value='☕';
+    document.getElementById('pDesc').value='';
+    document.getElementById('pAvail').value='1';
+  }
+  openOv('ovProduct');
+}
+
+function saveProduct() {
+  const name=document.getElementById('pName').value.trim();
+  const price=parseInt(document.getElementById('pPrice').value);
+  if(!name||!price){alert('Name and price are required.');return;}
+  const data={name,cat:document.getElementById('pCat').value,price,emoji:document.getElementById('pEmoji').value.trim()||'☕',desc:document.getElementById('pDesc').value.trim(),avail:document.getElementById('pAvail').value==='1'};
+  let prods = getProducts();
+  if(editPid){
+    const i=prods.findIndex(p=>(p.id||p._key)===editPid);
+    if(i>-1) prods[i]={...prods[i],...data};
+  } else {
+    const maxId=prods.reduce((m,p)=>Math.max(m,parseInt(p.id||0)),0);
+    prods.push({id:String(maxId+1),...data});
+  }
+  saveProducts(prods);
+  closeOv('ovProduct');
+  render();
+}
+
+function toggleAvail(id) {
+  const prods=getProducts(); const i=prods.findIndex(p=>(p.id||p._key)===id);
+  if(i>-1){prods[i].avail=!prods[i].avail;saveProducts(prods);render();}
+}
+function deleteProduct(id) {
+  saveProducts(getProducts().filter(p=>(p.id||p._key)!==id));
+  render();
+}
+
+/* ── ORDERS ────────────────────────────────────────────────────── */
+function renderOrders(el) {
+  const orders=getOrders();
+  el.innerHTML=`
+    <div class="pg-title">Orders</div>
+    <div class="pg-sub">Full history — ${orders.length} total orders.</div>
+    ${ordersTable(orders)}`;
+}
+
+function ordersTable(orders) {
+  if (!orders.length) return '<p style="color:var(--muted);padding:20px 0;">No orders yet.</p>';
+  const statusColor = {paid:'var(--b-tx)',preparing:'var(--w-tx)',ready:'var(--o-tx)',served:'var(--x-tx)'};
+  return `<div class="tbl-wrap"><table>
+    <thead><tr><th>#</th><th>Table</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Time</th></tr></thead>
+    <tbody>${orders.map(o=>`<tr>
+      <td style="color:var(--gold);font-weight:600;">${o.id}</td>
+      <td>${o.table||'—'}</td>
+      <td>${o.items.map(i=>i.qty+'× '+esc(i.name)).join(', ')}</td>
+      <td style="font-weight:600;">৳${o.total}</td>
+      <td style="font-size:11px;">${esc(o.paymentMethod||'—')}</td>
+      <td><span style="color:${statusColor[o.status]||'var(--muted)'};font-weight:600;text-transform:capitalize;">${o.status}</span></td>
+      <td style="font-size:11px;color:var(--muted);">${new Date(o.time).toLocaleString('en-BD',{dateStyle:'short',timeStyle:'short'})}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function paymentsTable(payments) {
+  if (!payments.length) return '<p style="color:var(--muted);padding:12px 0;">No payments yet.</p>';
+  return `<div class="tbl-wrap"><table>
+    <thead><tr><th>TXN ID</th><th>Invoice</th><th>Table</th><th>Method</th><th>Amount</th><th>Time</th></tr></thead>
+    <tbody>${payments.map(p=>`<tr>
+      <td style="font-family:monospace;font-size:12px;color:var(--gold);">${esc(p.txnId)}</td>
+      <td style="font-size:12px;">${esc(p.invoiceNum||'—')}</td>
+      <td>${p.table||'—'}</td>
+      <td>${esc(p.method)}</td>
+      <td style="font-weight:600;color:var(--o-tx);">৳${p.amount}</td>
+      <td style="font-size:11px;color:var(--muted);">${new Date(p.time).toLocaleString('en-BD',{dateStyle:'short',timeStyle:'short'})}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function renderPayments(el) {
+  const payments = getPayments();
+  const total = payments.reduce((s,p)=>s+(p.amount||0),0);
+  el.innerHTML = `
+    <div class="pg-title">Payments</div>
+    <div class="pg-sub">All completed transactions via bKash, Nagad, and Rocket.</div>
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-lbl">Total Payments</div><div class="stat-val">${payments.length}</div></div>
+      <div class="stat-card"><div class="stat-lbl">Total Revenue</div><div class="stat-val">৳${total.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="stat-lbl">Avg. Transaction</div><div class="stat-val">৳${payments.length ? Math.round(total/payments.length) : 0}</div></div>
+    </div>
+    ${paymentsTable(payments)}`;
+}
+
+
+/* ── ACCOUNTS ──────────────────────────────────────────────────── */
+function renderAccounts(el) {
+  const users=getUsers();
+  el.innerHTML=`
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:6px;">
+      <div><div class="pg-title">Accounts</div><div class="pg-sub">Manage staff login credentials and roles.</div></div>
+      <button class="btn-add" onclick="openAccountModal(null)">+ Add Account</button>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Username</th><th>Role</th><th>Actions</th></tr></thead>
+      <tbody>${users.map((u,i)=>`
+        <tr>
+          <td><strong style="color:var(--text)">${esc(u.username)}</strong></td>
+          <td><span class="badge b-${u.role}">${u.role}</span></td>
+          <td><div style="display:flex;gap:6px;">
+            <button class="btn-edit" onclick="openAccountModal(${i})">Edit</button>
+            ${u.username!=='admin'?`<button class="btn-del" onclick="confirmDelete('Delete account &quot;${esc(u.username)}&quot;?',()=>deleteAccount(${i}))">Delete</button>`:'<span style="font-size:11px;color:var(--muted)">Protected</span>'}
+          </div></td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+}
+
+function openAccountModal(idx) {
+  editAccIdx=idx;
+  document.getElementById('accModalTitle').textContent=idx!=null?'Edit Account':'Add Account';
+  const users=getUsers();
+  if(idx!=null){
+    document.getElementById('aUser').value=users[idx].username;
+    document.getElementById('aPass').value=users[idx].password;
+    document.getElementById('aRole').value=users[idx].role;
+  } else {
+    document.getElementById('aUser').value='';
+    document.getElementById('aPass').value='';
+    document.getElementById('aRole').value='kitchen';
+  }
+  openOv('ovAccount');
+}
+
+function saveAccount() {
+  const username=document.getElementById('aUser').value.trim();
+  const password=document.getElementById('aPass').value.trim();
+  const role=document.getElementById('aRole').value;
+  if(!username||!password){alert('Username and password are required.');return;}
+  const users=getUsers();
+  if(editAccIdx!=null){users[editAccIdx]={...users[editAccIdx],username,password,role};}
+  else{if(users.find(u=>u.username===username)){alert('Username already exists.');return;}users.push({username,password,role});}
+  saveUsers(users);
+  closeOv('ovAccount');
+  render();
+}
+
+function deleteAccount(idx) {
+  const users=getUsers();
+  if(users[idx]?.username==='admin') return;
+  users.splice(idx,1);
+  saveUsers(users);
+  render();
+}
+
+/* ── MODAL HELPERS ─────────────────────────────────────────────── */
+function openOv(id) { document.getElementById(id).classList.add('open'); }
+function closeOv(id){ document.getElementById(id).classList.remove('open'); }
+function confirmDelete(msg, cb) {
+  document.getElementById('confirmMsg').innerHTML = msg;
+  document.getElementById('confirmOk').onclick = ()=>{cb();closeOv('ovConfirm');};
+  openOv('ovConfirm');
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
+</body>
+</html>

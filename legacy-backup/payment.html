@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment — Coffee-r Attokahon</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--tt:background-color 0.3s ease,color 0.3s ease,border-color 0.3s ease;}
+[data-theme="dark"]{
+  --bg:#1A1410;--bg2:#211A12;--card:#2A2115;
+  --border:rgba(200,148,56,0.20);--border-h:rgba(200,148,56,0.45);
+  --gold:#C89438;--gold-h:#E0AE58;
+  --text:#EDE0C8;--text2:#BBA880;--muted:#8A7860;
+  --shadow:0 4px 24px rgba(0,0,0,0.30);--pill-bg:rgba(200,148,56,0.13);
+  --success-bg:rgba(42,114,72,0.18);--success-bd:rgba(42,114,72,0.35);--success-tx:#60C890;
+}
+[data-theme="light"]{
+  --bg:#F0E8D8;--bg2:#E8DEC8;--card:#FAF4E8;
+  --border:rgba(160,108,40,0.20);--border-h:rgba(160,108,40,0.48);
+  --gold:#A06C28;--gold-h:#8A5A18;
+  --text:#2E1C08;--text2:#5C4020;--muted:#9A7850;
+  --shadow:0 4px 24px rgba(100,60,10,0.10);--pill-bg:rgba(160,108,40,0.12);
+  --success-bg:rgba(30,100,60,0.10);--success-bd:rgba(30,100,60,0.25);--success-tx:#1A6B3A;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:var(--tt);}
+button{font-family:'Outfit',sans-serif;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:var(--bg2);}::-webkit-scrollbar-thumb{background:var(--border-h);border-radius:4px;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes checkPop{0%{transform:scale(0);}60%{transform:scale(1.3);}100%{transform:scale(1);}}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+.glow{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 40% at 50% 0%,rgba(200,148,56,0.09) 0%,transparent 65%);z-index:0;}
+
+/* TOPBAR */
+.topbar{background:var(--card);border-bottom:1px solid var(--border);height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);}
+.brand{font-family:'Playfair Display',serif;font-size:18px;}
+.brand em{color:var(--gold);font-style:normal;}
+.back-btn{background:none;border:1px solid var(--border);border-radius:9px;padding:6px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all 0.2s;}
+.back-btn:hover{border-color:var(--border-h);color:var(--text);}
+.theme-toggle{width:38px;height:20px;background:var(--border-h);border-radius:10px;border:none;cursor:pointer;position:relative;transition:background 0.3s;}
+.theme-toggle::after{content:'';position:absolute;width:14px;height:14px;background:var(--card);border-radius:50%;top:3px;left:3px;transition:transform 0.3s;}
+[data-theme="light"] .theme-toggle::after{transform:translateX(18px);}
+
+/* STEPS */
+.steps{display:flex;align-items:center;justify-content:center;padding:20px 20px 0;gap:0;max-width:480px;margin:0 auto;}
+.step{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;}
+.step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid;flex-shrink:0;}
+.step.done .step-dot{background:var(--gold);border-color:var(--gold);color:#fff;}
+.step.active .step-dot{background:var(--gold);border-color:var(--gold);color:#fff;box-shadow:0 0 0 4px rgba(200,148,56,0.20);}
+.step.pending .step-dot{background:none;border-color:var(--border);color:var(--muted);}
+.step-label{color:var(--muted);white-space:nowrap;}
+.step.done .step-label,.step.active .step-label{color:var(--text2);}
+.step-line{flex:1;height:1px;background:var(--border);margin:0 6px;min-width:20px;}
+.step-line.filled{background:var(--gold);}
+
+/* MAIN */
+.main{max-width:480px;margin:0 auto;padding:24px 20px 40px;position:relative;z-index:1;}
+
+.sect-title{font-family:'Playfair Display',serif;font-size:22px;margin-bottom:4px;}
+.sect-sub{font-size:13px;color:var(--muted);margin-bottom:22px;}
+
+/* Amount card */
+.amount-card{background:var(--card);border:1px solid var(--border-h);border-radius:16px;padding:20px 22px;margin-bottom:20px;text-align:center;box-shadow:var(--shadow);animation:fadeIn 0.4s ease;}
+.amount-label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.amount-value{font-family:'Playfair Display',serif;font-size:42px;color:var(--gold);font-weight:600;}
+.amount-sub{font-size:12px;color:var(--muted);margin-top:6px;}
+
+/* Method selector */
+.method-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px;}
+.method-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;}
+.method-tab{background:var(--card);border:2px solid var(--border);border-radius:12px;padding:12px 8px;text-align:center;cursor:pointer;transition:all 0.2s;}
+.method-tab:hover{border-color:var(--border-h);}
+.method-tab.active{border-color:var(--gold);background:rgba(200,148,56,0.08);}
+.method-icon{font-size:20px;margin-bottom:4px;}
+.method-name{font-size:12px;font-weight:600;color:var(--text2);}
+.method-num{font-size:10px;color:var(--muted);margin-top:2px;}
+.method-tab.active .method-name{color:var(--gold);}
+
+/* QR card */
+.qr-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px;text-align:center;box-shadow:var(--shadow);animation:fadeIn 0.4s ease;}
+.qr-instruction{font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6;}
+.qr-box{display:inline-block;background:#fff;padding:14px;border-radius:12px;margin-bottom:16px;}
+.qr-box img{display:block;}
+.qr-number{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;display:inline-flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;}
+.qr-number-copy{background:none;border:1px solid var(--border);border-radius:7px;padding:4px 10px;font-size:11px;color:var(--muted);cursor:pointer;transition:all 0.15s;}
+.qr-number-copy:hover{border-color:var(--gold);color:var(--gold);}
+.qr-timer{font-size:12px;color:var(--muted);}
+.qr-timer span{color:var(--gold);font-weight:600;}
+
+/* Confirm section */
+.confirm-note{background:rgba(200,148,56,0.07);border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:20px;}
+.confirm-note strong{color:var(--gold);}
+
+.btn-confirm{width:100%;padding:16px;background:var(--gold);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:600;font-family:'Playfair Display',serif;cursor:pointer;transition:background 0.2s,transform 0.15s,box-shadow 0.2s;box-shadow:0 4px 20px rgba(200,148,56,0.25);margin-bottom:10px;}
+.btn-confirm:hover{background:var(--gold-h);transform:translateY(-1px);box-shadow:0 6px 24px rgba(200,148,56,0.35);}
+.btn-confirm:active{transform:none;}
+.btn-confirm:disabled{background:var(--border);cursor:not-allowed;box-shadow:none;transform:none;}
+
+.processing-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:20px;display:none;}
+.processing-fill{height:100%;background:var(--gold);border-radius:2px;width:0%;transition:width 0.1s linear;}
+
+/* SUCCESS STATE */
+.success-screen{display:none;text-align:center;animation:fadeIn 0.5s ease;}
+.success-icon{width:80px;height:80px;border-radius:50%;background:var(--success-bg);border:2px solid var(--success-bd);display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 20px;animation:checkPop 0.5s 0.1s cubic-bezier(0.34,1.56,0.64,1) both;}
+.success-screen h2{font-family:'Playfair Display',serif;font-size:28px;margin-bottom:8px;}
+.success-screen p{font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:24px;}
+.txn-card{background:var(--card);border:1px solid var(--border-h);border-radius:14px;padding:16px 20px;margin-bottom:24px;text-align:left;}
+.txn-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:5px 0;}
+.txn-row:not(:last-child){border-bottom:1px solid var(--border);}
+.txn-row span:first-child{color:var(--muted);}
+.txn-row span:last-child{color:var(--text);font-weight:500;}
+.txn-row.highlight span:last-child{color:var(--gold);font-weight:600;}
+.btn-invoice{width:100%;padding:14px;background:var(--gold);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;transition:background 0.2s;margin-bottom:10px;}
+.btn-invoice:hover{background:var(--gold-h);}
+.btn-menu-again{width:100%;padding:12px;background:none;color:var(--muted);border:1px solid var(--border);border-radius:12px;font-size:14px;cursor:pointer;transition:all 0.2s;}
+.btn-menu-again:hover{border-color:var(--border-h);color:var(--text);}
+
+@media(max-width:600px){.main{padding:16px 16px 32px;}.steps{padding:14px 10px 0;}.step-label{display:none;}.amount-value{font-size:34px;}}
+</style>
+</head>
+<body>
+<div class="glow"></div>
+
+<div class="topbar">
+  <div class="brand"><em>Coffee-r</em> Attokahon</div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button class="back-btn" id="backBtn" onclick="goBack()">← Review</button>
+    <button class="theme-toggle" onclick="toggleTheme()"></button>
+  </div>
+</div>
+
+<div class="steps" id="stepsBar">
+  <div class="step done"><div class="step-dot">✓</div><span class="step-label">Menu</span></div>
+  <div class="step-line filled"></div>
+  <div class="step done"><div class="step-dot">✓</div><span class="step-label">Review</span></div>
+  <div class="step-line filled"></div>
+  <div class="step active"><div class="step-dot">3</div><span class="step-label">Payment</span></div>
+  <div class="step-line"></div>
+  <div class="step pending"><div class="step-dot">4</div><span class="step-label">Confirmed</span></div>
+</div>
+
+<div class="main">
+
+  <!-- PAYMENT VIEW -->
+  <div id="payView">
+    <div class="sect-title">Complete Payment</div>
+    <div class="sect-sub">Scan the QR code with your mobile banking app.</div>
+
+    <div class="amount-card">
+      <div class="amount-label">Amount Due</div>
+      <div class="amount-value" id="amountDisplay">৳0</div>
+      <div class="amount-sub" id="tableDisplay"></div>
+    </div>
+
+    <div class="method-label">Choose Payment Method</div>
+    <div class="method-tabs">
+      <div class="method-tab active" onclick="selectMethod('bkash',this)">
+        <div class="method-icon">📱</div>
+        <div class="method-name">bKash</div>
+        <div class="method-num">01XXXXXXXXX</div>
+      </div>
+      <div class="method-tab" onclick="selectMethod('nagad',this)">
+        <div class="method-icon">💳</div>
+        <div class="method-name">Nagad</div>
+        <div class="method-num">01XXXXXXXXX</div>
+      </div>
+      <div class="method-tab" onclick="selectMethod('rocket',this)">
+        <div class="method-icon">🚀</div>
+        <div class="method-name">Rocket</div>
+        <div class="method-num">01XXXXXXXXX</div>
+      </div>
+    </div>
+
+    <div class="qr-card">
+      <p class="qr-instruction">Open <strong id="methodNameInstr">bKash</strong> → Scan QR → Enter ৳<span id="qrAmountInstr">0</span> → Send Money</p>
+      <div class="qr-box" id="qrContainer"></div>
+      <br>
+      <div class="qr-number">
+        <span id="merchantNum">01712-345678</span>
+        <button class="qr-number-copy" onclick="copyNumber()">Copy</button>
+      </div>
+      <div class="qr-timer">QR expires in <span id="timerDisplay">10:00</span></div>
+    </div>
+
+    <div class="confirm-note">
+      After completing the payment in your app, tap <strong>Confirm Payment</strong> below to place your order and send it to the kitchen.
+    </div>
+
+    <div class="processing-bar" id="processingBar">
+      <div class="processing-fill" id="processingFill"></div>
+    </div>
+
+    <button class="btn-confirm" id="confirmBtn" onclick="confirmPayment()">Confirm Payment →</button>
+  </div>
+
+  <!-- SUCCESS VIEW -->
+  <div id="successView" class="success-screen">
+    <div class="success-icon">✓</div>
+    <h2>Payment Successful!</h2>
+    <p>Your order has been placed and sent to the kitchen.<br>We'll have it ready for you shortly.</p>
+    <div class="txn-card" id="txnCard"></div>
+    <button class="btn-invoice" onclick="goToInvoice()">View Invoice &amp; Receipt →</button>
+    <button class="btn-menu-again" onclick="orderMore()">Order More Items</button>
+  </div>
+
+</div>
+
+<script>
+/* ── THEME ─────────────────────────────── */
+const savedTheme = localStorage.getItem('ca_theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+function toggleTheme() {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('ca_theme', next);
+}
+
+/* ── LOAD CART ──────────────────────────── */
+let cart = null;
+try { cart = JSON.parse(localStorage.getItem('ca_pending_cart')); } catch(e){}
+
+if (!cart || !cart.items || !cart.items.length) {
+  window.location.href = 'index.html';
+}
+
+const total = cart ? cart.total || 0 : 0;
+document.getElementById('amountDisplay').textContent = '৳' + total;
+document.getElementById('qrAmountInstr').textContent = total;
+if (cart && cart.tableNum) {
+  document.getElementById('tableDisplay').textContent = 'Table ' + cart.tableNum;
+}
+
+/* ── PAYMENT METHODS ────────────────────── */
+const METHODS = {
+  bkash:  { name: 'bKash',  num: '01712-345678', icon: '📱' },
+  nagad:  { name: 'Nagad',  num: '01812-345678', icon: '💳' },
+  rocket: { name: 'Rocket', num: '01512-345678', icon: '🚀' },
+};
+let selectedMethod = 'bkash';
+
+function selectMethod(key, el) {
+  selectedMethod = key;
+  document.querySelectorAll('.method-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const m = METHODS[key];
+  document.getElementById('methodNameInstr').textContent = m.name;
+  document.getElementById('merchantNum').textContent = m.num;
+  generateQR();
+}
+
+function copyNumber() {
+  const num = METHODS[selectedMethod].num.replace('-','');
+  navigator.clipboard.writeText(num).catch(()=>{});
+  const btn = document.querySelector('.qr-number-copy');
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = 'Copy', 1500);
+}
+
+/* ── QR CODE ─────────────────────────────── */
+let qrInstance = null;
+function generateQR() {
+  const container = document.getElementById('qrContainer');
+  container.innerHTML = '';
+  const m = METHODS[selectedMethod];
+  const payload = `${m.name}|MERCHANT:${m.num}|AMOUNT:${total}|REF:CAFE-${Date.now()}`;
+  try {
+    qrInstance = new QRCode(container, {
+      text: payload,
+      width: 180, height: 180,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch(e) {
+    // Fallback if QRCode lib fails
+    container.innerHTML = `<div style="width:180px;height:180px;display:flex;align-items:center;justify-content:center;font-size:48px;background:#fff;border-radius:4px;">📱</div>`;
+  }
+}
+generateQR();
+
+/* ── COUNTDOWN TIMER ─────────────────────── */
+let timeLeft = 600; // 10 min
+const timerEl = document.getElementById('timerDisplay');
+const timerInterval = setInterval(() => {
+  timeLeft--;
+  if (timeLeft <= 0) { clearInterval(timerInterval); timerEl.textContent = 'Expired'; return; }
+  const m = Math.floor(timeLeft / 60).toString().padStart(2,'0');
+  const s = (timeLeft % 60).toString().padStart(2,'0');
+  timerEl.textContent = `${m}:${s}`;
+}, 1000);
+
+/* ── CONFIRM PAYMENT ────────────────────── */
+let confirmedOrder = null;
+
+function confirmPayment() {
+  const btn = document.getElementById('confirmBtn');
+  const bar = document.getElementById('processingBar');
+  const fill = document.getElementById('processingFill');
+
+  btn.disabled = true;
+  btn.textContent = 'Processing…';
+  bar.style.display = 'block';
+
+  // Animate progress bar
+  let progress = 0;
+  const progressInterval = setInterval(() => {
+    progress += 2;
+    fill.style.width = progress + '%';
+    if (progress >= 100) clearInterval(progressInterval);
+  }, 30);
+
+  // Simulate gateway verification (1.6s)
+  setTimeout(() => {
+    clearInterval(timerInterval);
+
+    // Generate IDs
+    const pid = (parseInt(localStorage.getItem('ca_pid') || '1'));
+    localStorage.setItem('ca_pid', pid + 1);
+    const oid = (parseInt(localStorage.getItem('ca_oid') || '1'));
+    localStorage.setItem('ca_oid', oid + 1);
+
+    const txnId = 'TXN' + Date.now().toString(36).toUpperCase() + pid;
+    const invoiceNum = 'INV-' + new Date().getFullYear() + '-' + String(oid).padStart(4,'0');
+
+    // Build confirmed order
+    const order = {
+      id: oid,
+      invoiceNum,
+      table: cart.tableNum || null,
+      items: cart.items,
+      subtotal: cart.subtotal || total,
+      serviceCharge: cart.serviceCharge || 0,
+      total,
+      note: cart.note || '',
+      status: 'paid',
+      paymentMethod: METHODS[selectedMethod].name,
+      paymentId: txnId,
+      createdAt: Date.now(),
+      time: new Date().toISOString(),
+    };
+    confirmedOrder = order;
+
+    // Save to paid orders (kitchen reads this)
+    const paidOrders = JSON.parse(localStorage.getItem('ca_paid_orders') || '[]');
+    paidOrders.unshift(order);
+    localStorage.setItem('ca_paid_orders', JSON.stringify(paidOrders));
+
+    // Save to payments log
+    const payments = JSON.parse(localStorage.getItem('ca_payments') || '[]');
+    payments.unshift({
+      id: pid, txnId, invoiceNum,
+      orderId: oid,
+      table: cart.tableNum,
+      amount: total,
+      method: METHODS[selectedMethod].name,
+      time: new Date().toISOString(),
+    });
+    localStorage.setItem('ca_payments', JSON.stringify(payments));
+
+    // Save last order id for billing page
+    localStorage.setItem('ca_last_order_id', String(oid));
+
+    // Clear pending cart
+    localStorage.removeItem('ca_pending_cart');
+
+    showSuccess(order, txnId, invoiceNum);
+  }, 1700);
+}
+
+function showSuccess(order, txnId, invoiceNum) {
+  // Update steps
+  document.getElementById('stepsBar').innerHTML = `
+    <div class="step done"><div class="step-dot">✓</div><span class="step-label">Menu</span></div>
+    <div class="step-line filled"></div>
+    <div class="step done"><div class="step-dot">✓</div><span class="step-label">Review</span></div>
+    <div class="step-line filled"></div>
+    <div class="step done"><div class="step-dot">✓</div><span class="step-label">Payment</span></div>
+    <div class="step-line filled"></div>
+    <div class="step active"><div class="step-dot">4</div><span class="step-label">Confirmed</span></div>
+  `;
+  document.getElementById('backBtn').style.display = 'none';
+
+  // Build TXN card
+  const fmt = new Date(order.time).toLocaleString('en-BD', {dateStyle:'medium', timeStyle:'short'});
+  document.getElementById('txnCard').innerHTML = `
+    <div class="txn-row highlight"><span>Transaction ID</span><span>${txnId}</span></div>
+    <div class="txn-row"><span>Invoice No.</span><span>${invoiceNum}</span></div>
+    <div class="txn-row"><span>Order #</span><span>${order.id}</span></div>
+    ${order.table ? `<div class="txn-row"><span>Table</span><span>${order.table}</span></div>` : ''}
+    <div class="txn-row"><span>Method</span><span>${order.paymentMethod}</span></div>
+    <div class="txn-row"><span>Amount Paid</span><span>৳${order.total}</span></div>
+    <div class="txn-row"><span>Time</span><span>${fmt}</span></div>
+  `;
+
+  document.getElementById('payView').style.display = 'none';
+  document.getElementById('successView').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goToInvoice() {
+  window.location.href = 'billing.html';
+}
+
+function orderMore() {
+  const t = confirmedOrder ? confirmedOrder.table : null;
+  window.location.href = 'index.html' + (t ? '?table=' + t : '');
+}
+
+function goBack() {
+  window.location.href = 'checkout.html';
+}
+
+// Show active order reminder if any paid orders exist for this table
+(function(){
+  try {
+    const params2 = new URLSearchParams(window.location.search);
+    const tnum = parseInt(params2.get('table'))||null;
+    const all = JSON.parse(localStorage.getItem('ca_paid_orders')||'[]');
+    const active = tnum ? all.filter(o=>o.table===tnum&&o.status!=='served') : all.filter(o=>o.status!=='served');
+    if (active.length) {
+      const o = active[0];
+      const sl = {paid:'Received ✓',preparing:'Being Prepared 🔥',ready:'READY — Please collect! ✅',served:'Served'};
+      document.getElementById('activeOrderText').textContent = 'Order #'+o.id+' — '+( sl[o.status]||o.status);
+      document.getElementById('activeOrderBar').style.display='block';
+    }
+  } catch(e){}
+})();
+
+</script>
+</body>
+</html>

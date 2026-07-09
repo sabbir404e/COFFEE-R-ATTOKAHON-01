@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Welcome — Coffee-r Attokahon</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --tt: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; }
+[data-theme="dark"] {
+  --bg:#1A1410; --bg2:#211A12; --card:#2A2115;
+  --border:rgba(200,148,56,0.20); --border-h:rgba(200,148,56,0.45);
+  --gold:#C89438; --gold-h:#E0AE58;
+  --text:#EDE0C8; --text2:#BBA880; --muted:#8A7860;
+  --shadow:0 8px 40px rgba(0,0,0,0.40);
+  --pill-bg:rgba(200,148,56,0.13);
+}
+[data-theme="light"] {
+  --bg:#F0E8D8; --bg2:#E8DEC8; --card:#FAF4E8;
+  --border:rgba(160,108,40,0.20); --border-h:rgba(160,108,40,0.48);
+  --gold:#A06C28; --gold-h:#8A5A18;
+  --text:#2E1C08; --text2:#5C4020; --muted:#9A7850;
+  --shadow:0 8px 40px rgba(100,60,10,0.12);
+  --pill-bg:rgba(160,108,40,0.12);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: var(--tt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── ATMOSPHERE ─────────────────────────────────────── */
+.atm-glow {
+  position: fixed; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 55% at 50% -10%, rgba(200,148,56,0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 45% 35% at 10% 90%, rgba(200,148,56,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 45% 35% at 90% 80%, rgba(200,148,56,0.05) 0%, transparent 60%);
+  z-index: 0;
+}
+[data-theme="light"] .atm-glow {
+  background:
+    radial-gradient(ellipse 80% 55% at 50% -10%, rgba(160,108,40,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 45% 35% at 10% 90%, rgba(160,108,40,0.06) 0%, transparent 60%);
+}
+.atm-ring {
+  position: fixed; border-radius: 50%;
+  border: 1px solid rgba(200,148,56,0.07);
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  pointer-events: none; z-index: 0;
+}
+.atm-ring.r1 { width: 500px; height: 500px; }
+.atm-ring.r2 { width: 800px; height: 800px; border-color: rgba(200,148,56,0.04); }
+.atm-ring.r3 { width: 1100px; height: 1100px; border-color: rgba(200,148,56,0.025); }
+
+/* Floating steam particles */
+.steam {
+  position: fixed; pointer-events: none; z-index: 0;
+  bottom: -20px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: 40px;
+}
+.steam-p {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(200,148,56,0.25);
+  animation: steamRise 6s ease-in-out infinite;
+}
+.steam-p:nth-child(2) { animation-delay: 2s; }
+.steam-p:nth-child(3) { animation-delay: 4s; }
+@keyframes steamRise {
+  0%   { transform: translateY(0) scale(1); opacity: 0; }
+  20%  { opacity: 0.6; }
+  100% { transform: translateY(-100vh) scale(3); opacity: 0; }
+}
+
+/* ── FIXED CONTROLS ──────────────────────────────────── */
+.ctrl-bar {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; z-index: 10;
+}
+.ctrl-home {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--muted);
+  text-decoration: none; transition: color 0.2s;
+  background: none; border: none; cursor: pointer;
+}
+.ctrl-home:hover { color: var(--gold); }
+.ctrl-theme {
+  display: flex; align-items: center; gap: 8px;
+}
+.theme-label { font-size: 13px; }
+.theme-toggle {
+  width: 40px; height: 22px;
+  background: var(--border-h);
+  border-radius: 11px; border: none;
+  cursor: pointer; position: relative;
+  transition: background 0.3s; flex-shrink: 0;
+}
+.theme-toggle::after {
+  content: ''; position: absolute;
+  width: 16px; height: 16px; background: var(--card);
+  border-radius: 50%; top: 3px; left: 3px;
+  transition: transform 0.3s;
+}
+[data-theme="light"] .theme-toggle::after { transform: translateX(18px); }
+
+/* ── WELCOME CARD ────────────────────────────────────── */
+.welcome-wrap {
+  position: relative; z-index: 1;
+  width: 90%; max-width: 440px;
+  text-align: center;
+  padding: 0 16px;
+}
+
+/* Logo section */
+.wc-logo-block {
+  margin-bottom: 36px;
+  animation: wIn 0.9s cubic-bezier(0.16,1,0.3,1) both;
+}
+.wc-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 46px; line-height: 1.05;
+  letter-spacing: -0.5px;
+}
+.wc-logo em { color: var(--gold); font-style: normal; }
+.wc-tagline {
+  font-size: 10px; letter-spacing: 4.5px;
+  text-transform: uppercase; color: var(--muted);
+  margin-top: 8px;
+}
+
+/* Ornament */
+.wc-ornament {
+  display: flex; align-items: center; gap: 12px;
+  margin: 0 auto 36px;
+  width: fit-content;
+  animation: wIn 0.9s 0.1s cubic-bezier(0.16,1,0.3,1) both;
+}
+.wc-ornament-line {
+  width: 40px; height: 1px;
+  background: linear-gradient(to right, transparent, var(--gold));
+}
+.wc-ornament-line.rev {
+  background: linear-gradient(to left, transparent, var(--gold));
+}
+.wc-ornament-icon { color: var(--gold); font-size: 14px; opacity: 0.7; }
+
+/* Greeting */
+.wc-greeting {
+  font-family: 'Playfair Display', serif;
+  font-size: 32px; font-style: italic;
+  color: var(--text); margin-bottom: 12px;
+  animation: wIn 0.9s 0.15s cubic-bezier(0.16,1,0.3,1) both;
+}
+.wc-sub {
+  font-size: 14px; color: var(--muted);
+  line-height: 1.75; margin-bottom: 30px;
+  font-weight: 300;
+  animation: wIn 0.9s 0.2s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+/* Table chip */
+.table-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--pill-bg);
+  border: 1px solid var(--border-h);
+  border-radius: 28px; padding: 10px 22px;
+  font-size: 14px; font-weight: 500; color: var(--gold);
+  margin-bottom: 32px;
+  animation: wIn 0.9s 0.25s cubic-bezier(0.16,1,0.3,1) both;
+}
+.table-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--gold); opacity: 0.8;
+  animation: tdot 2s ease-in-out infinite;
+}
+@keyframes tdot {
+  0%,100% { opacity: 0.8; } 50% { opacity: 0.3; }
+}
+
+/* Buttons */
+.btn-cta {
+  display: block; width: 100%;
+  padding: 16px;
+  background: var(--gold); color: #fff;
+  border: none; border-radius: 14px;
+  font-size: 16px; font-weight: 600;
+  font-family: 'Playfair Display', serif;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  margin-bottom: 12px;
+  animation: wIn 0.9s 0.3s cubic-bezier(0.16,1,0.3,1) both;
+  box-shadow: 0 4px 20px rgba(200,148,56,0.25);
+}
+.btn-cta:hover {
+  background: var(--gold-h);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(200,148,56,0.35);
+}
+.btn-cta:active { transform: none; box-shadow: none; }
+
+.btn-ghost {
+  display: block; width: 100%;
+  padding: 14px;
+  background: none; color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  font-size: 14px; font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 32px;
+  animation: wIn 0.9s 0.35s cubic-bezier(0.16,1,0.3,1) both;
+}
+.btn-ghost:hover { border-color: var(--border-h); color: var(--text); }
+
+/* Footer info */
+.wc-footer {
+  font-size: 11px; color: var(--muted);
+  letter-spacing: 0.3px;
+  animation: wIn 0.9s 0.4s cubic-bezier(0.16,1,0.3,1) both;
+}
+.wc-footer span { color: var(--gold); }
+
+/* Track order modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:100;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;width:100%;max-width:400px;animation:wIn 0.3s cubic-bezier(0.16,1,0.3,1) both;box-shadow:var(--shadow);max-height:88vh;overflow-y:auto;}
+.modal-box h3{font-family:'Playfair Display',serif;font-size:20px;margin-bottom:4px;}
+.modal-sub{font-size:12px;color:var(--muted);margin-bottom:18px;}
+
+/* Order item card */
+.oti-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px;transition:border-color 0.2s;}
+.oti-card:hover{border-color:var(--border-h);}
+.oti-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.oti-id{font-weight:700;font-size:14px;color:var(--gold);}
+.oti-time{font-size:11px;color:var(--muted);}
+
+/* Mini stepper inside card */
+.oti-stepper{display:flex;align-items:center;gap:0;margin-bottom:10px;}
+.oti-step{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;position:relative;}
+.oti-step-line{flex:1;height:2px;background:var(--border);margin-top:-16px;position:relative;z-index:0;}
+.oti-step-line.filled{background:var(--gold);}
+.oti-dot{width:24px;height:24px;border-radius:50%;border:2px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:10px;z-index:1;transition:all 0.3s;flex-shrink:0;}
+.oti-step.done .oti-dot{background:var(--gold);border-color:var(--gold);color:#fff;}
+.oti-step.active .oti-dot{background:var(--gold);border-color:var(--gold);color:#fff;animation:otipulse 1.8s ease-in-out infinite;}
+@keyframes otipulse{0%,100%{box-shadow:0 0 0 4px rgba(200,148,56,0.2);}50%{box-shadow:0 0 0 7px rgba(200,148,56,0.08);}}
+.oti-slabel{font-size:9px;color:var(--muted);letter-spacing:0.5px;text-align:center;margin-top:2px;}
+.oti-step.done .oti-slabel,.oti-step.active .oti-slabel{color:var(--text2);}
+
+/* Status message */
+.oti-msg{font-size:12px;color:var(--text2);padding:8px 10px;background:rgba(200,148,56,0.07);border-radius:8px;border:1px solid var(--border);margin-bottom:8px;}
+.oti-msg.ready{background:rgba(42,114,72,0.12);border-color:rgba(42,114,72,0.25);color:#60C890;}
+.oti-items{font-size:12px;color:var(--muted);}
+
+.modal-close{width:100%;padding:11px;background:none;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:14px;cursor:pointer;margin-top:4px;transition:all 0.2s;}
+.modal-close:hover{border-color:var(--border-h);color:var(--text);}
+.modal-empty{text-align:center;padding:32px 20px;color:var(--muted);font-size:14px;line-height:1.8;}
+.refresh-row{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;color:var(--muted);margin-bottom:14px;}
+.refresh-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);animation:otipulse 1.8s ease-in-out infinite;}
+
+@keyframes wIn {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (max-width: 420px) {
+  .wc-logo { font-size: 36px; }
+  .wc-greeting { font-size: 26px; }
+}
+</style>
+</head>
+<body>
+
+<div class="atm-glow"></div>
+<div class="atm-ring r1"></div>
+<div class="atm-ring r2"></div>
+<div class="atm-ring r3"></div>
+<div class="steam">
+  <div class="steam-p"></div>
+  <div class="steam-p"></div>
+  <div class="steam-p"></div>
+</div>
+
+<div class="ctrl-bar">
+  <a class="ctrl-home" href="home.html">☕ Our Story</a>
+  <div class="ctrl-theme">
+    <span class="theme-label">🌙</span>
+    <button class="theme-toggle" onclick="toggleTheme()"></button>
+    <span class="theme-label">☀️</span>
+  </div>
+</div>
+
+<div class="welcome-wrap">
+  <div class="wc-logo-block">
+    <div class="wc-logo"><em>Coffee-r</em><br>Attokahon</div>
+    <div class="wc-tagline">Artisan Coffee &amp; Cuisine</div>
+  </div>
+
+  <div class="wc-ornament">
+    <div class="wc-ornament-line"></div>
+    <div class="wc-ornament-icon">✦</div>
+    <div class="wc-ornament-line rev"></div>
+  </div>
+
+  <div class="wc-greeting" id="greetingText">Welcome.</div>
+  <p class="wc-sub">Your table is ready. Take a moment, explore our menu, and let us take care of everything else.</p>
+
+  <div class="table-chip" id="tableChip">
+    <div class="table-dot"></div>
+    <span id="tableLabel">Scanning table…</span>
+  </div>
+
+  <button class="btn-cta" onclick="goToMenu()">View Our Menu →</button>
+  <button class="btn-ghost" onclick="openTracker()" style="border-color:var(--border-h);color:var(--text2);">📍 Track My Order</button>
+
+  <div class="wc-footer">Open daily &nbsp;·&nbsp; <span>8:00 AM – 11:00 PM</span></div>
+</div>
+
+<!-- Track Order Modal -->
+<div class="modal-overlay" id="trackerModal" onclick="closeTracker(event)">
+  <div class="modal-box" id="trackerBox">
+    <h3>Your Orders</h3>
+    <p class="modal-sub">Tracking your table live.</p>
+    <div class="refresh-row"><div class="refresh-dot"></div><span>Auto-updating every 3 seconds</span></div>
+    <div id="trackerContent"></div>
+    <button class="modal-close" onclick="closeTracker()">Close</button>
+  </div>
+</div>
+
+<script>
+/* ── THEME ──────────────────────────────── */
+const savedTheme = localStorage.getItem('ca_theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+function toggleTheme() {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('ca_theme', next);
+}
+
+/* ── TABLE FROM URL ─────────────────────── */
+const params = new URLSearchParams(window.location.search);
+const tableNum = parseInt(params.get('table')) || null;
+
+function setGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning.';
+  if (h < 17) return 'Good afternoon.';
+  return 'Good evening.';
+}
+
+document.getElementById('greetingText').textContent = setGreeting();
+
+if (tableNum) {
+  document.getElementById('tableLabel').textContent = 'Table ' + tableNum;
+} else {
+  document.getElementById('tableLabel').textContent = 'Walk-in Guest';
+}
+
+function goToMenu() {
+  window.location.href = 'index.html' + (tableNum ? '?table=' + tableNum : '');
+}
+
+/* ── TRACK ORDER ────────────────────────── */
+const FLOW  = ['paid','preparing','ready','served'];
+const SMETA = {
+  paid:      { icon:'💳', label:'Received',  msg:'Order received — kitchen will start shortly.' },
+  preparing: { icon:'👨‍🍳', label:'Preparing', msg:'Being prepared right now. Hang tight!' },
+  ready:     { icon:'✅', label:'Ready',      msg:'Ready! A staff member will bring it to you.' },
+  served:    { icon:'🎉', label:'Served',     msg:'Enjoy! Thank you for visiting.' },
+};
+
+function buildOrderCard(o) {
+  const idx  = FLOW.indexOf(o.status);
+  const meta = SMETA[o.status] || SMETA.paid;
+  const msgCls = o.status === 'ready' ? 'ready' : '';
+  const fmtTime = t => {
+    try { return new Date(t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); } catch{ return ''; }
+  };
+
+  // Build stepper
+  let stepperHtml = '<div class="oti-stepper">';
+  FLOW.forEach((s, i) => {
+    const sm = SMETA[s];
+    let cls = i < idx ? 'done' : i === idx ? 'active' : 'pending';
+    const dotContent = i < idx ? '✓' : sm.icon;
+    stepperHtml += `<div class="oti-step ${cls}"><div class="oti-dot">${dotContent}</div><div class="oti-slabel">${sm.label}</div></div>`;
+    if (i < FLOW.length - 1) {
+      stepperHtml += `<div class="oti-step-line${i < idx ? ' filled' : ''}"></div>`;
+    }
+  });
+  stepperHtml += '</div>';
+
+  return `
+    <div class="oti-card">
+      <div class="oti-head">
+        <span class="oti-id">Order #${o.id}</span>
+        <span class="oti-time">${fmtTime(o.time)}</span>
+      </div>
+      ${stepperHtml}
+      <div class="oti-msg ${msgCls}">${meta.msg}</div>
+      <div class="oti-items">${o.items.map(i => `${i.qty}× ${i.name}`).join(' · ')}</div>
+    </div>`;
+}
+
+function refreshTracker() {
+  const orders = JSON.parse(localStorage.getItem('ca_paid_orders') || '[]');
+  const myOrders = tableNum
+    ? orders.filter(o => o.table === tableNum)
+    : orders.slice(0, 5);
+
+  const el = document.getElementById('trackerContent');
+  if (!myOrders.length) {
+    el.innerHTML = '<div class="modal-empty">No orders found for this table.<br><small>Place an order from the menu first.</small></div>';
+  } else {
+    el.innerHTML = myOrders.slice(0, 4).map(buildOrderCard).join('');
+  }
+}
+
+let trackerInterval = null;
+function openTracker() {
+  document.getElementById('trackerModal').classList.add('open');
+  refreshTracker();
+  trackerInterval = setInterval(refreshTracker, 3000);
+}
+
+function closeTracker(e) {
+  if (!e || e.target === document.getElementById('trackerModal')) {
+    document.getElementById('trackerModal').classList.remove('open');
+    clearInterval(trackerInterval);
+  }
+}
+</script>
+</body>
+</html>

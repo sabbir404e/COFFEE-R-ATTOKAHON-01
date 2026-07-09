@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coffee-r Attokahon — Kitchen</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════
+   THEME
+═══════════════════════════════════════ */
+:root { --tt: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; }
+
+[data-theme="dark"] {
+  --bg:#1A1410; --bg2:#211A12; --card:#2A2115;
+  --border:rgba(200,148,56,0.18); --border-h:rgba(200,148,56,0.42);
+  --gold:#C89438; --gold-h:#E0AE58;
+  --text:#F2E8D4; --text2:#C8B898; --muted:#7D6E56;
+  --input-bg:#1A1410; --shadow:0 4px 24px rgba(0,0,0,0.30);
+  --pill-bg:rgba(200,148,56,0.13);
+  --danger:#C04040; --warn:#A87020; --ok:#2A7248;
+  --d-bg:rgba(192,64,64,0.14); --d-bd:rgba(192,64,64,0.28); --d-tx:#E08080;
+  --w-bg:rgba(168,112,32,0.14); --w-bd:rgba(168,112,32,0.28); --w-tx:#D4A040;
+  --o-bg:rgba(42,114,72,0.14);  --o-bd:rgba(42,114,72,0.28);  --o-tx:#60C890;
+  --x-bg:rgba(80,80,80,0.14);   --x-bd:rgba(80,80,80,0.20);   --x-tx:#888;
+}
+[data-theme="light"] {
+  --bg:#F0E8D8; --bg2:#E8DEC8; --card:#FAF4E8;
+  --border:rgba(160,108,40,0.18); --border-h:rgba(160,108,40,0.45);
+  --gold:#A06C28; --gold-h:#8A5A18;
+  --text:#2A1A08; --text2:#5A3E20; --muted:#9A7850;
+  --input-bg:#E8DEC8; --shadow:0 4px 24px rgba(100,60,10,0.10);
+  --pill-bg:rgba(160,108,40,0.12);
+  --danger:#B03030; --warn:#8A5C10; --ok:#226040;
+  --d-bg:rgba(176,48,48,0.10); --d-bd:rgba(176,48,48,0.25); --d-tx:#B03030;
+  --w-bg:rgba(138,92,16,0.10); --w-bd:rgba(138,92,16,0.25); --w-tx:#8A5C10;
+  --o-bg:rgba(34,96,64,0.10);  --o-bd:rgba(34,96,64,0.25);  --o-tx:#226040;
+  --x-bg:rgba(80,80,80,0.08);  --x-bd:rgba(80,80,80,0.15);  --x-tx:#888;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:var(--tt);}
+button,input{font-family:'Outfit',sans-serif;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:var(--bg2);}::-webkit-scrollbar-thumb{background:var(--border-h);border-radius:4px;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+@keyframes slideUp{from{opacity:0;transform:translateY(32px);}to{opacity:1;transform:none;}}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(192,64,64,0.5);}70%{box-shadow:0 0 0 10px rgba(192,64,64,0);}100%{box-shadow:0 0 0 0 rgba(192,64,64,0);}}
+
+/* LOGIN */
+#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;}
+.glow{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 40% at 50% 10%,rgba(200,148,56,0.09) 0%,transparent 70%);}
+[data-theme="light"] .glow{background:radial-gradient(ellipse 60% 40% at 50% 10%,rgba(160,108,40,0.07) 0%,transparent 70%);}
+.login-wrap{width:100%;max-width:340px;position:relative;z-index:1;}
+.login-brand{text-align:center;margin-bottom:28px;}
+.login-brand .wm{font-family:'Playfair Display',serif;font-size:36px;}
+.login-brand .wm em{color:var(--gold);font-style:normal;}
+.login-brand .sub{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-top:6px;}
+.login-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px;animation:slideUp 0.35s;box-shadow:var(--shadow);transition:var(--tt);}
+.login-card h2{font-family:'Playfair Display',serif;font-size:20px;margin-bottom:20px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:5px;}
+.inp{width:100%;background:var(--input-bg);border:1px solid var(--border);border-radius:9px;padding:10px 13px;font-size:14px;color:var(--text);outline:none;transition:border-color 0.2s;}
+.inp:focus{border-color:var(--gold);}
+.inp::placeholder{color:var(--muted);}
+.btn-login{width:100%;padding:12px;background:var(--gold);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;transition:background 0.2s;margin-top:4px;}
+.btn-login:hover{background:var(--gold-h);}
+.login-err{background:var(--d-bg);border:1px solid var(--d-bd);border-radius:9px;padding:9px 12px;font-size:13px;color:var(--d-tx);margin-bottom:12px;display:none;}
+.login-hint{margin-top:14px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;font-size:12px;color:var(--muted);text-align:center;}
+.login-hint b{color:var(--text2);}
+.login-theme{position:absolute;top:16px;right:16px;display:flex;align-items:center;gap:8px;}
+.theme-label{font-size:14px;}
+
+/* THEME TOGGLE */
+.theme-toggle{width:40px;height:22px;background:var(--border-h);border-radius:11px;border:none;cursor:pointer;position:relative;transition:background 0.3s;flex-shrink:0;}
+.theme-toggle::after{content:'';position:absolute;width:16px;height:16px;background:var(--card);border-radius:50%;top:3px;left:3px;transition:transform 0.3s;}
+[data-theme="light"] .theme-toggle::after{transform:translateX(18px);}
+
+/* TOPBAR */
+#appScreen{display:none;min-height:100vh;flex-direction:column;}
+.topbar{background:var(--card);border-bottom:1px solid var(--border);height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);transition:var(--tt);}
+.brand{font-family:'Playfair Display',serif;font-size:20px;}
+.brand em{color:var(--gold);font-style:normal;}
+.topbar-r{display:flex;align-items:center;gap:10px;}
+.live-pill{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--danger);animation:pulse 1.5s ease-in-out infinite;flex-shrink:0;}
+.role-badge{background:var(--o-bg);border:1px solid var(--o-bd);border-radius:20px;padding:3px 12px;font-size:11px;color:var(--o-tx);text-transform:uppercase;letter-spacing:1px;}
+.sound-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:12px;color:var(--muted);cursor:pointer;transition:all 0.18s;}
+.sound-btn.on{border-color:var(--border-h);color:var(--gold);}
+.logout-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:12px;color:var(--muted);cursor:pointer;transition:all 0.18s;}
+.logout-btn:hover{border-color:var(--border-h);color:var(--text);}
+
+/* MAIN */
+.main{max-width:1200px;margin:0 auto;padding:24px 20px;}
+.pg-h{margin-bottom:20px;}
+.pg-h h1{font-family:'Playfair Display',serif;font-size:26px;}
+.pg-h p{font-size:13px;color:var(--muted);margin-top:3px;}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+.f-pill{padding:6px 15px;border-radius:20px;border:1px solid var(--border);background:none;font-size:12px;font-weight:500;cursor:pointer;color:var(--muted);transition:all 0.18s;text-transform:uppercase;letter-spacing:0.8px;display:flex;align-items:center;gap:5px;}
+.f-pill.active{background:var(--gold);color:#fff;border-color:var(--gold);}
+.f-pill:hover:not(.active){border-color:var(--border-h);color:var(--text);}
+.f-count{font-size:10px;background:rgba(255,255,255,0.15);border-radius:10px;padding:1px 6px;}
+.f-pill:not(.active) .f-count{background:rgba(125,110,86,0.2);}
+
+/* ORDERS GRID */
+.orders-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;}
+.order-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;display:flex;flex-direction:column;position:relative;overflow:hidden;transition:var(--tt);box-shadow:var(--shadow);}
+.order-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.order-card.s-paid::before{background:#5060B8;}
+.order-card.s-new::before{background:var(--danger);}
+.order-card.s-preparing::before{background:var(--warn);}
+.order-card.s-ready::before{background:var(--ok);}
+.order-card.s-done{opacity:0.45;}
+.order-card.just-in{animation:ring 1s ease;}
+.o-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.o-num{font-family:'Playfair Display',serif;font-size:17px;}
+.badge{display:inline-block;padding:3px 9px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;border:1px solid;}
+.b-new      {background:var(--d-bg);border-color:var(--d-bd);color:var(--d-tx);}
+.b-preparing{background:var(--w-bg);border-color:var(--w-bd);color:var(--w-tx);}
+.b-ready    {background:var(--o-bg);border-color:var(--o-bd);color:var(--o-tx);}
+.b-paid     {background:rgba(70,100,180,0.14);border-color:rgba(70,100,180,0.28);color:#90A8E0;}
+.b-preparing{background:var(--w-bg);border-color:var(--w-bd);color:var(--w-tx);}
+.b-ready    {background:var(--o-bg);border-color:var(--o-bd);color:var(--o-tx);}
+.b-served   {background:var(--x-bg);border-color:var(--x-bd);color:var(--x-tx);}
+.o-meta{font-size:12px;color:var(--muted);margin-bottom:10px;}
+.o-items{font-size:13px;color:var(--text2);line-height:2;flex:1;margin-bottom:12px;}
+.o-total{font-size:12px;color:var(--muted);margin-bottom:12px;}
+.o-total span{color:var(--gold);font-weight:600;}
+.adv-btn{width:100%;padding:9px;border-radius:10px;border:1px solid;font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;transition:all 0.18s;}
+.adv-new  {background:var(--d-bg);border-color:var(--d-bd);color:var(--d-tx);}
+.adv-new:hover  {background:var(--danger);color:#fff;border-color:var(--danger);}
+.adv-prep {background:var(--w-bg);border-color:var(--w-bd);color:var(--w-tx);}
+.adv-prep:hover {background:var(--warn);color:#fff;border-color:var(--warn);}
+.adv-ready{background:var(--o-bg);border-color:var(--o-bd);color:var(--o-tx);}
+.adv-ready:hover{background:var(--ok);color:#fff;border-color:var(--ok);}
+.empty-state{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted);}
+.empty-state .e-icon{font-size:44px;margin-bottom:14px;}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block;}
+
+@media(max-width:600px){.main{padding:16px;}.topbar{padding:0 12px;}.topbar-r{gap:6px;}.orders-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="glow"></div>
+  <div class="login-theme">
+    <span class="theme-label">🌙</span>
+    <button class="theme-toggle" onclick="toggleTheme()"></button>
+    <span class="theme-label">☀️</span>
+  </div>
+  <div class="login-wrap">
+    <div class="login-brand">
+      <div class="wm"><em>Coffee-r</em> Attokahon</div>
+      <div class="sub">Kitchen Staff Portal</div>
+    </div>
+    <div class="login-card">
+      <h2>Kitchen Login</h2>
+      <div class="login-err" id="loginErr">Incorrect username or password.</div>
+      <div class="field">
+        <label>Username</label>
+        <input class="inp" type="text" id="lUser" placeholder="username" autocomplete="off" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input class="inp" type="password" id="lPass" placeholder="password" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn-login" onclick="doLogin()">Sign In →</button>
+      <div class="login-hint">Default: <b>chef</b> / <b>chef123</b></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appScreen">
+  <div class="topbar">
+    <div class="brand"><em>Coffee-r</em> Attokahon</div>
+    <div class="topbar-r">
+      <div class="live-pill"><div class="live-dot"></div><span id="liveCount">0 active</span></div>
+      <div class="role-badge">Kitchen</div>
+      <button class="sound-btn" id="soundBtn" onclick="toggleSound()">🔔 Sound</button>
+      <span class="theme-label">🌙</span>
+      <button class="theme-toggle" onclick="toggleTheme()"></button>
+      <span class="theme-label">☀️</span>
+      <button class="logout-btn" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="pg-h">
+      <h1>Kitchen Display</h1>
+      <p>Real-time incoming orders — update status as you prepare each one.</p>
+    </div>
+    <div class="filter-bar" id="filterBar">
+      <button class="f-pill active" data-f="active" onclick="setFilter('active',this)">
+        <div class="live-dot"></div>Active <span class="f-count" id="cnt-active">0</span>
+      </button>
+      <button class="f-pill" data-f="paid" onclick="setFilter('paid',this)">💳 Paid <span class="f-count" id="cnt-paid">0</span></button>
+      <button class="f-pill" data-f="preparing" onclick="setFilter('preparing',this)">Preparing <span class="f-count" id="cnt-preparing">0</span></button>
+      <button class="f-pill" data-f="ready" onclick="setFilter('ready',this)">Ready <span class="f-count" id="cnt-ready">0</span></button>
+      <button class="f-pill" data-f="served" onclick="setFilter('served',this)">Served <span class="f-count" id="cnt-served">0</span></button>
+    </div>
+    <div class="orders-grid" id="ordersGrid">
+      <div class="empty-state"><div class="e-icon">🍽️</div><p>No active orders right now.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── THEME ─────────────────────────────────────────────────────── */
+const savedTheme = localStorage.getItem('ca_theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+function toggleTheme() {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('ca_theme', next);
+}
+
+/* ── AUTH ──────────────────────────────────────────────────────── */
+function getUsers() {
+  try { return JSON.parse(localStorage.getItem('ca_users')) || defUsers(); } catch { return defUsers(); }
+}
+function defUsers() { return [{username:'chef',password:'chef123',role:'kitchen'},{username:'admin',password:'admin123',role:'admin'}]; }
+
+let me = null;
+let kFilter = 'active';
+let soundOn = false;
+let prevNew = 0;
+let pollTimer = null;
+
+function doLogin() {
+  const u = document.getElementById('lUser').value.trim();
+  const p = document.getElementById('lPass').value;
+  const found = getUsers().find(x => x.username===u && x.password===p);
+  if (!found || !['kitchen','admin'].includes(found.role)) {
+    document.getElementById('loginErr').style.display = 'block'; return;
+  }
+  me = found;
+  document.getElementById('loginScreen').style.display = 'none';
+  const app = document.getElementById('appScreen');
+  app.style.display = 'flex'; app.style.flexDirection = 'column';
+  loadOrders();
+  pollTimer = setInterval(loadOrders, 3000);
+}
+
+function doLogout() {
+  me = null;
+  clearInterval(pollTimer);
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('lUser').value = '';
+  document.getElementById('lPass').value = '';
+}
+
+/* ── ORDERS ────────────────────────────────────────────────────── */
+let allOrders = [];
+
+function loadOrders() {
+  allOrders = JSON.parse(localStorage.getItem('ca_paid_orders') || '[]');
+  renderOrders();
+}
+
+function setFilter(f, btn) {
+  kFilter = f;
+  document.querySelectorAll('.f-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderOrders();
+}
+
+function renderOrders() {
+  const counts = {};
+  allOrders.forEach(o => { counts[o.status] = (counts[o.status]||0)+1; });
+  counts.active = (counts.paid||0)+(counts.preparing||0)+(counts.ready||0);
+  ['active','paid','preparing','ready','served'].forEach(k => {
+    const el = document.getElementById('cnt-'+k);
+    if (el) el.textContent = counts[k]||0;
+  });
+  document.getElementById('liveCount').textContent = `${counts.active||0} active`;
+
+  if (soundOn && (counts.paid||0) > prevNew) playChime();
+  prevNew = counts.paid||0;
+
+  const list = kFilter==='active' ? allOrders.filter(o=>o.status!=='served') : allOrders.filter(o=>o.status===kFilter);
+  const el = document.getElementById('ordersGrid');
+  if (!list.length) {
+    el.innerHTML = `<div class="empty-state"><div class="e-icon">${kFilter==='served'?'✅':'🍽️'}</div><p>No ${kFilter==='active'?'active':kFilter} orders right now.</p></div>`;
+    return;
+  }
+  const flow = {paid:'preparing',preparing:'ready',ready:'served'};
+  const btnMap = {
+    paid:      ['adv-new',  '▶ Start Preparing'],
+    preparing: ['adv-prep', '✓ Mark as Ready'],
+    ready:     ['adv-ready','✔ Mark as Served'],
+  };
+  const time = o => {
+    const ts = o.createdAt || (o.time ? new Date(o.time).getTime() : Date.now());
+    return new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  };
+  const elapsed = o => {
+    const ts = o.createdAt || (o.time ? new Date(o.time).getTime() : Date.now());
+    const mins = Math.floor((Date.now() - ts) / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return mins + 'm ago';
+    return Math.floor(mins/60) + 'h ' + (mins%60) + 'm ago';
+  };
+  const isLate = o => {
+    if (o.status === 'served') return false;
+    const ts = o.createdAt || (o.time ? new Date(o.time).getTime() : Date.now());
+    return (Date.now() - ts) > 20 * 60000;
+  };
+  el.innerHTML = list.map(o => {
+    const key = String(o.id);
+    const [btnCls, btnLbl] = btnMap[o.status] || [];
+    return `<div class="order-card s-${o.status}">
+      <div class="o-head">
+        <span class="o-num">Order #${key}</span>
+        <span class="badge b-${o.status}">${{paid:'Paid ✓',preparing:'Preparing',ready:'Ready!',served:'Served'}[o.status]||o.status}</span>
+      </div>
+      <div class="o-meta">📍 ${o.table ? 'Table '+o.table : 'Walk-in'} &nbsp;·&nbsp; 🕐 ${time(o)} &nbsp;·&nbsp; ${elapsed(o)}${isLate(o)?" <span style='color:var(--d-tx);font-size:10px;'>⚠ Late</span>":''}</div>
+      ${o.paymentMethod ? "<div class='o-meta' style='font-size:11px;margin-bottom:4px;'>💳 "+esc(o.paymentMethod)+" · <span style='font-family:monospace;font-size:10px;'>"+esc(o.paymentId||'')+"</span></div>" : ''}
+      <div class="o-items">${o.items.map(i=>`${i.emoji||'☕'} <strong>${esc(i.name)}</strong> × ${i.qty}`).join('<br>')}</div>
+      ${o.note ? "<div class='o-meta' style='font-style:italic;margin-bottom:6px;'>📝 "+esc(o.note)+"</div>" : ''}
+      <div class="o-total">Total: <span>৳${o.total}</span></div>
+      ${btnLbl ? `<button class="adv-btn ${btnCls}" onclick="advOrder('${key}','${flow[o.status]}')">${btnLbl}</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function advOrder(key, next) {
+  const orders = JSON.parse(localStorage.getItem('ca_paid_orders')||'[]');
+  const idx = orders.findIndex(o => String(o.id) === key);
+  if (idx>-1) { orders[idx].status=next; localStorage.setItem('ca_paid_orders',JSON.stringify(orders)); }
+  loadOrders();
+}
+
+/* ── SOUND ─────────────────────────────────────────────────────── */
+function toggleSound() {
+  soundOn = !soundOn;
+  const btn = document.getElementById('soundBtn');
+  btn.textContent = soundOn ? '🔔 Sound ON' : '🔕 Sound';
+  btn.classList.toggle('on', soundOn);
+}
+function playChime() {
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    [523,659,784].forEach((f,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value=f; o.type='sine';
+      const t=ctx.currentTime+i*0.15;
+      g.gain.setValueAtTime(0.3,t);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+      o.start(t); o.stop(t+0.3);
+    });
+  } catch {}
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>

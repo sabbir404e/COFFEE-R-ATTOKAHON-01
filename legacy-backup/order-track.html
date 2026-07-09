@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Track Order — Coffee-r Attokahon</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--tt:background-color 0.3s,color 0.3s,border-color 0.3s;}
+[data-theme="dark"]{
+  --bg:#1A1410;--bg2:#211A12;--card:#2A2115;
+  --border:rgba(200,148,56,0.20);--border-h:rgba(200,148,56,0.45);
+  --gold:#C89438;--gold-h:#E0AE58;
+  --text:#EDE0C8;--text2:#BBA880;--muted:#8A7860;
+  --shadow:0 4px 24px rgba(0,0,0,0.35);--pill-bg:rgba(200,148,56,0.13);
+  --s-paid-bg:rgba(70,100,180,0.14);--s-paid-bd:rgba(70,100,180,0.30);--s-paid-tx:#90A8E0;
+  --s-prep-bg:rgba(168,112,32,0.14);--s-prep-bd:rgba(168,112,32,0.28);--s-prep-tx:#D4A040;
+  --s-ready-bg:rgba(42,114,72,0.16);--s-ready-bd:rgba(42,114,72,0.30);--s-ready-tx:#60C890;
+  --s-served-bg:rgba(80,80,80,0.14);--s-served-bd:rgba(80,80,80,0.22);--s-served-tx:#999;
+}
+[data-theme="light"]{
+  --bg:#F0E8D8;--bg2:#E8DEC8;--card:#FAF4E8;
+  --border:rgba(160,108,40,0.20);--border-h:rgba(160,108,40,0.48);
+  --gold:#A06C28;--gold-h:#8A5A18;
+  --text:#2E1C08;--text2:#5C4020;--muted:#9A7850;
+  --shadow:0 4px 24px rgba(100,60,10,0.10);--pill-bg:rgba(160,108,40,0.12);
+  --s-paid-bg:rgba(50,80,160,0.10);--s-paid-bd:rgba(50,80,160,0.22);--s-paid-tx:#3A5CAA;
+  --s-prep-bg:rgba(138,92,16,0.10);--s-prep-bd:rgba(138,92,16,0.22);--s-prep-tx:#8A5C10;
+  --s-ready-bg:rgba(30,100,60,0.10);--s-ready-bd:rgba(30,100,60,0.22);--s-ready-tx:#1A6B3A;
+  --s-served-bg:rgba(60,60,60,0.08);--s-served-bd:rgba(60,60,60,0.16);--s-served-tx:#666;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:var(--tt);}
+button{font-family:'Outfit',sans-serif;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(200,148,56,0.22);}50%{box-shadow:0 0 0 8px rgba(200,148,56,0.07);}}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── GLOW ─────────────────────────────── */
+.glow{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 70% 40% at 50% 0%,rgba(200,148,56,0.10) 0%,transparent 65%);}
+
+/* ── TOPBAR ───────────────────────────── */
+.topbar{background:var(--card);border-bottom:1px solid var(--border);height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);}
+.brand{font-family:'Playfair Display',serif;font-size:18px;}
+.brand em{color:var(--gold);font-style:normal;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.back-btn{background:none;border:1px solid var(--border);border-radius:9px;padding:6px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all 0.2s;}
+.back-btn:hover{border-color:var(--border-h);color:var(--text);}
+.theme-toggle{width:38px;height:20px;background:var(--border-h);border-radius:10px;border:none;cursor:pointer;position:relative;}
+.theme-toggle::after{content:'';position:absolute;width:14px;height:14px;background:var(--card);border-radius:50%;top:3px;left:3px;transition:transform 0.3s;}
+[data-theme="light"] .theme-toggle::after{transform:translateX(18px);}
+
+/* ── MAIN ─────────────────────────────── */
+.main{max-width:520px;margin:0 auto;padding:24px 20px 48px;position:relative;z-index:1;}
+
+/* ── HEADER ───────────────────────────── */
+.page-header{text-align:center;margin-bottom:28px;animation:fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) both;}
+.page-header h1{font-family:'Playfair Display',serif;font-size:28px;margin-bottom:6px;}
+.page-header p{font-size:14px;color:var(--muted);}
+.table-chip{display:inline-flex;align-items:center;gap:7px;background:var(--pill-bg);border:1px solid var(--border-h);border-radius:20px;padding:6px 16px;font-size:13px;font-weight:500;color:var(--gold);margin-top:12px;}
+.live-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(42,114,72,0.12);border:1px solid rgba(42,114,72,0.25);border-radius:20px;padding:5px 14px;font-size:11px;font-weight:600;color:#60C890;margin-top:8px;letter-spacing:0.5px;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#60C890;animation:pulse 1.8s ease-in-out infinite;}
+
+/* ── ORDER CARD ───────────────────────── */
+.order-card{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:16px;box-shadow:var(--shadow);animation:fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both;}
+.order-card:nth-child(2){animation-delay:0.05s;}
+.order-card:nth-child(3){animation-delay:0.10s;}
+
+/* Card header */
+.oc-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border);}
+.oc-id{font-family:'Playfair Display',serif;font-size:17px;color:var(--text);}
+.oc-id span{color:var(--gold);}
+.oc-meta{font-size:11px;color:var(--muted);display:flex;gap:8px;margin-top:3px;}
+.status-pill{font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;padding:4px 12px;border-radius:14px;border:1px solid;white-space:nowrap;}
+.sp-paid   {background:var(--s-paid-bg); border-color:var(--s-paid-bd); color:var(--s-paid-tx);}
+.sp-preparing{background:var(--s-prep-bg); border-color:var(--s-prep-bd); color:var(--s-prep-tx);}
+.sp-ready  {background:var(--s-ready-bg);border-color:var(--s-ready-bd);color:var(--s-ready-tx);}
+.sp-served {background:var(--s-served-bg);border-color:var(--s-served-bd);color:var(--s-served-tx);}
+
+/* Progress stepper */
+.oc-stepper{padding:20px 18px 0;display:flex;align-items:flex-start;position:relative;}
+.oc-stepper::before{content:'';position:absolute;top:34px;left:calc(18px + 14px);right:calc(18px + 14px);height:2px;background:var(--border);z-index:0;}
+.oc-progress{position:absolute;top:34px;left:calc(18px + 14px);height:2px;background:var(--gold);z-index:1;transition:width 0.7s cubic-bezier(0.16,1,0.3,1);}
+.oc-step{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;position:relative;z-index:2;}
+.oc-dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);background:var(--bg);font-size:12px;display:flex;align-items:center;justify-content:center;transition:all 0.4s;flex-shrink:0;}
+.oc-step.done .oc-dot{background:var(--gold);border-color:var(--gold);color:#fff;}
+.oc-step.active .oc-dot{background:var(--gold);border-color:var(--gold);color:#fff;animation:pulse 1.8s ease-in-out infinite;}
+.oc-step.pending .oc-dot{background:var(--bg2);color:var(--muted);}
+.oc-step-lbl{font-size:10px;font-weight:600;letter-spacing:0.5px;color:var(--muted);text-align:center;text-transform:uppercase;}
+.oc-step.done .oc-step-lbl,.oc-step.active .oc-step-lbl{color:var(--text2);}
+
+/* Status message */
+.oc-msg{margin:16px 18px;padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.65;border:1px solid var(--border);}
+.oc-msg.paid     {background:var(--s-paid-bg); border-color:var(--s-paid-bd); color:var(--s-paid-tx);}
+.oc-msg.preparing{background:var(--s-prep-bg); border-color:var(--s-prep-bd); color:var(--s-prep-tx);}
+.oc-msg.ready    {background:var(--s-ready-bg);border-color:var(--s-ready-bd);color:var(--s-ready-tx);}
+.oc-msg.served   {background:var(--s-served-bg);border-color:var(--s-served-bd);color:var(--s-served-tx);}
+
+/* Items */
+.oc-items{padding:0 18px 16px;display:flex;flex-wrap:wrap;gap:6px;}
+.oc-item-tag{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:12px;color:var(--text2);}
+
+/* Footer row */
+.oc-foot{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-top:1px solid var(--border);background:rgba(200,148,56,0.03);}
+.oc-total{font-size:14px;font-weight:700;color:var(--gold);}
+.oc-invoice-link{font-size:12px;color:var(--muted);text-decoration:none;border:1px solid var(--border);border-radius:8px;padding:4px 10px;transition:all 0.2s;cursor:pointer;background:none;}
+.oc-invoice-link:hover{border-color:var(--border-h);color:var(--text);}
+
+/* ── EMPTY STATE ──────────────────────── */
+.empty-state{text-align:center;padding:56px 20px;animation:fadeUp 0.5s ease;}
+.empty-icon{font-size:52px;margin-bottom:16px;}
+.empty-state h3{font-family:'Playfair Display',serif;font-size:24px;color:var(--text2);margin-bottom:8px;}
+.empty-state p{font-size:14px;color:var(--muted);line-height:1.7;max-width:280px;margin:0 auto 24px;}
+.btn-go-menu{display:inline-block;padding:13px 32px;background:var(--gold);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;transition:background 0.2s;}
+.btn-go-menu:hover{background:var(--gold-h);}
+
+/* ── BOTTOM ACTIONS ───────────────────── */
+.bottom-actions{display:flex;gap:10px;margin-top:8px;}
+.btn-menu{flex:1;padding:13px;background:var(--gold);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;transition:background 0.2s;}
+.btn-menu:hover{background:var(--gold-h);}
+.btn-invoice{flex:1;padding:13px;background:none;color:var(--muted);border:1px solid var(--border);border-radius:12px;font-size:14px;cursor:pointer;transition:all 0.2s;}
+.btn-invoice:hover{border-color:var(--border-h);color:var(--text);}
+</style>
+</head>
+<body>
+<div class="glow"></div>
+
+<div class="topbar">
+  <div class="brand"><em>Coffee-r</em> Attokahon</div>
+  <div class="topbar-right">
+    <button class="back-btn" id="backBtn">← Menu</button>
+    <button class="theme-toggle" onclick="toggleTheme()"></button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-header">
+    <h1>Track Your Order</h1>
+    <p>Live status updates for your table.</p>
+    <div id="tableChip" style="display:none;" class="table-chip">🪑 Table —</div>
+    <br>
+    <div class="live-badge"><div class="live-dot"></div>LIVE · updates every 3 sec</div>
+  </div>
+
+  <div id="ordersContainer">
+    <!-- Rendered by JS -->
+  </div>
+</div>
+
+<script>
+/* ── THEME ─────────────────────────────── */
+const savedTheme = localStorage.getItem('ca_theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+function toggleTheme() {
+  const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('ca_theme', t);
+}
+
+/* ── TABLE FROM URL ─────────────────────── */
+const params   = new URLSearchParams(window.location.search);
+const tableNum = parseInt(params.get('table')) || null;
+
+if (tableNum) {
+  const chip = document.getElementById('tableChip');
+  chip.style.display = 'inline-flex';
+  chip.innerHTML = `🪑 Table ${tableNum}`;
+}
+
+document.getElementById('backBtn').onclick = () => {
+  window.location.href = 'index.html' + (tableNum ? '?table=' + tableNum : '');
+};
+
+/* ── STATUS DATA ─────────────────────────── */
+const FLOW = ['paid', 'preparing', 'ready', 'served'];
+
+const STATUS_META = {
+  paid: {
+    icon: '💳',
+    label: 'Received',
+    pill: 'sp-paid',
+    msg: '✅ Order received! The kitchen will start preparing it shortly.'
+  },
+  preparing: {
+    icon: '👨‍🍳',
+    label: 'Preparing',
+    pill: 'sp-preparing',
+    msg: '🔥 Your order is being prepared right now. It won\'t be long!'
+  },
+  ready: {
+    icon: '✅',
+    label: 'Ready',
+    pill: 'sp-ready',
+    msg: '🎉 Your order is READY! A staff member will bring it to your table shortly.'
+  },
+  served: {
+    icon: '🍽️',
+    label: 'Served',
+    pill: 'sp-served',
+    msg: '✓ Your order has been served. Enjoy your meal! Thank you for visiting.'
+  },
+};
+
+/* ── HELPERS ─────────────────────────────── */
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function fmtTime(t) {
+  try { return new Date(t).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); } catch { return ''; }
+}
+function elapsed(o) {
+  const ts = o.createdAt || (o.time ? new Date(o.time).getTime() : Date.now());
+  const mins = Math.floor((Date.now() - ts) / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return mins + 'm ago';
+  return Math.floor(mins/60) + 'h ' + (mins%60) + 'm';
+}
+
+/* ── RENDER ONE ORDER CARD ─────────────────── */
+function renderCard(o) {
+  const meta     = STATUS_META[o.status] || STATUS_META.paid;
+  const flowIdx  = FLOW.indexOf(o.status);
+  const pct      = flowIdx <= 0 ? 0 : Math.round((flowIdx / (FLOW.length - 1)) * 100);
+  const barWidth = `calc(${pct}% - 28px)`;
+
+  const steps = FLOW.map((s, i) => {
+    const sm  = STATUS_META[s];
+    const cls = i < flowIdx ? 'done' : i === flowIdx ? 'active' : 'pending';
+    const dot = i < flowIdx ? '✓' : sm.icon;
+    return `
+      <div class="oc-step ${cls}">
+        <div class="oc-dot">${dot}</div>
+        <div class="oc-step-lbl">${sm.label}</div>
+      </div>`;
+  }).join('');
+
+  const items = o.items.map(i =>
+    `<div class="oc-item-tag">${esc(i.emoji||'☕')} ${esc(i.name)} ×${i.qty}</div>`
+  ).join('');
+
+  return `
+    <div class="order-card">
+      <div class="oc-head">
+        <div>
+          <div class="oc-id">Order <span>#${o.id}</span></div>
+          <div class="oc-meta">
+            <span>🪑 ${o.table ? 'Table ' + o.table : 'Walk-in'}</span>
+            <span>🕐 ${fmtTime(o.time)}</span>
+            <span>${elapsed(o)}</span>
+          </div>
+        </div>
+        <span class="status-pill ${meta.pill}">${meta.label}</span>
+      </div>
+
+      <div class="oc-stepper">
+        <div class="oc-progress" style="width:${barWidth}"></div>
+        ${steps}
+      </div>
+
+      <div class="oc-msg ${o.status}">${meta.msg}</div>
+
+      <div class="oc-items">${items}</div>
+
+      <div class="oc-foot">
+        <span class="oc-total">৳${o.total}</span>
+        <button class="oc-invoice-link" onclick="localStorage.setItem('ca_last_order_id','${o.id}');window.location.href='billing.html'">View Invoice →</button>
+      </div>
+    </div>`;
+}
+
+/* ── RENDER ALL ORDERS ─────────────────────── */
+function render() {
+  const all = JSON.parse(localStorage.getItem('ca_paid_orders') || '[]');
+  const orders = tableNum
+    ? all.filter(o => o.table === tableNum)
+    : all;
+
+  const container = document.getElementById('ordersContainer');
+
+  if (!orders.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <h3>No orders yet</h3>
+        <p>Once you place and pay for an order, its status will appear here — live.</p>
+        <a class="btn-go-menu" href="${'index.html' + (tableNum ? '?table='+tableNum : '')}">Browse the Menu →</a>
+      </div>`;
+    return;
+  }
+
+  // Show active orders first, then served
+  const active = orders.filter(o => o.status !== 'served');
+  const served = orders.filter(o => o.status === 'served');
+  const sorted = [...active, ...served];
+
+  container.innerHTML = sorted.slice(0, 5).map(renderCard).join('') + `
+    <div class="bottom-actions">
+      <button class="btn-menu" onclick="window.location.href='${'index.html'+(tableNum?'?table='+tableNum:'')}'">+ Order More</button>
+      <button class="btn-invoice" onclick="window.location.href='billing.html'">My Invoice</button>
+    </div>`;
+}
+
+/* ── AUTO-REFRESH EVERY 3 SEC ─────────────────── */
+render();
+setInterval(render, 3000);
+</script>
+</body>
+</html>

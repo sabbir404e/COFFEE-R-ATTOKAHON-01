@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checkout — Coffee-r Attokahon</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--tt:background-color 0.3s ease,color 0.3s ease,border-color 0.3s ease;}
+[data-theme="dark"]{
+  --bg:#1A1410;--bg2:#211A12;--card:#2A2115;
+  --border:rgba(200,148,56,0.20);--border-h:rgba(200,148,56,0.45);
+  --gold:#C89438;--gold-h:#E0AE58;
+  --text:#EDE0C8;--text2:#BBA880;--muted:#8A7860;
+  --input-bg:#1A1410;--shadow:0 4px 24px rgba(0,0,0,0.30);
+  --pill-bg:rgba(200,148,56,0.13);
+}
+[data-theme="light"]{
+  --bg:#F0E8D8;--bg2:#E8DEC8;--card:#FAF4E8;
+  --border:rgba(160,108,40,0.20);--border-h:rgba(160,108,40,0.48);
+  --gold:#A06C28;--gold-h:#8A5A18;
+  --text:#2E1C08;--text2:#5C4020;--muted:#9A7850;
+  --input-bg:#E8DEC8;--shadow:0 4px 24px rgba(100,60,10,0.10);
+  --pill-bg:rgba(160,108,40,0.12);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:var(--tt);}
+button,input{font-family:'Outfit',sans-serif;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:var(--bg2);}::-webkit-scrollbar-thumb{background:var(--border-h);border-radius:4px;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+
+.glow{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 40% at 50% 0%,rgba(200,148,56,0.09) 0%,transparent 65%);z-index:0;}
+
+/* TOPBAR */
+.topbar{background:var(--card);border-bottom:1px solid var(--border);height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);transition:var(--tt);}
+.brand{font-family:'Playfair Display',serif;font-size:18px;color:var(--text);}
+.brand em{color:var(--gold);font-style:normal;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.back-btn{display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--border);border-radius:9px;padding:6px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all 0.2s;}
+.back-btn:hover{border-color:var(--border-h);color:var(--text);}
+.theme-toggle{width:38px;height:20px;background:var(--border-h);border-radius:10px;border:none;cursor:pointer;position:relative;transition:background 0.3s;}
+.theme-toggle::after{content:'';position:absolute;width:14px;height:14px;background:var(--card);border-radius:50%;top:3px;left:3px;transition:transform 0.3s;}
+[data-theme="light"] .theme-toggle::after{transform:translateX(18px);}
+
+/* STEPS */
+.steps{display:flex;align-items:center;justify-content:center;padding:20px 20px 0;gap:0;max-width:480px;margin:0 auto;}
+.step{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;}
+.step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid;flex-shrink:0;}
+.step.done .step-dot{background:var(--gold);border-color:var(--gold);color:#fff;}
+.step.active .step-dot{background:var(--gold);border-color:var(--gold);color:#fff;box-shadow:0 0 0 4px rgba(200,148,56,0.20);}
+.step.pending .step-dot{background:none;border-color:var(--border);color:var(--muted);}
+.step-label{color:var(--muted);white-space:nowrap;}
+.step.done .step-label,.step.active .step-label{color:var(--text2);}
+.step-line{flex:1;height:1px;background:var(--border);margin:0 6px;min-width:20px;}
+.step-line.filled{background:var(--gold);}
+
+/* MAIN */
+.main{max-width:560px;margin:0 auto;padding:24px 20px 40px;position:relative;z-index:1;}
+
+.sect-title{font-family:'Playfair Display',serif;font-size:22px;margin-bottom:4px;}
+.sect-sub{font-size:13px;color:var(--muted);margin-bottom:20px;}
+
+/* Table chip */
+.table-chip{display:inline-flex;align-items:center;gap:6px;background:var(--pill-bg);border:1px solid var(--border-h);border-radius:20px;padding:5px 14px;font-size:12px;color:var(--gold);margin-bottom:20px;}
+
+/* Order items card */
+.order-card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px;box-shadow:var(--shadow);animation:fadeIn 0.4s ease;}
+.order-card-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.order-card-head h3{font-size:14px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.8px;}
+.item-count{font-size:12px;color:var(--muted);}
+
+.order-item{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);transition:background 0.15s;}
+.order-item:last-child{border-bottom:none;}
+.order-item:hover{background:rgba(200,148,56,0.04);}
+.oi-emoji{font-size:24px;width:36px;text-align:center;flex-shrink:0;}
+.oi-info{flex:1;}
+.oi-name{font-size:14px;font-weight:500;color:var(--text);margin-bottom:2px;}
+.oi-meta{font-size:12px;color:var(--muted);}
+.oi-qty{display:flex;align-items:center;gap:6px;}
+.qty-ctrl{width:26px;height:26px;border-radius:7px;border:1px solid var(--border);background:var(--bg2);color:var(--muted);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.qty-ctrl:hover{border-color:var(--gold);color:var(--gold);background:rgba(200,148,56,0.08);}
+.qty-num{min-width:22px;text-align:center;font-weight:600;font-size:14px;color:var(--text);}
+.oi-price{min-width:64px;text-align:right;font-weight:600;color:var(--gold);font-size:14px;}
+
+/* Add note */
+.note-wrap{margin-bottom:16px;}
+.note-label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;}
+.note-inp{width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--text);outline:none;resize:none;height:72px;transition:border-color 0.2s;}
+.note-inp:focus{border-color:var(--gold);}
+.note-inp::placeholder{color:var(--muted);}
+
+/* Summary card */
+.summary-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:20px;box-shadow:var(--shadow);animation:fadeIn 0.4s 0.1s ease both;}
+.summary-row{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--muted);padding:6px 0;}
+.summary-row:not(:last-child){border-bottom:1px solid var(--border);}
+.summary-row span:last-child{color:var(--text2);font-weight:500;}
+.summary-row.total{font-size:17px;font-weight:700;}
+.summary-row.total span:first-child{color:var(--text);}
+.summary-row.total span:last-child{color:var(--gold);font-size:20px;}
+
+/* CTA */
+.btn-pay{width:100%;padding:16px;background:var(--gold);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:600;font-family:'Playfair Display',serif;cursor:pointer;transition:background 0.2s,transform 0.15s,box-shadow 0.2s;box-shadow:0 4px 20px rgba(200,148,56,0.25);animation:fadeIn 0.4s 0.2s ease both;}
+.btn-pay:hover{background:var(--gold-h);transform:translateY(-1px);box-shadow:0 6px 24px rgba(200,148,56,0.35);}
+.btn-pay:active{transform:none;}
+.btn-pay:disabled{background:var(--border);cursor:not-allowed;box-shadow:none;}
+
+/* Empty state */
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted);animation:fadeIn 0.4s ease;}
+.empty-icon{font-size:48px;margin-bottom:14px;}
+.empty-state h3{font-family:'Playfair Display',serif;font-size:22px;color:var(--text2);margin-bottom:8px;}
+.empty-state p{font-size:14px;line-height:1.6;margin-bottom:24px;}
+.btn-back-menu{display:inline-block;padding:12px 28px;background:var(--gold);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;transition:background 0.2s;}
+.btn-back-menu:hover{background:var(--gold-h);}
+
+@media(max-width:600px){.main{padding:16px 16px 32px;}.steps{padding:14px 10px 0;}.step-label{display:none;}}
+</style>
+</head>
+<body>
+<div class="glow"></div>
+
+<div class="topbar">
+  <div class="brand"><em>Coffee-r</em> Attokahon</div>
+  <div class="topbar-right">
+    <button class="back-btn" onclick="goBack()">← Menu</button>
+    <button class="theme-toggle" onclick="toggleTheme()"></button>
+  </div>
+</div>
+
+<!-- Active order reminder bar -->
+<div id="activeOrderBar" style="display:none;background:rgba(200,148,56,0.10);border-bottom:1px solid var(--border);padding:8px 20px;font-size:12px;color:var(--text2);text-align:center;">
+  📍 <span id="activeOrderText">You have an active order.</span>
+</div>
+<!-- Steps indicator -->
+<div class="steps">
+  <div class="step done">
+    <div class="step-dot">✓</div>
+    <span class="step-label">Menu</span>
+  </div>
+  <div class="step-line filled"></div>
+  <div class="step active">
+    <div class="step-dot">2</div>
+    <span class="step-label">Review</span>
+  </div>
+  <div class="step-line"></div>
+  <div class="step pending">
+    <div class="step-dot">3</div>
+    <span class="step-label">Payment</span>
+  </div>
+  <div class="step-line"></div>
+  <div class="step pending">
+    <div class="step-dot">4</div>
+    <span class="step-label">Confirmed</span>
+  </div>
+</div>
+
+<div class="main" id="mainContent">
+  <!-- Rendered by JS -->
+</div>
+
+<script>
+/* ── THEME ─────────────────────────────── */
+const savedTheme = localStorage.getItem('ca_theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+function toggleTheme() {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('ca_theme', next);
+}
+
+/* ── LOAD CART ──────────────────────────── */
+let pendingCart = null;
+try {
+  pendingCart = JSON.parse(localStorage.getItem('ca_pending_cart'));
+} catch(e) {}
+
+const main = document.getElementById('mainContent');
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function goBack() {
+  const t = pendingCart ? pendingCart.tableNum : null;
+  window.location.href = 'index.html' + (t ? '?table=' + t : '');
+}
+
+if (!pendingCart || !pendingCart.items || !pendingCart.items.length) {
+  main.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">🛒</div>
+      <h3>Your cart is empty</h3>
+      <p>Looks like you haven't added anything yet.<br>Go back to the menu to start your order.</p>
+      <a class="btn-back-menu" href="index.html">Browse Menu →</a>
+    </div>`;
+} else {
+  renderCheckout();
+}
+
+function recalc() {
+  pendingCart.total = pendingCart.items.reduce((s,i) => s + i.price * i.qty, 0);
+  localStorage.setItem('ca_pending_cart', JSON.stringify(pendingCart));
+}
+
+function changeQty(idx, delta) {
+  pendingCart.items[idx].qty += delta;
+  if (pendingCart.items[idx].qty <= 0) {
+    pendingCart.items.splice(idx, 1);
+  }
+  recalc();
+  if (!pendingCart.items.length) {
+    localStorage.removeItem('ca_pending_cart');
+    main.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🛒</div>
+        <h3>Cart is now empty</h3>
+        <p>All items were removed.</p>
+        <a class="btn-back-menu" href="index.html">Browse Menu →</a>
+      </div>`;
+    return;
+  }
+  renderCheckout();
+}
+
+function renderCheckout() {
+  const items = pendingCart.items;
+  const subtotal = items.reduce((s,i) => s + i.price * i.qty, 0);
+  const service = Math.round(subtotal * 0.05);
+  const total = subtotal + service;
+  pendingCart.total = total;
+  pendingCart.subtotal = subtotal;
+  pendingCart.serviceCharge = service;
+  localStorage.setItem('ca_pending_cart', JSON.stringify(pendingCart));
+
+  main.innerHTML = `
+    <div class="sect-title">Review Your Order</div>
+    <div class="sect-sub">Confirm your items before payment.</div>
+    ${pendingCart.tableNum ? `<div class="table-chip">🪑 Table ${pendingCart.tableNum}</div>` : ''}
+
+    <div class="order-card">
+      <div class="order-card-head">
+        <h3>Order Items</h3>
+        <span class="item-count">${items.reduce((s,i)=>s+i.qty,0)} item${items.reduce((s,i)=>s+i.qty,0)>1?'s':''}</span>
+      </div>
+      ${items.map((item, idx) => `
+        <div class="order-item">
+          <div class="oi-emoji">${esc(item.emoji||'☕')}</div>
+          <div class="oi-info">
+            <div class="oi-name">${esc(item.name)}</div>
+            <div class="oi-meta">৳${item.price} each</div>
+          </div>
+          <div class="oi-qty">
+            <button class="qty-ctrl" onclick="changeQty(${idx},-1)">−</button>
+            <span class="qty-num">${item.qty}</span>
+            <button class="qty-ctrl" onclick="changeQty(${idx},+1)">+</button>
+          </div>
+          <div class="oi-price">৳${item.price * item.qty}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="note-wrap">
+      <div class="note-label">Special Instructions (optional)</div>
+      <textarea class="note-inp" id="noteInp" placeholder="Allergies, preferences, extra requests…" oninput="saveNote(this.value)">${pendingCart.note||''}</textarea>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-row"><span>Subtotal</span><span>৳${subtotal}</span></div>
+      <div class="summary-row"><span>Service Charge (5%)</span><span>৳${service}</span></div>
+      <div class="summary-row total"><span>Total</span><span>৳${total}</span></div>
+    </div>
+
+    <button class="btn-pay" onclick="goToPayment()">Proceed to Payment →</button>
+  `;
+}
+
+function saveNote(val) {
+  pendingCart.note = val;
+  localStorage.setItem('ca_pending_cart', JSON.stringify(pendingCart));
+}
+
+function goToPayment() {
+  window.location.href = 'payment.html';
+}
+
+// Show active order reminder if any paid orders exist for this table
+(function(){
+  try {
+    const params2 = new URLSearchParams(window.location.search);
+    const tnum = parseInt(params2.get('table'))||null;
+    const all = JSON.parse(localStorage.getItem('ca_paid_orders')||'[]');
+    const active = tnum ? all.filter(o=>o.table===tnum&&o.status!=='served') : all.filter(o=>o.status!=='served');
+    if (active.length) {
+      const o = active[0];
+      const sl = {paid:'Received ✓',preparing:'Being Prepared 🔥',ready:'READY — Please collect! ✅',served:'Served'};
+      document.getElementById('activeOrderText').textContent = 'Order #'+o.id+' — '+( sl[o.status]||o.status);
+      document.getElementById('activeOrderBar').style.display='block';
+    }
+  } catch(e){}
+})();
+
+</script>
+</body>
+</html>

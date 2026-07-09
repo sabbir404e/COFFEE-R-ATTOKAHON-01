@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coffee-r Attokahon — Table QR Codes</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Outfit', sans-serif;
+  background: #F0E8D8;
+  color: #2E1C08;
+  padding: 30px 20px;
+}
+
+/* ── HEADER ── */
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+.header h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  color: #2E1C08;
+}
+.header h1 em { color: #A06C28; font-style: italic; }
+.header p { color: #9A7850; font-size: 14px; margin-top: 6px; }
+
+/* ── URL INPUT ── */
+.url-box {
+  background: #FAF4E8;
+  border: 1px solid rgba(160,108,40,0.25);
+  border-radius: 14px;
+  padding: 22px 24px;
+  max-width: 600px;
+  margin: 0 auto 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.url-box label { font-size: 14px; font-weight: 500; color: #5C4020; }
+.url-row { display: flex; gap: 10px; }
+.url-inp {
+  flex: 1;
+  background: #E8DEC8;
+  border: 1px solid rgba(160,108,40,0.25);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: 'Outfit', sans-serif;
+  color: #2E1C08;
+  outline: none;
+}
+.url-inp:focus { border-color: rgba(160,108,40,0.6); }
+.btn-generate {
+  background: #A06C28;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+.btn-generate:hover { background: #8A5A18; }
+.url-hint { font-size: 12px; color: #9A7850; }
+
+/* ── PRINT BUTTON ── */
+.top-actions {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.btn-print {
+  background: #2E1C08;
+  color: #F0E8D8;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 32px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-print:hover { background: #4A3010; }
+
+/* ── QR GRID ── */
+.qr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* ── QR CARD ── */
+.qr-card {
+  background: #fff;
+  border: 1.5px solid rgba(160,108,40,0.20);
+  border-radius: 16px;
+  padding: 22px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 12px rgba(100,60,10,0.08);
+}
+.qr-card .brand {
+  font-family: 'Playfair Display', serif;
+  font-size: 14px;
+  color: #9A7850;
+}
+.qr-card .brand em { color: #A06C28; font-style: normal; }
+.qr-canvas { width: 160px; height: 160px; }
+.qr-canvas canvas, .qr-canvas img { width: 160px !important; height: 160px !important; }
+.table-label {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #2E1C08;
+}
+.scan-text {
+  font-size: 11px;
+  color: #9A7850;
+  text-align: center;
+  line-height: 1.4;
+}
+.corner-tl, .corner-tr, .corner-bl, .corner-br {
+  position: absolute;
+  width: 14px; height: 14px;
+  border-color: #A06C28;
+  border-style: solid;
+}
+
+/* ── PRINT STYLES ── */
+@media print {
+  body { background: #fff; padding: 10px; }
+  .header, .url-box, .top-actions { display: none; }
+  .qr-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .qr-card {
+    break-inside: avoid;
+    border: 1.5px solid #ccc;
+    box-shadow: none;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>☕ <em>Coffee-r</em> Attokahon</h1>
+  <p>Generate & print QR codes for all 20 tables</p>
+</div>
+
+<div class="url-box">
+  <label>Your Website URL</label>
+  <div class="url-row">
+    <input class="url-inp" type="text" id="siteUrl" placeholder="https://yourusername.github.io/coffee-r-attokahon">
+    <button class="btn-generate" onclick="generateAll()">Generate QRs</button>
+  </div>
+  <div class="url-hint">⚠️ Paste your actual GitHub Pages URL above before generating. Each table QR will link to that URL with its table number.</div>
+</div>
+
+<div class="top-actions">
+  <button class="btn-print" onclick="window.print()">🖨️ Print All QR Codes</button>
+</div>
+
+<div class="qr-grid" id="qrGrid"></div>
+
+<script>
+function generateAll() {
+  let url = document.getElementById('siteUrl').value.trim();
+  if (!url) { alert('Please enter your website URL first.'); return; }
+  if (!url.startsWith('http')) url = 'https://' + url;
+  // remove trailing slash
+  url = url.replace(/\/$/, '');
+
+  const grid = document.getElementById('qrGrid');
+  grid.innerHTML = '';
+
+  for (let i = 1; i <= 20; i++) {
+    const tableUrl = `${url}/welcome.html?table=${i}`;
+
+    const card = document.createElement('div');
+    card.className = 'qr-card';
+    card.innerHTML = `
+      <div class="brand"><em>Coffee-r</em> Attokahon</div>
+      <div class="qr-canvas" id="qr${i}"></div>
+      <div class="table-label">Table ${i}</div>
+      <div class="scan-text">Scan to order from your table</div>
+    `;
+    grid.appendChild(card);
+
+    new QRCode(document.getElementById(`qr${i}`), {
+      text: tableUrl,
+      width: 160,
+      height: 160,
+      colorDark: '#2E1C08',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  }
+}
+</script>
+</body>
+</html>
