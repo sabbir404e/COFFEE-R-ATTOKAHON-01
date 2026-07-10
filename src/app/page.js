@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import Image from 'next/image';
 
 const MENU_ITEMS = [
   { id:'1', name:'Espresso',       cat:'Coffee',    price:80,  emoji:'☕', desc:'Rich double shot, bold and intense.' },
@@ -43,7 +44,8 @@ export default function HomePage() {
         .nav-right{display:flex;align-items:center;gap:12px;}
         .btn-order-nav{padding:8px 20px;background:var(--gold);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;text-decoration:none;display:inline-block;}
         .btn-order-nav:hover{background:var(--gold-h);}
-        .nav-hamburger{display:none;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--muted);cursor:pointer;font-size:16px;}
+        .nav-hamburger{display:none;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;}
+        .nav-hamburger[aria-expanded="true"]{border-color:var(--gold);color:var(--gold);}
 
         .hero{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:80px 40px 60px;}
         .hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(200,148,56,0.12) 0%,transparent 60%),radial-gradient(ellipse 50% 40% at 90% 100%,rgba(200,148,56,0.08) 0%,transparent 60%);z-index:0;}
@@ -51,6 +53,8 @@ export default function HomePage() {
         .hero-ring.r1{width:600px;height:600px;top:50%;left:50%;transform:translate(-50%,-50%);}
         .hero-ring.r2{width:900px;height:900px;top:50%;left:50%;transform:translate(-50%,-50%);border-color:rgba(200,148,56,0.03);}
         .hero-content{position:relative;z-index:1;text-align:center;max-width:680px;}
+        .hero-logo-wrap{width:clamp(170px,24vw,270px);height:clamp(170px,24vw,270px);margin:0 auto 24px;border-radius:50%;overflow:hidden;border:1px solid rgba(200,148,56,0.35);box-shadow:0 18px 54px rgba(0,0,0,0.28),0 0 0 8px rgba(200,148,56,0.06);background:var(--card);animation:fadeUp 0.8s cubic-bezier(0.16,1,0.3,1) both;}
+        .hero-logo-img{width:100%;height:100%;object-fit:cover;object-position:center;transform:scale(1.08);}
         .hero-eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:11px;letter-spacing:3.5px;text-transform:uppercase;color:var(--gold);margin-bottom:28px;animation:fadeUp 0.8s cubic-bezier(0.16,1,0.3,1) both;}
         .hero-eyebrow::before,.hero-eyebrow::after{content:'';width:28px;height:1px;background:var(--gold);opacity:0.5;}
         .hero-title{font-family:var(--font-playfair),'Playfair Display',serif;font-size:clamp(46px,8vw,84px);line-height:1.05;letter-spacing:-1px;margin-bottom:22px;animation:fadeUp 0.8s 0.1s cubic-bezier(0.16,1,0.3,1) both;}
@@ -166,9 +170,13 @@ export default function HomePage() {
           .footer-grid{grid-template-columns:1fr 1fr;}
           nav{padding:0 20px;}
           .nav-links{display:none;}
+          .nav-links.mobile-open{display:flex;position:absolute;top:62px;left:16px;right:16px;flex-direction:column;align-items:stretch;gap:0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:8px;box-shadow:var(--shadow);}
+          .nav-links.mobile-open a{padding:13px 14px;border-radius:10px;color:var(--text-2);}
+          .nav-links.mobile-open a:hover{background:var(--hover-bg);color:var(--gold);}
           .nav-hamburger{display:block;}
           .section{padding:64px 20px;}
           .hero{padding:100px 20px 60px;}
+          .hero-logo-wrap{margin-bottom:20px;}
         }
         @media(max-width:600px){
           .best-grid,.exp-grid,.footer-grid{grid-template-columns:1fr;}
@@ -176,6 +184,7 @@ export default function HomePage() {
           .h-stat-div{display:none;}
           .about-values{grid-template-columns:1fr;}
           .gallery-grid{grid-template-columns:repeat(2,1fr);}
+          .hero-logo-wrap{width:160px;height:160px;}
         }
       `}</style>
 
@@ -183,15 +192,23 @@ export default function HomePage() {
       <nav>
         <Link className="nav-brand" href="/"><em>Coffee-r</em> Attokahon</Link>
         <div className={`nav-links${mobileOpen ? ' mobile-open' : ''}`}>
-          <a href="#about">About</a>
-          <a href="#menu">Menu</a>
-          <a href="#experience">Experience</a>
-          <a href="#contact">Contact</a>
+          <a href="#about" onClick={() => setMobileOpen(false)}>About</a>
+          <a href="#menu" onClick={() => setMobileOpen(false)}>Menu</a>
+          <a href="#experience" onClick={() => setMobileOpen(false)}>Experience</a>
+          <a href="#contact" onClick={() => setMobileOpen(false)}>Contact</a>
         </div>
         <div className="nav-right">
           <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme" />
           <Link className="btn-order-nav" href="/order">Order Online →</Link>
-          <button className="nav-hamburger" onClick={() => setMobileOpen(!mobileOpen)}>☰</button>
+          <button
+            className="nav-hamburger"
+            type="button"
+            aria-label="Toggle navigation menu"
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
+            ☰
+          </button>
         </div>
       </nav>
 
@@ -201,6 +218,17 @@ export default function HomePage() {
         <div className="hero-ring r1" />
         <div className="hero-ring r2" />
         <div className="hero-content">
+          <div className="hero-logo-wrap">
+            <Image
+              className="hero-logo-img"
+              src="/hero-logo.png"
+              alt="Coffee-r Attokahon Eight Chapters logo"
+              width={2816}
+              height={1536}
+              priority
+              sizes="(max-width: 600px) 160px, (max-width: 900px) 24vw, 270px"
+            />
+          </div>
           <div className="hero-eyebrow">Artisan Coffee &amp; Cuisine</div>
           <h1 className="hero-title">Where Every Cup<br />Tells a <em>Story</em></h1>
           <p className="hero-sub">Handcrafted coffees, seasonal flavors, and food made with intention — served in a space designed for moments that matter.</p>
@@ -258,10 +286,10 @@ export default function HomePage() {
               <div className="about-visual-ring r3" />
               <div className="about-visual-inner">
                 <div className="about-visual-logo"><em>Coffee-r</em><br />Attokahon</div>
-                <div className="about-visual-tag">Est. 2018 &nbsp;·&nbsp; Dhaka, BD</div>
+                <div className="about-visual-tag">Est. 2018 &nbsp;·&nbsp; Pabna, BD</div>
                 <div className="about-since">
                   <div className="about-since-num">6+</div>
-                  <div className="about-since-lbl">Years Serving Dhaka</div>
+                  <div className="about-since-lbl">Years Serving Pabna</div>
                 </div>
               </div>
             </div>
@@ -394,7 +422,7 @@ export default function HomePage() {
                   <div className="ci-icon">📍</div>
                   <div>
                     <div className="ci-label">Address</div>
-                    <div className="ci-value">House 12, Road 7, Dhanmondi<br />Dhaka 1205, Bangladesh</div>
+                    <div className="ci-value">House 12, Road 7, Pabna<br />Pabna 6600, Bangladesh</div>
                   </div>
                 </div>
                 <div className="ci-item">
@@ -425,8 +453,8 @@ export default function HomePage() {
             <div>
               <div className="map-placeholder">
                 <div className="map-icon">🗺️</div>
-                <h4 style={{ fontFamily:'var(--font-playfair)', fontSize:'18px', marginBottom:'4px' }}>Dhanmondi, Dhaka</h4>
-                <p style={{ fontSize:'13px', color:'var(--muted)', lineHeight:'1.6' }}>House 12, Road 7<br />Near Dhanmondi Lake</p>
+                <h4 style={{ fontFamily:'var(--font-playfair)', fontSize:'18px', marginBottom:'4px' }}>Rajapur, Pabna</h4>
+                <p style={{ fontSize:'13px', color:'var(--muted)', lineHeight:'1.6' }}>House 12, Road 7<br />Near Rajapur Lake</p>
                 <a href="https://maps.google.com" target="_blank" rel="noreferrer"
                   style={{ marginTop:'16px', display:'inline-block', padding:'10px 24px', background:'var(--gold)', color:'#fff', borderRadius:'10px', textDecoration:'none', fontSize:'13px', fontWeight:'600' }}>
                   Open in Maps →
@@ -464,8 +492,8 @@ export default function HomePage() {
             </div>
           </div>
           <div className="footer-bottom">
-            <span>© 2025 Coffee-r Attokahon. All rights reserved.</span>
-            <span style={{ color:'var(--gold)' }}>☕ Crafted with care in Dhaka, Bangladesh</span>
+            <span>© 2026 Coffee-r Attokahon. All rights reserved.</span>
+            <span style={{ color:'var(--gold)' }}>☕ Crafted with care in Pabna, Bangladesh</span>
           </div>
         </div>
       </footer>

@@ -1,12 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import Link from 'next/link';
 
+const readJson = (key, fallback) => {
+  try {
+    return JSON.parse(localStorage.getItem(key)) || fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 export default function AdminPage() {
-  const { toggleTheme, products, setProducts } = useApp();
-  const [mounted, setMounted] = useState(false);
+  const { toggleTheme, products, updateProducts } = useApp();
   const [me, setMe] = useState(null);
   const [lUser, setLUser] = useState('');
   const [lPass, setLPass] = useState('');
@@ -39,33 +46,50 @@ export default function AdminPage() {
 
   const [confirmMsg, setConfirmMsg] = useState('');
   const [confirmCallback, setConfirmCallback] = useState(null);
+  const [refunding, setRefunding] = useState(false);
 
   const defaultUsers = () => [
     {username:'admin',password:'admin123',role:'admin'}
   ];
 
-  const loadAll = () => {
+  const loadAll = useCallback(() => {
     try {
-      const u = JSON.parse(localStorage.getItem('ca_users')) || defaultUsers();
+      const u = readJson('ca_users', defaultUsers());
       setUsers(u);
-      const o = JSON.parse(localStorage.getItem('ca_paid_orders') || '[]');
+      const o = readJson('ca_paid_orders', []);
       setOrders(o);
-      const pay = JSON.parse(localStorage.getItem('ca_payments') || '[]');
+      const pay = readJson('ca_payments', []);
       setPayments(pay);
     } catch {}
-  };
-
-  useEffect(() => {
-    setMounted(true);
-    const saved = localStorage.getItem('ca_admin_user');
-    if (saved) {
-      try { setMe(JSON.parse(saved)); } catch {}
-    }
-    loadAll();
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    queueMicrotask(() => {
+      if (!active) return;
+      const saved = localStorage.getItem('ca_admin_user');
+      if (saved) {
+        try { setMe(JSON.parse(saved)); } catch {}
+      }
+      loadAll();
+    });
+
+    const handleStorageChange = (e) => {
+      if (!e || !e.key || e.key === 'ca_paid_orders' || e.key === 'ca_payments') {
+        loadAll();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      active = false;
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [loadAll]);
+
   const doLogin = () => {
-    const validUsers = JSON.parse(localStorage.getItem('ca_users')) || defaultUsers();
+    const validUsers = readJson('ca_users', defaultUsers());
     const found = validUsers.find(x => x.username === lUser.trim() && x.password === lPass);
     if (!found || found.role !== 'admin') {
       setLoginErr(true);
@@ -130,18 +154,18 @@ export default function AdminPage() {
       const maxId = updated.reduce((m, p) => Math.max(m, parseInt(p.id || 0)), 0);
       updated.push({ id: String(maxId + 1), ...data });
     }
-    setProducts(updated);
+    updateProducts(updated);
     setOvProduct(false);
   };
 
   const toggleAvail = (id) => {
     const updated = products.map(p => p.id === id ? { ...p, avail: !p.avail } : p);
-    setProducts(updated);
+    updateProducts(updated);
   };
 
   const deleteProduct = (id) => {
     const updated = products.filter(p => p.id !== id);
-    setProducts(updated);
+    updateProducts(updated);
   };
 
   const openAccountModal = (idx) => {
@@ -193,7 +217,75 @@ export default function AdminPage() {
     setOvConfirm(true);
   };
 
-  if (!mounted) return null;
+  const handleRefund = async (pay) => {
+    if (!pay.bankTranId) {
+      alert('Bank Transaction ID missing. Cannot refund this payment.');
+      return;
+    }
+    if (!confirm(`Are you sure you want to refund ৳${pay.amount} for Transaction ${pay.txnId}?`)) {
+      return;
+    }
+    
+    setRefunding(true);
+    try {
+      const response = await fetch('/api/ssl-payment/refund', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bankTranId: pay.bankTranId,
+          amount: pay.amount,
+          txnId: pay.txnId,
+        }),
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('Refund processed successfully!');
+        
+        const refId = data.details?.refund_ref_id || pay.txnId;
+
+        // Update local payments record
+        const freshPayments = JSON.parse(localStorage.getItem('ca_payments') || '[]');
+        const updatedPayments = freshPayments.map(p => 
+          p.txnId === pay.txnId ? { ...p, status: 'refunded', refundRefId: refId } : p
+        );
+        setPayments(updatedPayments);
+        localStorage.setItem('ca_payments', JSON.stringify(updatedPayments));
+        
+        // Update local orders record
+        const freshOrders = JSON.parse(localStorage.getItem('ca_paid_orders') || '[]');
+        const updatedOrders = freshOrders.map(o => 
+          o.paymentId === pay.txnId ? { ...o, status: 'refunded' } : o
+        );
+        setOrders(updatedOrders);
+        localStorage.setItem('ca_paid_orders', JSON.stringify(updatedOrders));
+        
+        loadAll();
+      } else {
+        alert(data.error || 'Failed to process refund.');
+      }
+    } catch (err) {
+      console.error('Refund error:', err);
+      alert('An error occurred while communicating with the server.');
+    } finally {
+      setRefunding(false);
+    }
+  };
+
+  const handleRefundQuery = async (refundRefId) => {
+    try {
+      const response = await fetch(`/api/ssl-payment/refund-query?refund_ref_id=${refundRefId}`);
+      const data = await response.json();
+      if (data.success) {
+        alert(`Refund Details from SSLCommerz:\nStatus: ${data.details?.status || 'Processing'}\nReference: ${data.details?.refund_ref_id || refundRefId}\nAmount: ৳${data.details?.refund_amount || '—'}`);
+      } else {
+        alert(data.error || 'Failed to query refund status.');
+      }
+    } catch (err) {
+      console.error('Refund query error:', err);
+      alert('An error occurred while fetching refund status.');
+    }
+  };
 
   if (!me) {
     return (
@@ -224,12 +316,12 @@ export default function AdminPage() {
   }
 
   // Dashboard Stats
-  const activeOrders = orders.filter(o => o.status !== 'served').length;
+  const activeOrders = orders.filter(o => o.status !== 'served' && o.status !== 'cancelled' && o.status !== 'failed').length;
   const servedOrders = orders.filter(o => o.status === 'served').length;
-  const totalRevenue = orders.reduce((acc, curr) => acc + (curr.total || 0), 0);
+  const totalRevenue = orders.filter(o => o.status !== 'cancelled' && o.status !== 'failed').reduce((acc, curr) => acc + (curr.total || 0), 0);
   const todayStr = new Date().toDateString();
-  const todayRev = orders.filter(o => new Date(o.time).toDateString() === todayStr).reduce((acc, curr) => acc + (curr.total || 0), 0);
-  const todayOrders = orders.filter(o => new Date(o.time).toDateString() === todayStr).length;
+  const todayRev = orders.filter(o => new Date(o.time).toDateString() === todayStr && o.status !== 'cancelled' && o.status !== 'failed').reduce((acc, curr) => acc + (curr.total || 0), 0);
+  const todayOrders = orders.filter(o => new Date(o.time).toDateString() === todayStr && o.status !== 'cancelled' && o.status !== 'failed').length;
 
   return (
     <>
@@ -241,6 +333,10 @@ export default function AdminPage() {
         .nav-item.active { background: rgba(200,148,56,0.12); color: var(--gold); }
         .nav-sep { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
         .content { flex: 1; padding: 24px; overflow-y: auto; }
+        .role-badge { background: var(--pill-bg); border: 1px solid var(--border-h); border-radius: 20px; padding: 3px 12px; font-size: 11px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; }
+        .badge.b-refunded { background: var(--x-bg); border-color: var(--x-bd); color: var(--x-tx); }
+        .logout-btn { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; font-size: 12px; color: var(--muted); cursor: pointer; transition: all 0.18s; }
+        .logout-btn:hover { border-color: var(--border-h); color: var(--text); }
         
         .pg-title { font-family: var(--font-playfair), 'Playfair Display', serif; font-size: 26px; margin-bottom: 4px; }
         .pg-sub { font-size: 13px; color: var(--muted); margin-bottom: 22px; }
@@ -251,8 +347,8 @@ export default function AdminPage() {
         .stat-val { font-family: var(--font-playfair), 'Playfair Display', serif; font-size: 30px; line-height: 1; }
         .stat-val small { font-size: 15px; color: var(--gold); }
         
-        .tbl-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; transition: var(--transition-theme); }
-        .tbl-wrap table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tbl-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: auto; transition: var(--transition-theme); }
+        .tbl-wrap table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 13px; }
         .tbl-wrap thead th { text-align: left; padding: 11px 16px; background: var(--bg2); color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; border-bottom: 1px solid var(--border); font-weight: 600; }
         .tbl-wrap tbody td { padding: 11px 16px; color: var(--text-2); border-bottom: 1px solid var(--border); }
         .tbl-wrap tbody tr:last-child td { border-bottom: none; }
@@ -287,7 +383,23 @@ export default function AdminPage() {
         .btn-del-ok:hover { background: #D05050; }
         
         .empty-tbl { text-align: center; padding: 28px; color: var(--muted); font-size: 13px; }
-        @media(max-width:768px){.sidebar{display:none;}.content{padding:16px;}.topbar{padding:0 14px;}}
+        @media(max-width:768px){
+          .app-body{height:auto;min-height:calc(100vh - 58px);flex-direction:column;}
+          .sidebar{width:100%;flex-direction:row;gap:8px;overflow-x:auto;border-right:none;border-bottom:1px solid var(--border);padding:10px 12px;position:sticky;top:58px;z-index:20;}
+          .nav-item{width:auto;white-space:nowrap;flex-shrink:0;padding:8px 12px;}
+          .nav-sep{display:none;}
+          .content{padding:16px;overflow-y:visible;}
+          .topbar{padding:0 14px;gap:10px;}
+          .topbar-right{gap:8px;}
+          .role-badge,.theme-label{display:none;}
+          .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+        }
+        @media(max-width:480px){
+          .brand{font-size:17px;}
+          .logout-btn{padding:5px 9px;}
+          .stats-grid{grid-template-columns:1fr;}
+          .modal{padding:20px;}
+        }
       `}</style>
 
       <div id="appScreen" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -459,7 +571,7 @@ export default function AdminPage() {
                 <div className="tbl-wrap">
                   <table>
                     <thead>
-                      <tr><th>TXN ID</th><th>Invoice</th><th>Table</th><th>Method</th><th>Amount</th><th>Time</th></tr>
+                      <tr><th>TXN ID</th><th>Invoice</th><th>Table</th><th>Method</th><th>Amount</th><th>Status</th><th>Time</th><th>Actions</th></tr>
                     </thead>
                     <tbody>
                       {payments.map(p => (
@@ -469,7 +581,39 @@ export default function AdminPage() {
                           <td>{p.table || '—'}</td>
                           <td>{p.method}</td>
                           <td style={{ fontWeight: 600, color: 'var(--success-tx)' }}>৳{p.amount}</td>
+                          <td>
+                            <span className={`badge b-${p.status || 'paid'}`}>
+                              {p.status || 'paid'}
+                            </span>
+                          </td>
                           <td style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(p.time).toLocaleString('en-BD', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                          <td>
+                            {p.method === 'SSLCommerz' && p.status !== 'refunded' ? (
+                              <button 
+                                className="btn-del" 
+                                style={{ padding: '3px 8px', fontSize: '11px' }} 
+                                disabled={refunding}
+                                onClick={() => handleRefund(p)}
+                              >
+                                {refunding ? 'Refundin...' : 'Refund'}
+                              </button>
+                            ) : p.status === 'refunded' ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span style={{ fontSize: '11px', color: 'var(--muted)' }}>Refunded</span>
+                                {p.refundRefId && (
+                                  <button 
+                                    className="btn-edit" 
+                                    style={{ padding: '2px 6px', fontSize: '9px', width: 'fit-content' }} 
+                                    onClick={() => handleRefundQuery(p.refundRefId)}
+                                  >
+                                    Check Status
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '11px', color: 'var(--muted)' }}>—</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

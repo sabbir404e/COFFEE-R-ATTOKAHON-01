@@ -1,46 +1,76 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import Link from 'next/link';
+
+const readPendingCart = () => {
+  try {
+    const cart = JSON.parse(localStorage.getItem('ca_pending_cart'));
+    return cart && Array.isArray(cart.items) ? cart : null;
+  } catch {
+    return null;
+  }
+};
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { toggleTheme } = useApp();
   const [pendingCart, setPendingCart] = useState(null);
-  const [mounted, setMounted] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-    try {
-      const pc = JSON.parse(localStorage.getItem('ca_pending_cart'));
-      if (pc && pc.items && pc.items.length) {
-        recalcCart(pc);
-        setPendingCart(pc);
-      }
-    } catch {}
+  const recalcCart = useCallback((cart) => {
+    const items = cart.items
+      .map(item => ({
+        ...item,
+        qty: Math.max(0, Number(item.qty) || 0),
+        price: Number(item.price) || 0,
+      }))
+      .filter(item => item.qty > 0);
+
+    const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+    const serviceCharge = Math.round(subtotal * 0.05);
+    const updated = {
+      ...cart,
+      items,
+      subtotal,
+      serviceCharge,
+      total: subtotal + serviceCharge,
+    };
+
+    if (items.length) {
+      localStorage.setItem('ca_pending_cart', JSON.stringify(updated));
+    } else {
+      localStorage.removeItem('ca_pending_cart');
+    }
+
+    return updated;
   }, []);
 
-  const recalcCart = (cart) => {
-    cart.subtotal = cart.items.reduce((s, i) => s + i.price * i.qty, 0);
-    cart.serviceCharge = Math.round(cart.subtotal * 0.05);
-    cart.total = cart.subtotal + cart.serviceCharge;
-    localStorage.setItem('ca_pending_cart', JSON.stringify(cart));
-  };
+  useEffect(() => {
+    let active = true;
+
+    queueMicrotask(() => {
+      if (!active) return;
+      const cart = readPendingCart();
+      setPendingCart(cart && cart.items.length ? recalcCart(cart) : cart);
+      setHydrated(true);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [recalcCart]);
 
   const changeQty = (idx, delta) => {
-    const updated = { ...pendingCart, items: [...pendingCart.items] };
-    updated.items[idx].qty += delta;
-    if (updated.items[idx].qty <= 0) {
-      updated.items.splice(idx, 1);
-    }
-    if (!updated.items.length) {
-      localStorage.removeItem('ca_pending_cart');
-      setPendingCart({ ...updated, items: [] });
-      return;
-    }
-    recalcCart(updated);
+    const items = pendingCart.items
+      .map((item, itemIdx) => (
+        itemIdx === idx ? { ...item, qty: item.qty + delta } : item
+      ))
+      .filter(item => item.qty > 0);
+
+    const updated = recalcCart({ ...pendingCart, items });
     setPendingCart(updated);
   };
 
@@ -55,7 +85,7 @@ export default function CheckoutPage() {
     router.push('/order' + (t ? '?table=' + t : ''));
   };
 
-  if (!mounted) return null;
+  if (!hydrated) return null;
 
   return (
     <>

@@ -15,16 +15,25 @@ const STATUS_META = {
 
 function esc(s) { return String(s); }
 
+const readOrders = () => {
+  try {
+    const orders = JSON.parse(localStorage.getItem('ca_paid_orders') || '[]');
+    return Array.isArray(orders) ? orders : [];
+  } catch {
+    return [];
+  }
+};
+
 export default function BillingPage() {
   const router = useRouter();
   const { toggleTheme } = useApp();
   const [order, setOrder] = useState(null);
-  const [mounted, setMounted] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const [liveStatus, setLiveStatus] = useState(null);
 
   const loadOrder = useCallback(() => {
     const lastId = parseInt(localStorage.getItem('ca_last_order_id'));
-    const orders = JSON.parse(localStorage.getItem('ca_paid_orders') || '[]');
+    const orders = readOrders();
     if (!orders.length) return null;
     if (lastId) {
       const o = orders.find(x => x.id === lastId);
@@ -34,10 +43,19 @@ export default function BillingPage() {
   }, []);
 
   useEffect(() => {
-    setMounted(true);
-    const o = loadOrder();
-    setOrder(o);
-    if (o) setLiveStatus(o.status);
+    let active = true;
+
+    queueMicrotask(() => {
+      if (!active) return;
+      const o = loadOrder();
+      setOrder(o);
+      if (o) setLiveStatus(o.status);
+      setHydrated(true);
+    });
+
+    return () => {
+      active = false;
+    };
   }, [loadOrder]);
 
   // Poll for live status
@@ -45,17 +63,20 @@ export default function BillingPage() {
     if (!order) return;
     const iv = setInterval(() => {
       try {
-        const orders = JSON.parse(localStorage.getItem('ca_paid_orders') || '[]');
+        const orders = readOrders();
         const found = orders.find(o2 => o2.id === order.id);
-        if (found) setLiveStatus(found.status);
+        if (found) {
+          setOrder(found);
+          setLiveStatus(found.status);
+        }
       } catch {}
     }, 3000);
     return () => clearInterval(iv);
   }, [order]);
 
-  if (!mounted) return null;
+  if (!hydrated) return null;
 
-  const currentStatus = liveStatus || 'paid';
+  const currentStatus = STATUS_FLOW.includes(liveStatus) ? liveStatus : 'paid';
   const currentIdx = STATUS_FLOW.indexOf(currentStatus);
   const progressPct = currentIdx <= 0 ? 0 : Math.round((currentIdx / (STATUS_FLOW.length - 1)) * 100);
   const meta = STATUS_META[currentStatus] || STATUS_META.paid;

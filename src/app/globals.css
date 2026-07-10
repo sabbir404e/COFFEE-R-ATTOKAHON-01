@@ -209,6 +209,8 @@ button, input, select, textarea {
   letter-spacing: 0.8px; border: 1px solid;
 }
 .b-new       { background: var(--d-bg); border-color: var(--d-bd); color: var(--d-tx); }
+.b-cancelled { background: var(--d-bg); border-color: var(--d-bd); color: var(--d-tx); }
+.b-failed    { background: var(--d-bg); border-color: var(--d-bd); color: var(--d-tx); }
 .b-paid      { background: rgba(70,100,180,0.14); border-color: rgba(70,100,180,0.28); color: #90A8E0; }
 .b-preparing { background: var(--w-bg); border-color: var(--w-bd); color: var(--w-tx); }
 .b-ready     { background: var(--o-bg); border-color: var(--o-bd); color: var(--o-tx); }

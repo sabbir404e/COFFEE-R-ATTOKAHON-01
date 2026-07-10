@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const FLOW  = ['paid','preparing','ready','served'];
 const SMETA = {
@@ -87,6 +88,8 @@ function WelcomePageContent() {
         .ctrl-theme{display:flex;align-items:center;gap:8px;}
         .welcome-wrap{position:relative;z-index:1;width:90%;max-width:440px;text-align:center;padding:0 16px;display:flex;flex-direction:column;align-items:center;}
         .wc-logo-block{margin-bottom:36px;animation:wIn 0.9s cubic-bezier(0.16,1,0.3,1) both;}
+        .wc-logo-img{width:130px;height:130px;object-fit:contain;margin:0 auto 20px;display:block;border-radius:50%;border:2px solid rgba(200,148,56,0.35);padding:6px;background:rgba(200,148,56,0.06);box-shadow:0 0 30px rgba(200,148,56,0.2),0 0 60px rgba(200,148,56,0.08);transition:transform 0.4s ease,box-shadow 0.4s ease;}
+        .wc-logo-img:hover{transform:scale(1.05);box-shadow:0 0 40px rgba(200,148,56,0.35),0 0 80px rgba(200,148,56,0.12);}
         .wc-logo{font-family:var(--font-playfair),'Playfair Display',serif;font-size:46px;line-height:1.05;letter-spacing:-0.5px;}
         .wc-logo em{color:var(--gold);font-style:normal;}
         .wc-tagline{font-size:10px;letter-spacing:4.5px;text-transform:uppercase;color:var(--muted);margin-top:8px;}
@@ -155,8 +158,14 @@ function WelcomePageContent() {
       <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center' }}>
         <div className="welcome-wrap">
           <div className="wc-logo-block">
-            <img src="/logo.png" alt="Coffee-r Attokahon Logo" style={{ width: '130px', height: 'auto', marginBottom: '16px', display: 'inline-block' }} />
-            <br />
+            <Image
+              src="/logo.png"
+              alt="Brand Logo"
+              width={130}
+              height={130}
+              className="wc-logo-img"
+              priority
+            />
             <Link href="/" className="wc-logo" style={{ textDecoration: 'none' }}><em>Coffee-r</em><br />Attokahon</Link>
             <div className="wc-tagline">Artisan Coffee &amp; Cuisine</div>
           </div>

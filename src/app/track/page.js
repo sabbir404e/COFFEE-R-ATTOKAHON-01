@@ -41,7 +41,7 @@ function TrackPageContent() {
 
   if (!mounted) return null;
 
-  const active = orders.filter(o => o.status !== 'served');
+  const active = orders.filter(o => o.status !== 'served' && o.status !== 'cancelled' && o.status !== 'failed');
   const served = orders.filter(o => o.status === 'served');
   const sorted = [...active, ...served].slice(0, 5);
 
