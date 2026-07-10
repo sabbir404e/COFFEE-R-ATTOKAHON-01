@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import SSLCommerzPayment from 'sslcommerz-lts';
 
-const store_id = process.env.SSLCOMMERZ_STORE_ID;
-const store_passwd = process.env.SSLCOMMERZ_STORE_PASSWORD;
-const is_live = process.env.SSLCOMMERZ_IS_LIVE === 'true';
+const store_id = process.env.SSLCOMMERZ_STORE_ID || 'coffe6a50961a8b82e';
+const store_passwd = process.env.SSLCOMMERZ_STORE_PASSWORD || 'coffe6a50961a8b82e@ssl';
+const is_live = process.env.SSLCOMMERZ_STORE_ID ? (process.env.SSLCOMMERZ_IS_LIVE === 'true') : false;
 
 export async function GET(req) {
   try {
