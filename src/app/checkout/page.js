@@ -177,7 +177,11 @@ export default function CheckoutPage() {
               </div>
               {pendingCart.items.map((item, idx) => (
                 <div className="order-item" key={idx}>
-                  <div className="oi-emoji">{item.emoji || '☕'}</div>
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} style={{ width: '40px', height: '40px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
+                  ) : (
+                    <div className="oi-emoji">{item.emoji || '☕'}</div>
+                  )}
                   <div className="oi-info">
                     <div className="oi-name">{item.name}</div>
                     <div className="oi-meta">৳{item.price} each</div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import Image from 'next/image';
@@ -26,6 +26,16 @@ export default function HomePage() {
 
   const [activeCat, setActiveCat] = useState('all');
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scannedTable, setScannedTable] = useState(null);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('table')) {
+        setScannedTable(params.get('table'));
+      }
+    }
+  }, []);
 
   const cats = ['all', ...new Set(displayProducts.map(p => p.cat))];
   const filtered = activeCat === 'all' ? displayProducts : displayProducts.filter(p => p.cat === activeCat);
@@ -232,8 +242,24 @@ export default function HomePage() {
           <div className="hero-eyebrow">Artisan Coffee &amp; Cuisine</div>
           <h1 className="hero-title">Where Every Cup<br />Tells a <em>Story</em></h1>
           <p className="hero-sub">Handcrafted coffees, seasonal flavors, and food made with intention — served in a space designed for moments that matter.</p>
+          {scannedTable && (
+            <div style={{ 
+              fontSize: '18px', 
+              fontWeight: '600', 
+              color: 'var(--gold)', 
+              marginBottom: '32px',
+              padding: '12px 24px',
+              background: 'rgba(200,148,56,0.1)',
+              border: '1px solid rgba(200,148,56,0.3)',
+              borderRadius: '12px',
+              display: 'inline-block',
+              animation: 'fadeUp 0.8s 0.25s cubic-bezier(0.16,1,0.3,1) both'
+            }}>
+              Your Table number is {scannedTable}
+            </div>
+          )}
           <div className="hero-ctas">
-            <Link className="btn-hero-primary" href="/order">Order at Your Table →</Link>
+            <Link className="btn-hero-primary" href={`/order${scannedTable ? `?table=${scannedTable}` : ''}`}>Order at Your Table →</Link>
             <a className="btn-hero-ghost" href="#menu">Explore Our Menu</a>
           </div>
           <div className="hero-stats">

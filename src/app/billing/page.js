@@ -30,6 +30,9 @@ export default function BillingPage() {
   const [order, setOrder] = useState(null);
   const [hydrated, setHydrated] = useState(false);
   const [liveStatus, setLiveStatus] = useState(null);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [feedbackText, setFeedbackText] = useState('');
 
   const loadOrder = useCallback(() => {
     const lastId = parseInt(localStorage.getItem('ca_last_order_id'));
@@ -73,6 +76,15 @@ export default function BillingPage() {
     }, 3000);
     return () => clearInterval(iv);
   }, [order]);
+
+  useEffect(() => {
+    if (liveStatus === 'served' && order && order.id) {
+      if (!localStorage.getItem(`ca_feedback_shown_${order.id}`)) {
+        setShowFeedback(true);
+        localStorage.setItem(`ca_feedback_shown_${order.id}`, 'true');
+      }
+    }
+  }, [liveStatus, order]);
 
   if (!hydrated) return null;
 
@@ -157,7 +169,51 @@ export default function BillingPage() {
         .empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
         .empty-state h3{font-family:var(--font-playfair),'Playfair Display',serif;font-size:22px;color:var(--text-2);margin-bottom:10px;}
         @media(max-width:600px){.main{padding:14px 12px 32px;}.invoice-info{grid-template-columns:repeat(2,1fr);}.action-row{flex-direction:column;}.invoice-head{flex-direction:column;gap:14px;}.inv-meta{text-align:left;}}
+
+        /* FEEDBACK MODAL */
+        .feedback-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:999;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.3s;}
+        .feedback-modal{background:#F7F4EB;border-radius:20px;padding:32px 24px;text-align:center;width:90%;max-width:340px;box-shadow:var(--shadow);animation:slideUp 0.3s;color:#2A1A08;}
+        [data-theme="dark"] .feedback-modal{background:var(--card);color:var(--text);}
+        .f-star{font-size:48px;margin-bottom:12px;filter:drop-shadow(0 2px 4px rgba(200,148,56,0.3));}
+        .feedback-modal h2{font-family:var(--font-playfair),'Playfair Display',serif;font-size:24px;margin-bottom:6px;}
+        .feedback-modal p{font-size:13px;color:var(--muted);margin-bottom:24px;}
+        .f-stars{display:flex;justify-content:center;gap:8px;margin-bottom:24px;}
+        .f-stars span{font-size:36px;color:var(--border-h);cursor:pointer;transition:color 0.2s;}
+        .f-stars span.active{color:var(--gold);}
+        .feedback-modal textarea{width:100%;height:80px;background:rgba(160,108,40,0.1);border:none;border-radius:12px;padding:12px;font-size:13px;color:inherit;resize:none;margin-bottom:20px;outline:none;}
+        [data-theme="dark"] .feedback-modal textarea{background:var(--input-bg);border:1px solid var(--border);}
+        .f-submit{width:100%;padding:14px;background:#6A3A1A;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:12px;transition:background 0.2s;}
+        .f-submit:hover{background:#542D13;}
+        [data-theme="dark"] .f-submit{background:var(--gold);}
+        [data-theme="dark"] .f-submit:hover{background:var(--gold-h);}
+        .f-skip{background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer;}
       `}</style>
+
+      {showFeedback && (
+        <div className="feedback-overlay">
+          <div className="feedback-modal">
+            <div className="f-star">⭐</div>
+            <h2>How was your experience?</h2>
+            <p>Your feedback helps us serve you better.</p>
+            <div className="f-stars">
+              {[1, 2, 3, 4, 5].map(star => (
+                <span 
+                  key={star} 
+                  onClick={() => setRating(star)} 
+                  className={rating >= star ? 'active' : ''}
+                >★</span>
+              ))}
+            </div>
+            <textarea 
+              placeholder="Tell us about your visit (optional)..." 
+              value={feedbackText}
+              onChange={e => setFeedbackText(e.target.value)}
+            />
+            <button className="f-submit" onClick={() => setShowFeedback(false)}>Submit Feedback</button>
+            <button className="f-skip" onClick={() => setShowFeedback(false)}>Skip for now</button>
+          </div>
+        </div>
+      )}
 
       <div className="glow" />
       <div className="topbar">

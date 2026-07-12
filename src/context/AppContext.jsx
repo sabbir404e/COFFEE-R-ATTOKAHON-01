@@ -23,9 +23,13 @@ const DEFAULT_USERS = [
   { username: 'admin', password: 'admin123', role: 'admin' }
 ];
 
+// Default tables: 1..20
+const DEFAULT_TABLES = Array.from({ length: 20 }, (_, i) => i + 1);
+
 export function AppProvider({ children }) {
   const [theme, setTheme] = useState('dark');
   const [tableNum, setTableNum] = useState(null);
+  const [tables, setTables] = useState(DEFAULT_TABLES); // array of table numbers
   const [cart, setCart] = useState({});
   const [products, setProducts] = useState(DEFAULT_PRODUCTS);
   const [orders, setOrders] = useState([]);
@@ -39,6 +43,28 @@ export function AppProvider({ children }) {
       const savedTheme = localStorage.getItem('ca_theme') || 'dark';
       setTheme(savedTheme);
       document.documentElement.setAttribute('data-theme', savedTheme);
+
+      // Load tables array (new key). Fall back to old ca_table_count for migration.
+      const savedTables = localStorage.getItem('ca_tables');
+      if (savedTables) {
+        try {
+          const parsed = JSON.parse(savedTables);
+          if (Array.isArray(parsed) && parsed.length > 0) setTables(parsed);
+        } catch (e) {}
+      } else {
+        // Migrate from old ca_table_count if present
+        const oldCount = localStorage.getItem('ca_table_count');
+        if (oldCount) {
+          const n = parseInt(oldCount);
+          if (!isNaN(n) && n >= 1) {
+            const migrated = Array.from({ length: n }, (_, i) => i + 1);
+            setTables(migrated);
+            localStorage.setItem('ca_tables', JSON.stringify(migrated));
+          }
+        } else {
+          localStorage.setItem('ca_tables', JSON.stringify(DEFAULT_TABLES));
+        }
+      }
 
       // Load products
       const savedProds = localStorage.getItem('ca_products');
@@ -55,17 +81,13 @@ export function AppProvider({ children }) {
       // Load orders
       const savedOrders = localStorage.getItem('ca_paid_orders');
       if (savedOrders) {
-        try {
-          setOrders(JSON.parse(savedOrders));
-        } catch (e) {}
+        try { setOrders(JSON.parse(savedOrders)); } catch (e) {}
       }
 
       // Load payments
       const savedPayments = localStorage.getItem('ca_payments');
       if (savedPayments) {
-        try {
-          setPayments(JSON.parse(savedPayments));
-        } catch (e) {}
+        try { setPayments(JSON.parse(savedPayments)); } catch (e) {}
       }
 
       // Load users
@@ -85,7 +107,6 @@ export function AppProvider({ children }) {
       if (savedCart) {
         try {
           const parsed = JSON.parse(savedCart);
-          // If there is an existing pending cart, set it
           if (parsed && parsed.items) {
             const reconstructedCart = {};
             parsed.items.forEach(item => {
@@ -101,7 +122,7 @@ export function AppProvider({ children }) {
     }
   }, []);
 
-  // Listen for changes in localStorage across tabs (important for KDS & Menu updates)
+  // Listen for changes in localStorage across tabs
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === 'ca_products') {
@@ -117,12 +138,17 @@ export function AppProvider({ children }) {
           setTheme(e.newValue);
           document.documentElement.setAttribute('data-theme', e.newValue);
         }
+      } else if (e.key === 'ca_tables') {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) setTables(parsed);
+        } catch (err) {}
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
-    
-    // Set up a helper interval to sync changes in KDS/menu in the same tab (like the legacy code)
+
+    // Poll same-tab changes
     const interval = setInterval(() => {
       try {
         const freshProds = JSON.parse(localStorage.getItem('ca_products'));
@@ -137,6 +163,10 @@ export function AppProvider({ children }) {
         if (freshPayments && JSON.stringify(freshPayments) !== JSON.stringify(payments)) {
           setPayments(freshPayments);
         }
+        const freshTables = JSON.parse(localStorage.getItem('ca_tables'));
+        if (freshTables && JSON.stringify(freshTables) !== JSON.stringify(tables)) {
+          setTables(freshTables);
+        }
       } catch (err) {}
     }, 1500);
 
@@ -144,7 +174,7 @@ export function AppProvider({ children }) {
       window.removeEventListener('storage', handleStorageChange);
       clearInterval(interval);
     };
-  }, [products, orders, payments]);
+  }, [products, orders, payments, tables]);
 
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -153,22 +183,26 @@ export function AppProvider({ children }) {
     localStorage.setItem('ca_theme', next);
   };
 
-  const addToCart = (productId) => {
+  const addToCart = (productId, customization = null) => {
     const prod = products.find(p => p.id === productId);
     if (!prod || prod.avail === false) return;
 
     setCart(prev => {
-      const key = prod.id;
+      const surcharge = customization?.surcharge || 0;
+      const key = customization
+        ? `${prod.id}-${customization.size}-${customization.sugar}-${customization.milk}-${customization.extraShot}-${customization.notes}`
+        : prod.id;
       const existing = prev[key];
+      const cartProduct = customization
+        ? { ...prod, cartKey: key, price: prod.price + surcharge, customization }
+        : { ...prod, cartKey: key };
       const updated = {
         ...prev,
         [key]: {
-          product: prod,
+          product: cartProduct,
           qty: existing ? existing.qty + 1 : 1
         }
       };
-      
-      // Save pending cart representation to localstorage
       savePendingCartToLocalStorage(updated, tableNum);
       return updated;
     });
@@ -208,7 +242,8 @@ export function AppProvider({ children }) {
       name: currentCart[key].product.name,
       emoji: currentCart[key].product.emoji,
       qty: currentCart[key].qty,
-      price: currentCart[key].product.price
+      price: currentCart[key].product.price,
+      customization: currentCart[key].product.customization || null
     }));
     const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
     const serviceCharge = Math.round(subtotal * 0.05);
@@ -252,10 +287,41 @@ export function AppProvider({ children }) {
     localStorage.setItem('ca_users', JSON.stringify(newUsersList));
   };
 
+  // Update the full tables array and persist
+  const updateTables = (newTables) => {
+    const sorted = [...newTables].sort((a, b) => a - b);
+    setTables(sorted);
+    localStorage.setItem('ca_tables', JSON.stringify(sorted));
+  };
+
+  // Add one new table (next number after max)
+  const addTable = () => {
+    const nextNum = tables.length > 0 ? Math.max(...tables) + 1 : 1;
+    if (nextNum > 100) { alert('Maximum 100 tables supported.'); return; }
+    updateTables([...tables, nextNum]);
+  };
+
+  // Remove the last table (highest number)
+  const removeLastTable = () => {
+    if (tables.length === 0) return;
+    if (tables.length === 1) { alert('At least 1 table must remain.'); return; }
+    const sorted = [...tables].sort((a, b) => a - b);
+    updateTables(sorted.slice(0, -1));
+  };
+
+  // Delete a specific table by its number
+  const deleteTable = (num) => {
+    if (tables.length === 1) { alert('At least 1 table must remain.'); return; }
+    updateTables(tables.filter(t => t !== num));
+  };
+
   return (
     <AppContext.Provider value={{
       theme, toggleTheme,
       tableNum, setTableNum,
+      tables, updateTables, addTable, removeLastTable, deleteTable,
+      // legacy shim so old code reading tableCount still works
+      tableCount: tables.length,
       cart, setCart, addToCart, removeFromCart, changeCartQty, clearCart,
       products, updateProducts,
       orders, updateOrders,

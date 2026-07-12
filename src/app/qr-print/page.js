@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { useApp } from '@/context/AppContext';
 
 export default function QRPrintPage() {
+  const { tables: configuredTables } = useApp();
   const [siteUrl, setSiteUrl] = useState('');
   const [generated, setGenerated] = useState(false);
   const [tables, setTables] = useState([]);
@@ -27,13 +29,10 @@ export default function QRPrintPage() {
     }
     url = url.replace(/\/$/, ''); // Remove trailing slash
 
-    const list = [];
-    for (let i = 1; i <= 20; i++) {
-      list.push({
-        num: i,
-        link: `${url}/welcome?table=${i}`
-      });
-    }
+    const list = configuredTables.map(num => ({
+      num,
+      link: `${url}/?table=${num}`
+    }));
     setTables(list);
     setGenerated(true);
   };
@@ -151,7 +150,7 @@ export default function QRPrintPage() {
 
       <div className="header">
         <h1>☕ <em>Coffee-r</em> Attokahon</h1>
-        <p>Generate &amp; print QR codes for all 20 tables</p>
+        <p>Generate &amp; print QR codes for all {configuredTables.length} tables</p>
       </div>
 
       <div className="url-box">

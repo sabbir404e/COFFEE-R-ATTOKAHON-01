@@ -7,7 +7,6 @@ import { QRCodeSVG } from 'qrcode.react';
 import Link from 'next/link';
 
 const METHODS = {
-  sslcommerz: { name: 'Pay Online', num: 'Visa/Master/Mobile', icon: '💳' },
   bkash:  { name: 'bKash (Manual)',  num: '01712-345678', icon: '📱' },
   nagad:  { name: 'Nagad (Manual)',  num: '01812-345678', icon: '🪙' },
   rocket: { name: 'Rocket (Manual)', num: '01512-345678', icon: '🚀' },
@@ -19,7 +18,7 @@ export default function PaymentPage() {
 
   const [cart, setCart] = useState(null);
   const [mounted, setMounted] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState('sslcommerz');
+  const [selectedMethod, setSelectedMethod] = useState('bkash');
   const [timeLeft, setTimeLeft] = useState(600);
   const [processing, setProcessing] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState(null);
@@ -63,30 +62,7 @@ export default function PaymentPage() {
     setProcessing(true);
     clearInterval(timerRef.current);
 
-    if (selectedMethod === 'sslcommerz') {
-      try {
-        const response = await fetch('/api/ssl-payment/init', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amount: cart.total,
-            tableNum: cart.tableNum,
-          }),
-        });
-        const data = await response.json();
-        if (data.url) {
-          window.location.href = data.url;
-        } else {
-          alert(data.error || 'Failed to initialize payment gateway.');
-          setProcessing(false);
-        }
-      } catch (err) {
-        console.error('Payment initiation error:', err);
-        alert('An error occurred while connecting to the payment gateway.');
-        setProcessing(false);
-      }
-      return;
-    }
+
 
     setTimeout(() => {
       const pid = parseInt(localStorage.getItem('ca_pid') || '1');
@@ -132,9 +108,20 @@ export default function PaymentPage() {
     }, 1700);
   };
 
-  const qrPayload = cart
-    ? `${METHODS[selectedMethod].name}|MERCHANT:${METHODS[selectedMethod].num}|AMOUNT:${cart?.total}|REF:CAFE-${Date.now()}`
-    : '';
+  const getQRPayload = () => {
+    if (!cart) return '';
+    const num = METHODS[selectedMethod].num.replace('-', '');
+    const amt = cart.total;
+    const ref = `CAFE-${Date.now()}`;
+    
+    if (selectedMethod === 'bkash') return `bkash://payment?merchant=${num}&amount=${amt}&reference=${ref}`;
+    if (selectedMethod === 'nagad') return `nagad://payment?merchant=${num}&amount=${amt}&reference=${ref}`;
+    if (selectedMethod === 'rocket') return `rocket://payment?merchant=${num}&amount=${amt}&reference=${ref}`;
+    
+    return `${METHODS[selectedMethod].name}|MERCHANT:${num}|AMOUNT:${amt}`;
+  };
+
+  const qrPayload = getQRPayload();
 
   if (!mounted || !cart) return null;
 
@@ -239,20 +226,10 @@ export default function PaymentPage() {
               ))}
             </div>
 
-            {selectedMethod === 'sslcommerz' ? (
-              <div className="qr-card">
-                <p className="qr-instruction" style={{ fontSize: '14px' }}>
-                  You will be redirected to the secure <strong>SSLCommerz</strong> payment gateway to complete your transaction using Cards (Visa/Mastercard) or Mobile Banking (bKash/Nagad/Rocket).
-                </p>
-                <div style={{ fontSize: '48px', margin: '20px 0' }}>💳</div>
-                <div className="qr-timer" style={{ fontSize: '13px' }}>
-                  Please complete the payment session promptly to avoid session expiry.
-                </div>
-              </div>
-            ) : (
+
               <div className="qr-card">
                 <p className="qr-instruction">
-                  Open <strong>{METHODS[selectedMethod].name}</strong> → Scan QR → Enter ৳{cart.total} → Send Money
+                  Scan with your <strong>{METHODS[selectedMethod].name.split(' ')[0]}</strong> app to auto-fill the number and amount.
                 </p>
                 <div className="qr-box">
                   <QRCodeSVG value={qrPayload} size={180} level="M" />
@@ -264,14 +241,9 @@ export default function PaymentPage() {
                 </div>
                 <div className="qr-timer">QR expires in <span>{timeLeft > 0 ? fmtTime(timeLeft) : 'Expired'}</span></div>
               </div>
-            )}
 
             <div className="confirm-note">
-              {selectedMethod === 'sslcommerz' ? (
-                <>Click <strong>Pay via SSLCommerz</strong> below to open the payment page. Once successfully paid, your order will be sent to the kitchen.</>
-              ) : (
-                <>After completing the payment in your app, tap <strong>Confirm Payment</strong> below to place your order and send it to the kitchen.</>
-              )}
+              After completing the payment in your app, tap <strong>Confirm Payment</strong> below to place your order and send it to the kitchen.
             </div>
 
             {processing && (
@@ -281,7 +253,7 @@ export default function PaymentPage() {
             )}
 
             <button className="btn-confirm" disabled={processing} onClick={confirmPayment}>
-              {processing ? 'Processing…' : selectedMethod === 'sslcommerz' ? 'Pay via SSLCommerz →' : 'Confirm Payment →'}
+              {processing ? 'Processing…' : 'Confirm Payment →'}
             </button>
           </>
         ) : (

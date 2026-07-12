@@ -9,8 +9,6 @@ export default function Topbar({
   showBack = false,
   backUrl = '',
   onBackClick = null,
-  showTrackOrder = false,
-  onTrackOrderClick = null,
   showCart = false,
   onCartClick = null,
   showPrint = false,
@@ -64,12 +62,7 @@ export default function Topbar({
           </button>
         )}
 
-        {showTrackOrder && (
-          <button className="track-nav-btn" onClick={onTrackOrderClick}>
-            <div className="track-nav-dot"></div>
-            <span>Track Order</span>
-          </button>
-        )}
+
 
         <div className="theme-toggle-container" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span className="theme-label" style={{ fontSize: '12px', color: 'var(--muted)' }}>🌙</span>
@@ -173,37 +166,7 @@ export default function Topbar({
           font-weight: 700;
           border: 1px solid var(--border-h);
         }
-        .track-nav-btn {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          background: var(--pill-bg);
-          border: 1px solid var(--border-h);
-          border-radius: 20px;
-          padding: 7px 14px;
-          font-size: 12px;
-          font-weight: 600;
-          color: var(--gold);
-          cursor: pointer;
-          transition: all 0.2s;
-          white-space: nowrap;
-        }
-        .track-nav-btn:hover {
-          background: rgba(200, 148, 56, 0.22);
-          border-color: var(--gold);
-        }
-        .track-nav-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: var(--gold);
-          flex-shrink: 0;
-          animation: tndot 1.8s ease-in-out infinite;
-        }
-        @keyframes tndot {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
+
         .icon-btn {
           background: none;
           border: 1px solid var(--border);
@@ -220,7 +183,6 @@ export default function Topbar({
         }
         @media (max-width: 480px) {
           .theme-label { display: none; }
-          .track-nav-btn span { display: none; }
         }
       `}</style>
     </div>

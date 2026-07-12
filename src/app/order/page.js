@@ -1,22 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import Link from 'next/link';
 
-const ORDER_FLOW = ['paid','preparing','ready','served'];
-const TS_META = {
-  paid:      { icon:'💳', label:'Received',  msg:'Order received — kitchen starts soon.' },
-  preparing: { icon:'👨‍🍳', label:'Preparing', msg:'Being prepared right now. Hang tight!' },
-  ready:     { icon:'✅', label:'Ready',      msg:'Ready! A staff member will bring it to you.' },
-  served:    { icon:'🎉', label:'Served',     msg:'Served. Enjoy your order!' },
-};
+
 
 function OrderPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { toggleTheme, products, addToCart, removeFromCart, changeCartQty, cart, clearCart, tableNum, setTableNum } = useApp();
+  const { toggleTheme, products, addToCart, removeFromCart, changeCartQty, cart, clearCart, tableNum, setTableNum, tables } = useApp();
 
   const urlTable = parseInt(searchParams.get('table'));
   const [step, setStep] = useState('table'); // 'table' | 'menu' | 'success'
@@ -26,18 +20,18 @@ function OrderPageContent() {
   const [menuCat, setMenuCat] = useState('all');
   const [cartOpen, setCartOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [trackOpen, setTrackOpen] = useState(false);
-  const [trackOrders, setTrackOrders] = useState([]);
   const [lastOrderId, setLastOrderId] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [customization, setCustomization] = useState({ size: 'Regular', sugar: '100%', milk: 'Full Cream', extraShot: false, notes: '' });
 
   useEffect(() => {
     setMounted(true);
-    if (urlTable && urlTable >= 1 && urlTable <= 20) {
+    if (urlTable && tables.includes(urlTable)) {
       setLocalTable(urlTable);
       setTableNum(urlTable);
       setStep('menu');
     }
-  }, [urlTable, setTableNum]);
+  }, [urlTable, setTableNum, tables]);
 
   useEffect(() => {
     if (lastOrderId) {
@@ -45,25 +39,10 @@ function OrderPageContent() {
     }
   }, [lastOrderId]);
 
-  const refreshTrack = useCallback(() => {
-    try {
-      const all = JSON.parse(localStorage.getItem('ca_paid_orders') || '[]');
-      const my = localTable ? all.filter(o => o.table === localTable) : all;
-      setTrackOrders(my.slice(0, 4));
-    } catch {}
-  }, [localTable]);
-
-  useEffect(() => {
-    if (!trackOpen) return;
-    refreshTrack();
-    const iv = setInterval(refreshTrack, 3000);
-    return () => clearInterval(iv);
-  }, [trackOpen, refreshTrack]);
 
   const confirmTable = () => {
     const val = parseInt(customTableInput);
-    if (!val || val < 1) { alert('Please select a table number.'); return; }
-    if (val > 20) { alert('Table number cannot be more than 20.'); return; }
+    if (!val || !tables.includes(val)) { alert('Please select an available table number.'); return; }
     setLocalTable(val);
     setTableNum(val);
     setStep('menu');
@@ -76,15 +55,30 @@ function OrderPageContent() {
   const cats = ['all', ...new Set(products.map(p => p.cat))];
   const filtered = menuCat === 'all' ? products : products.filter(p => p.cat === menuCat);
 
+  const openProductDetails = (product) => {
+    if (product.avail === false) return;
+    setSelectedProduct(product);
+    setCustomization({ size: 'Regular', sugar: '100%', milk: 'Full Cream', extraShot: false, notes: '' });
+  };
+
+  const addConfiguredProduct = () => {
+    if (!selectedProduct) return;
+    const surcharge = (customization.size === 'Large' ? 30 : 0) + (customization.extraShot ? 20 : 0);
+    addToCart(selectedProduct.id, { ...customization, surcharge });
+    setSelectedProduct(null);
+  };
+
   const placeOrder = () => {
     const keys = Object.keys(cart).filter(k => cart[k].qty > 0);
     if (!keys.length) return;
     const items = keys.map(k => ({
       name: cart[k].product.name,
       emoji: cart[k].product.emoji,
+      image: cart[k].product.image,
       qty: cart[k].qty,
       price: cart[k].product.price,
       id: cart[k].product.id,
+      customization: cart[k].product.customization || null,
     }));
     const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
     const serviceCharge = Math.round(subtotal * 0.05);
@@ -129,10 +123,12 @@ function OrderPageContent() {
         .cat-pill.active{background:var(--gold);color:#fff;border-color:var(--gold);font-weight:600;}
         .cat-pill:hover:not(.active){border-color:var(--border-h);color:var(--text);}
         .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-bottom:32px;}
-        .menu-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;display:flex;flex-direction:column;transition:all 0.2s;box-shadow:var(--shadow);}
+        .menu-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;display:flex;flex-direction:column;transition:all 0.2s;box-shadow:var(--shadow);cursor:pointer;}
         .menu-card:hover{border-color:var(--border-h);transform:translateY(-2px);}
         .menu-card.sold-out{opacity:0.55;}
         .menu-card .emoji{font-size:34px;margin-bottom:10px;}
+        .menu-card .product-img{width:100%;height:100px;border-radius:10px;margin-bottom:12px;overflow:hidden;background:var(--bg2);}
+        .menu-card .product-img img{width:100%;height:100%;object-fit:cover;display:block;}
         .menu-card .name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;}
         .menu-card .cat{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;}
         .menu-card .price{font-size:14px;color:var(--gold);font-weight:600;margin-bottom:8px;}
@@ -149,9 +145,6 @@ function OrderPageContent() {
         .cart-btn{display:flex;align-items:center;gap:8px;background:var(--gold);color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;}
         .cart-btn:hover{background:var(--gold-h);}
         .cart-count{background:var(--card);color:var(--gold);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:1px solid var(--border-h);}
-        .track-nav-btn{display:flex;align-items:center;gap:6px;background:var(--pill-bg);border:1px solid var(--border-h);border-radius:20px;padding:7px 14px;font-size:12px;font-weight:600;color:var(--gold);cursor:pointer;transition:all 0.2s;white-space:nowrap;}
-        .track-nav-btn:hover{background:rgba(200,148,56,0.22);border-color:var(--gold);}
-        .track-nav-dot{width:6px;height:6px;border-radius:50%;background:var(--gold);flex-shrink:0;animation:ftpulse 1.8s ease-in-out infinite;}
 
         .cart-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.70);z-index:200;animation:fadeIn 0.2s;}
         .cart-drawer{position:fixed;right:0;top:0;bottom:0;width:100%;max-width:420px;background:var(--card);border-left:1px solid var(--border);z-index:201;display:flex;flex-direction:column;animation:slideIn 0.3s ease;box-shadow:var(--shadow);}
@@ -174,39 +167,12 @@ function OrderPageContent() {
         .empty-cart{text-align:center;padding:40px 20px;color:var(--muted);}
         .empty-cart .e-icon{font-size:44px;margin-bottom:12px;}
 
-        .track-sheet{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
-        .track-inner{background:var(--card);border-radius:20px 20px 0 0;border:1px solid var(--border);padding:24px 20px 36px;width:100%;max-width:520px;animation:sheetUp 0.35s cubic-bezier(0.16,1,0.3,1) both;max-height:85vh;overflow-y:auto;}
-        .track-handle{width:36px;height:4px;background:var(--border-h);border-radius:2px;margin:0 auto 20px;}
-        .track-inner h3{font-family:var(--font-playfair),'Playfair Display',serif;font-size:20px;margin-bottom:4px;}
-        .ts-refresh-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-bottom:14px;}
-        .ts-rdot{width:5px;height:5px;border-radius:50%;background:var(--gold);animation:ftpulse 1.8s ease-in-out infinite;}
-        .ts-order-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px;}
-        .ts-order-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
-        .ts-order-id{font-weight:700;font-size:14px;color:var(--gold);}
-        .ts-order-time{font-size:11px;color:var(--muted);}
-        .ts-stepper{display:flex;align-items:flex-start;gap:0;margin-bottom:10px;position:relative;}
-        .ts-stepper::before{content:'';position:absolute;top:14px;left:14px;right:14px;height:2px;background:var(--border);z-index:0;}
-        .ts-progress{position:absolute;top:14px;left:14px;height:2px;background:var(--gold);z-index:1;transition:width 0.5s cubic-bezier(0.16,1,0.3,1);}
-        .ts-step{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;position:relative;z-index:2;}
-        .ts-dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:11px;transition:all 0.3s;flex-shrink:0;}
-        .ts-step.done .ts-dot{background:var(--gold);border-color:var(--gold);color:#fff;}
-        .ts-step.active .ts-dot{background:var(--gold);border-color:var(--gold);color:#fff;box-shadow:0 0 0 5px rgba(200,148,56,0.2);animation:ftpulse 1.6s ease-in-out infinite;}
-        .ts-step-lbl{font-size:9px;color:var(--muted);letter-spacing:0.5px;text-align:center;}
-        .ts-step.done .ts-step-lbl,.ts-step.active .ts-step-lbl{color:var(--text-2);}
-        .ts-msg{font-size:12px;color:var(--text-2);padding:8px 10px;background:rgba(200,148,56,0.07);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;line-height:1.6;}
-        .ts-msg.ready{background:rgba(42,114,72,0.12);border-color:rgba(42,114,72,0.25);color:#60C890;}
-        .ts-items{font-size:12px;color:var(--muted);}
-        .ts-empty{text-align:center;padding:32px 20px;color:var(--muted);font-size:14px;line-height:1.8;}
-        .ts-close{width:100%;padding:12px;background:none;border:1px solid var(--border);border-radius:12px;color:var(--muted);font-size:14px;cursor:pointer;margin-top:8px;transition:all 0.2s;}
-        .ts-close:hover{border-color:var(--border-h);color:var(--text);}
-        .success-screen{min-height:calc(100vh - 58px);display:flex;align-items:center;justify-content:center;padding:24px;}
-        .success-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:36px 28px;max-width:360px;text-align:center;animation:fadeIn 0.4s;box-shadow:var(--shadow);}
-        .s-icon{font-size:56px;margin-bottom:14px;}
-        .success-card h2{font-family:var(--font-playfair),'Playfair Display',serif;font-size:26px;margin-bottom:8px;}
-        .success-card p{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:22px;}
-        .order-badge{display:inline-block;background:var(--pill-bg);border:1px solid var(--border-h);border-radius:10px;padding:10px 20px;font-size:14px;color:var(--gold);margin-bottom:22px;}
+        .product-modal-overlay{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.68);display:flex;align-items:flex-end;justify-content:center;padding:16px;animation:fadeIn .2s;}
+        .product-modal{width:100%;max-width:560px;max-height:88vh;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:22px;padding:16px 20px 20px;box-shadow:var(--shadow);animation:sheetUp .28s ease both;}
+        .product-modal-handle{width:38px;height:4px;background:var(--border-h);border-radius:3px;margin:0 auto 18px;}
+        .product-modal-head{display:flex;align-items:center;gap:14px;margin-bottom:20px;}.product-modal-emoji{font-size:38px;}.product-modal-head h2{font-family:var(--font-playfair),'Playfair Display',serif;font-size:25px;margin:0;}.product-modal-price{color:var(--gold);font-size:17px;font-weight:700;margin-top:3px;}
+        .option-group{margin:16px 0;}.option-label{display:block;font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--muted);margin-bottom:8px;}.option-list{display:flex;gap:8px;flex-wrap:wrap;}.option-btn{padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--text-2);font-size:13px;font-weight:600;cursor:pointer;}.option-btn.selected{border-color:var(--gold);background:var(--gold);color:#fff;}.product-notes{width:100%;min-height:72px;resize:vertical;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:10px 12px;outline:none;}.product-notes:focus{border-color:var(--gold);}.product-modal-actions{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-top:22px;}.product-modal-actions button{margin:0;}.product-cancel{border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text-2);font-size:14px;font-weight:600;cursor:pointer;}
         @media(max-width:600px){.main{padding:16px;}.menu-grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr));}.cart-drawer{max-width:100%;}}
-        @media(max-width:480px){.theme-label{display:none;}.track-nav-btn span{display:none;}}
       `}</style>
 
       {step === 'table' && (
@@ -223,7 +189,7 @@ function OrderPageContent() {
             <h2>Select Your Table</h2>
             <p>Choose your table number to start ordering</p>
             <div className="table-grid">
-              {Array.from({length:20},(_,i)=>i+1).map(n => (
+              {tables.map(n => (
                 <button key={n} className={`t-btn${selectedBtn===n?' sel':''}`}
                   onClick={() => { setSelectedBtn(n); setCustomTableInput(String(n)); }}>{n}</button>
               ))}
@@ -231,7 +197,7 @@ function OrderPageContent() {
             <div className="or-line">or enter manually</div>
             <input className="custom-inp" type="number" value={customTableInput}
               onChange={e => setCustomTableInput(e.target.value)}
-              placeholder="Table number (1–20)..." min="1" max="20" />
+              placeholder="Enter an available table number..." min="1" />
             <button className="btn-primary" onClick={confirmTable}>Start Ordering →</button>
           </div>
         </div>
@@ -239,18 +205,12 @@ function OrderPageContent() {
 
       {step === 'menu' && (
         <div className="main-app">
-          <div className="topbar">
+          <div className="topbar" style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'16px 20px',borderBottom:'1px solid var(--border)'}}>
             <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
               <button onClick={() => setStep('table')} style={{background:'none',border:'none',color:'var(--muted)',fontSize:'18px',cursor:'pointer',padding:0,lineHeight:1}}>←</button>
-              <Link href="/" className="brand" style={{ textDecoration: 'none' }}><em>Coffee-r</em> Attokahon</Link>
+              <Link href="/" className="brand" style={{ textDecoration: 'none', fontFamily:'var(--font-playfair)', fontWeight:700, fontSize:'20px' }}><em>Coffee-r</em> Attokahon</Link>
             </div>
-            <div className="topbar-right">
-              <button className="track-nav-btn" onClick={() => setTrackOpen(true)}>
-                <div className="track-nav-dot" /><span>Track Order</span>
-              </button>
-              <span className="theme-label">🌙</span>
-              <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme" />
-              <span className="theme-label">☀️</span>
+            <div className="topbar-right" style={{display:'flex',alignItems:'center',gap:'12px'}}>
               <button className="cart-btn" onClick={() => setCartOpen(true)}>
                 🛒 Cart <span className="cart-count">{cartCount}</span>
               </button>
@@ -275,8 +235,12 @@ function OrderPageContent() {
                 const avail = p.avail !== false;
                 const inCart = cart[p.id]?.qty || 0;
                 return (
-                  <div className={`menu-card${avail?'':' sold-out'}`} key={p.id}>
-                    <div className="emoji">{p.emoji || '☕'}</div>
+                  <div className={`menu-card${avail?'':' sold-out'}`} key={p.id} onClick={() => openProductDetails(p)}>
+                    {p.image ? (
+                      <div className="product-img"><img src={p.image} alt={p.name} loading="lazy" /></div>
+                    ) : (
+                      <div className="emoji">{p.emoji || '☕'}</div>
+                    )}
                     {!avail && <div className="sold-out-badge">Sold Out</div>}
                     <div className="name">{p.name}</div>
                     <div className="cat">{p.cat}</div>
@@ -285,12 +249,12 @@ function OrderPageContent() {
                     {avail ? (
                       inCart > 0 ? (
                         <div className="in-cart-ctrl">
-                          <button className="qty-btn" onClick={() => removeFromCart(p.id)}>−</button>
+                          <button className="qty-btn" onClick={e => { e.stopPropagation(); removeFromCart(p.id); }}>−</button>
                           <span className="qty-num">{inCart}</span>
-                          <button className="qty-btn" onClick={() => addToCart(p.id)}>+</button>
+                          <button className="qty-btn" onClick={e => { e.stopPropagation(); openProductDetails(p); }}>+</button>
                         </div>
                       ) : (
-                        <button className="add-btn" onClick={() => addToCart(p.id)}>Add to cart +</button>
+                        <button className="add-btn" onClick={e => { e.stopPropagation(); openProductDetails(p); }}>Customize &amp; add +</button>
                       )
                     ) : (
                       <button className="add-btn sold-out-btn" disabled>Sold Out</button>
@@ -307,9 +271,6 @@ function OrderPageContent() {
         <div className="main-app">
           <div className="topbar">
             <Link href="/" className="brand" style={{ textDecoration: 'none' }}><em>Coffee-r</em> Attokahon</Link>
-            <div className="topbar-right">
-              <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle" />
-            </div>
           </div>
           <div className="success-screen">
             <div className="success-card">
@@ -318,6 +279,58 @@ function OrderPageContent() {
               <p>Your payment was confirmed and the kitchen has received your order.</p>
               {lastOrderId && <div className="order-badge">Order #{lastOrderId}</div>}
               <button className="btn-primary" onClick={() => { setStep('menu'); setLastOrderId(null); }}>Order More</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedProduct && (
+        <div className="product-modal-overlay" onClick={e => { if (e.target === e.currentTarget) setSelectedProduct(null); }}>
+          <div className="product-modal" role="dialog" aria-modal="true" aria-labelledby="product-details-title">
+            <div className="product-modal-handle" />
+            <div className="product-modal-head">
+              {selectedProduct.image ? (
+                <div className="product-modal-img"><img src={selectedProduct.image} alt={selectedProduct.name} style={{ width: '64px', height: '64px', borderRadius: '14px', objectFit: 'cover' }} /></div>
+              ) : (
+                <div className="product-modal-emoji">{selectedProduct.emoji || '☕'}</div>
+              )}
+              <div>
+                <h2 id="product-details-title">{selectedProduct.name}</h2>
+                <div className="product-modal-price">৳{selectedProduct.price + (customization.size === 'Large' ? 30 : 0) + (customization.extraShot ? 20 : 0)}</div>
+              </div>
+            </div>
+
+            <div className="option-group">
+              <span className="option-label">SIZE</span>
+              <div className="option-list">
+                {['Regular', 'Large'].map(size => <button type="button" key={size} className={`option-btn${customization.size === size ? ' selected' : ''}`} onClick={() => setCustomization(current => ({ ...current, size }))}>{size}{size === 'Large' ? ' +৳30' : ''}</button>)}
+              </div>
+            </div>
+            <div className="option-group">
+              <span className="option-label">SUGAR LEVEL</span>
+              <div className="option-list">
+                {['0%', '30%', '50%', '100%', '150%'].map(sugar => <button type="button" key={sugar} className={`option-btn${customization.sugar === sugar ? ' selected' : ''}`} onClick={() => setCustomization(current => ({ ...current, sugar }))}>{sugar}</button>)}
+              </div>
+            </div>
+            <div className="option-group">
+              <span className="option-label">MILK TYPE</span>
+              <div className="option-list">
+                {['Full Cream', 'Oat', 'Soy', 'Skim', 'None'].map(milk => <button type="button" key={milk} className={`option-btn${customization.milk === milk ? ' selected' : ''}`} onClick={() => setCustomization(current => ({ ...current, milk }))}>{milk}</button>)}
+              </div>
+            </div>
+            <div className="option-group">
+              <span className="option-label">EXTRA SHOT (+৳20)</span>
+              <div className="option-list">
+                {[false, true].map(extraShot => <button type="button" key={String(extraShot)} className={`option-btn${customization.extraShot === extraShot ? ' selected' : ''}`} onClick={() => setCustomization(current => ({ ...current, extraShot }))}>{extraShot ? 'Yes +৳20' : 'No'}</button>)}
+              </div>
+            </div>
+            <div className="option-group">
+              <label className="option-label" htmlFor="product-notes">SPECIAL NOTES</label>
+              <textarea id="product-notes" className="product-notes" value={customization.notes} onChange={e => setCustomization(current => ({ ...current, notes: e.target.value }))} placeholder="Allergies, special requests..." />
+            </div>
+            <div className="product-modal-actions">
+              <button type="button" className="product-cancel" onClick={() => setSelectedProduct(null)}>Cancel</button>
+              <button type="button" className="btn-primary" onClick={addConfiguredProduct}>Add to Cart</button>
             </div>
           </div>
         </div>
@@ -337,13 +350,17 @@ function OrderPageContent() {
                 <div className="empty-cart"><div className="e-icon">🛒</div><p>Your cart is empty.</p></div>
               ) : (
                 cartItems.map(({ product, qty }) => (
-                  <div className="cart-row" key={product.id}>
-                    <span className="c-emoji">{product.emoji}</span>
+                  <div className="cart-row" key={product.cartKey || product.id}>
+                    {product.image ? (
+                      <img src={product.image} alt={product.name} style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }} />
+                    ) : (
+                      <span className="c-emoji" style={{fontSize:'20px'}}>{product.emoji}</span>
+                    )}
                     <span className="c-name">{product.name}</span>
                     <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
-                      <button className="qty-btn" style={{width:'24px',height:'24px',fontSize:'14px'}} onClick={() => removeFromCart(product.id)}>−</button>
+                      <button className="qty-btn" style={{width:'24px',height:'24px',fontSize:'14px'}} onClick={() => removeFromCart(product.cartKey || product.id)}>−</button>
                       <span className="qty-num">{qty}</span>
-                      <button className="qty-btn" style={{width:'24px',height:'24px',fontSize:'14px'}} onClick={() => addToCart(product.id)}>+</button>
+                      <button className="qty-btn" style={{width:'24px',height:'24px',fontSize:'14px'}} onClick={() => changeCartQty(product.cartKey || product.id, 1)}>+</button>
                     </div>
                     <span className="c-price">৳{product.price * qty}</span>
                   </div>
@@ -358,51 +375,7 @@ function OrderPageContent() {
         </>
       )}
 
-      {/* Track Sheet */}
-      {trackOpen && (
-        <div className="track-sheet" onClick={e => { if (e.target === e.currentTarget) setTrackOpen(false); }}>
-          <div className="track-inner">
-            <div className="track-handle" />
-            <h3>Your Orders</h3>
-            <p style={{fontSize:'12px',color:'var(--muted)',marginBottom:'18px'}}>Tracking Table {localTable} live.</p>
-            <div className="ts-refresh-row"><div className="ts-rdot" /><span>Auto-updating every 3 seconds</span></div>
-            {trackOrders.length === 0 ? (
-              <div className="ts-empty">No orders found for this table.<br /><small>Place an order first.</small></div>
-            ) : (
-              trackOrders.map(o => {
-                const idx = ORDER_FLOW.indexOf(o.status);
-                const meta = TS_META[o.status] || TS_META.paid;
-                const pct = idx <= 0 ? 0 : Math.round((idx / (ORDER_FLOW.length - 1)) * 100);
-                const fmtT = t => { try{return new Date(t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}catch{return '';} };
-                return (
-                  <div className="ts-order-card" key={o.id}>
-                    <div className="ts-order-head">
-                      <span className="ts-order-id">Order #{o.id}</span>
-                      <span className="ts-order-time">{fmtT(o.time)}</span>
-                    </div>
-                    <div className="ts-stepper">
-                      <div className="ts-progress" style={{width:`calc(${pct}% - 28px)`}} />
-                      {ORDER_FLOW.map((s, i) => {
-                        const sm = TS_META[s];
-                        const cls = i < idx ? 'done' : i === idx ? 'active' : 'pending';
-                        return (
-                          <div className={`ts-step ${cls}`} key={s}>
-                            <div className="ts-dot">{i < idx ? '✓' : sm.icon}</div>
-                            <div className="ts-step-lbl">{sm.label}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className={`ts-msg${o.status==='ready'?' ready':''}`}>{meta.msg}</div>
-                    <div className="ts-items">{o.items.map(i=>`${i.qty}× ${i.name}`).join(' · ')}</div>
-                  </div>
-                );
-              })
-            )}
-            <button className="ts-close" onClick={() => setTrackOpen(false)}>Close</button>
-          </div>
-        </div>
-      )}
+
     </>
   );
 }

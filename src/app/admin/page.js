@@ -13,7 +13,7 @@ const readJson = (key, fallback) => {
 };
 
 export default function AdminPage() {
-  const { toggleTheme, products, updateProducts } = useApp();
+  const { toggleTheme, products, updateProducts, tables, addTable, deleteTable } = useApp();
   const [me, setMe] = useState(null);
   const [lUser, setLUser] = useState('');
   const [lPass, setLPass] = useState('');
@@ -37,6 +37,7 @@ export default function AdminPage() {
   const [pCat, setPCat] = useState('Coffee');
   const [pPrice, setPPrice] = useState('');
   const [pEmoji, setPEmoji] = useState('☕');
+  const [pImage, setPImage] = useState('');
   const [pDesc, setPDesc] = useState('');
   const [pAvail, setPAavail] = useState('1');
 
@@ -76,15 +77,21 @@ export default function AdminPage() {
     });
 
     const handleStorageChange = (e) => {
-      if (!e || !e.key || e.key === 'ca_paid_orders' || e.key === 'ca_payments') {
+      if (!e || !e.key || e.key === 'ca_paid_orders' || e.key === 'ca_payments' || e.key === 'ca_table_count') {
         loadAll();
       }
     };
     window.addEventListener('storage', handleStorageChange);
 
+    // Auto-refresh every 3 seconds for live table status
+    const pollInterval = setInterval(() => {
+      if (active) loadAll();
+    }, 3000);
+
     return () => {
       active = false;
       window.removeEventListener('storage', handleStorageChange);
+      clearInterval(pollInterval);
     };
   }, [loadAll]);
 
@@ -117,6 +124,7 @@ export default function AdminPage() {
         setPCat(p.cat);
         setPPrice(p.price);
         setPEmoji(p.emoji || '☕');
+        setPImage(p.image || '');
         setPDesc(p.desc || '');
         setPAavail(p.avail !== false ? '1' : '0');
       }
@@ -125,10 +133,41 @@ export default function AdminPage() {
       setPCat('Coffee');
       setPPrice('');
       setPEmoji('☕');
+      setPImage('');
       setPDesc('');
       setPAavail('1');
     }
     setOvProduct(true);
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 400;
+        let width = img.width;
+        let height = img.height;
+        if (width > height && width > MAX_SIZE) {
+          height *= MAX_SIZE / width;
+          width = MAX_SIZE;
+        } else if (height > MAX_SIZE) {
+          width *= MAX_SIZE / height;
+          height = MAX_SIZE;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        setPImage(dataUrl);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
   };
 
   const saveProduct = () => {
@@ -141,6 +180,7 @@ export default function AdminPage() {
       cat: pCat,
       price: parseInt(pPrice),
       emoji: pEmoji.trim() || '☕',
+      image: pImage,
       desc: pDesc.trim(),
       avail: pAvail === '1'
     };
@@ -215,76 +255,6 @@ export default function AdminPage() {
     setConfirmMsg(msg);
     setConfirmCallback(() => () => { cb(); setOvConfirm(false); });
     setOvConfirm(true);
-  };
-
-  const handleRefund = async (pay) => {
-    if (!pay.bankTranId) {
-      alert('Bank Transaction ID missing. Cannot refund this payment.');
-      return;
-    }
-    if (!confirm(`Are you sure you want to refund ৳${pay.amount} for Transaction ${pay.txnId}?`)) {
-      return;
-    }
-    
-    setRefunding(true);
-    try {
-      const response = await fetch('/api/ssl-payment/refund', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bankTranId: pay.bankTranId,
-          amount: pay.amount,
-          txnId: pay.txnId,
-        }),
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        alert('Refund processed successfully!');
-        
-        const refId = data.details?.refund_ref_id || pay.txnId;
-
-        // Update local payments record
-        const freshPayments = JSON.parse(localStorage.getItem('ca_payments') || '[]');
-        const updatedPayments = freshPayments.map(p => 
-          p.txnId === pay.txnId ? { ...p, status: 'refunded', refundRefId: refId } : p
-        );
-        setPayments(updatedPayments);
-        localStorage.setItem('ca_payments', JSON.stringify(updatedPayments));
-        
-        // Update local orders record
-        const freshOrders = JSON.parse(localStorage.getItem('ca_paid_orders') || '[]');
-        const updatedOrders = freshOrders.map(o => 
-          o.paymentId === pay.txnId ? { ...o, status: 'refunded' } : o
-        );
-        setOrders(updatedOrders);
-        localStorage.setItem('ca_paid_orders', JSON.stringify(updatedOrders));
-        
-        loadAll();
-      } else {
-        alert(data.error || 'Failed to process refund.');
-      }
-    } catch (err) {
-      console.error('Refund error:', err);
-      alert('An error occurred while communicating with the server.');
-    } finally {
-      setRefunding(false);
-    }
-  };
-
-  const handleRefundQuery = async (refundRefId) => {
-    try {
-      const response = await fetch(`/api/ssl-payment/refund-query?refund_ref_id=${refundRefId}`);
-      const data = await response.json();
-      if (data.success) {
-        alert(`Refund Details from SSLCommerz:\nStatus: ${data.details?.status || 'Processing'}\nReference: ${data.details?.refund_ref_id || refundRefId}\nAmount: ৳${data.details?.refund_amount || '—'}`);
-      } else {
-        alert(data.error || 'Failed to query refund status.');
-      }
-    } catch (err) {
-      console.error('Refund query error:', err);
-      alert('An error occurred while fetching refund status.');
-    }
   };
 
   if (!me) {
@@ -420,9 +390,9 @@ export default function AdminPage() {
             <button className={`nav-item${currentTab === 'products' ? ' active' : ''}`} onClick={() => setCurrentTab('products')}>🛍 Products</button>
             <button className={`nav-item${currentTab === 'orders' ? ' active' : ''}`} onClick={() => setCurrentTab('orders')}>📋 Orders</button>
             <button className={`nav-item${currentTab === 'payments' ? ' active' : ''}`} onClick={() => setCurrentTab('payments')}>💳 Payments</button>
+            <button className={`nav-item${currentTab === 'tables' ? ' active' : ''}`} onClick={() => setCurrentTab('tables')}>🪑 Tables</button>
             <button className={`nav-item${currentTab === 'accounts' ? ' active' : ''}`} onClick={() => setCurrentTab('accounts')}>👥 Accounts</button>
             <hr className="nav-sep" />
-            <button className="nav-item" onClick={() => window.open('/welcome', '_blank')}>👁 Preview Welcome</button>
             <button className="nav-item" onClick={() => window.open('/order', '_blank')}>🛒 Preview Menu</button>
             <button className="nav-item" onClick={() => window.open('/qr-print', '_blank')}>🖨 QR Code Printer</button>
           </nav>
@@ -507,9 +477,18 @@ export default function AdminPage() {
                       {products.map(p => (
                         <tr key={p.id}>
                           <td>
-                            <strong style={{ color: 'var(--text)' }}>{p.emoji || '☕'} {p.name}</strong>
-                            <br />
-                            <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{p.desc}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              {p.image ? (
+                                <img src={p.image} alt={p.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border)' }} />
+                              ) : (
+                                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'var(--bg2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>{p.emoji || '☕'}</div>
+                              )}
+                              <div>
+                                <strong style={{ color: 'var(--text)' }}>{p.name}</strong>
+                                <br />
+                                <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{p.desc}</span>
+                              </div>
+                            </div>
                           </td>
                           <td>{p.cat}</td>
                           <td style={{ color: 'var(--gold)', fontWeight: 600 }}>৳{p.price}</td>
@@ -571,7 +550,7 @@ export default function AdminPage() {
                 <div className="tbl-wrap">
                   <table>
                     <thead>
-                      <tr><th>TXN ID</th><th>Invoice</th><th>Table</th><th>Method</th><th>Amount</th><th>Status</th><th>Time</th><th>Actions</th></tr>
+                      <tr><th>TXN ID</th><th>Invoice</th><th>Table</th><th>Method</th><th>Amount</th><th>Status</th><th>Time</th></tr>
                     </thead>
                     <tbody>
                       {payments.map(p => (
@@ -587,33 +566,7 @@ export default function AdminPage() {
                             </span>
                           </td>
                           <td style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(p.time).toLocaleString('en-BD', { dateStyle: 'short', timeStyle: 'short' })}</td>
-                          <td>
-                            {p.method === 'SSLCommerz' && p.status !== 'refunded' ? (
-                              <button 
-                                className="btn-del" 
-                                style={{ padding: '3px 8px', fontSize: '11px' }} 
-                                disabled={refunding}
-                                onClick={() => handleRefund(p)}
-                              >
-                                {refunding ? 'Refundin...' : 'Refund'}
-                              </button>
-                            ) : p.status === 'refunded' ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <span style={{ fontSize: '11px', color: 'var(--muted)' }}>Refunded</span>
-                                {p.refundRefId && (
-                                  <button 
-                                    className="btn-edit" 
-                                    style={{ padding: '2px 6px', fontSize: '9px', width: 'fit-content' }} 
-                                    onClick={() => handleRefundQuery(p.refundRefId)}
-                                  >
-                                    Check Status
-                                  </button>
-                                )}
-                              </div>
-                            ) : (
-                              <span style={{ fontSize: '11px', color: 'var(--muted)' }}>—</span>
-                            )}
-                          </td>
+
                         </tr>
                       ))}
                     </tbody>
@@ -659,6 +612,119 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
+
+            {currentTab === 'tables' && (() => {
+              const activeByTable = {};
+              orders.forEach(o => {
+                if (o.table && o.status !== 'served' && o.status !== 'cancelled' && o.status !== 'failed') {
+                  if (!activeByTable[o.table]) activeByTable[o.table] = [];
+                  activeByTable[o.table].push(o);
+                }
+              });
+              return (
+                <div>
+                  <div className="toolbar">
+                    <div>
+                      <div className="pg-title">Tables</div>
+                      <div className="pg-sub" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <span>Manage dining tables · <strong style={{color:'var(--gold)'}}>{tables.length} total</strong></span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: 'var(--muted)' }}>
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--gold)', display: 'inline-block', animation: 'ftpulse 1.8s ease-in-out infinite' }} />
+                          Live · updates every 3s
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                        <span style={{ padding: '3px 12px', borderRadius: '20px', background: 'rgba(192,64,64,0.12)', border: '1px solid rgba(192,64,64,0.30)', fontSize: '11px', color: '#E08080', fontWeight: 600 }}>
+                          🔴 {Object.keys(activeByTable).length} occupied
+                        </span>
+                        <span style={{ padding: '3px 12px', borderRadius: '20px', background: 'rgba(42,114,72,0.12)', border: '1px solid rgba(42,114,72,0.30)', fontSize: '11px', color: '#60C890', fontWeight: 600 }}>
+                          🟢 {tables.filter(tNum => !activeByTable[tNum]).length} vacant
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      className="btn-save"
+                      style={{ minWidth: '118px', height: '40px', padding: '0 14px', marginBottom: 0, alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      onClick={addTable}
+                      disabled={tables.length >= 100}
+                      aria-label="Add Table"
+                      title="Add Table"
+                    >
+                      + Add Table
+                    </button>
+                  </div>
+
+                  {/* Live Table Status Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px' }}>
+                    {tables.map(tNum => {
+                      const active = activeByTable[tNum] || [];
+                      const hasOrders = active.length > 0;
+                      const latestStatus = hasOrders ? active[active.length - 1].status : null;
+                      const statusColors = {
+                        paid: { bg: 'rgba(200,148,56,0.10)', border: 'rgba(200,148,56,0.35)', dot: 'var(--gold)' },
+                        preparing: { bg: 'rgba(58,120,200,0.10)', border: 'rgba(58,120,200,0.35)', dot: '#6AABFF' },
+                        ready: { bg: 'rgba(42,114,72,0.12)', border: 'rgba(42,114,72,0.35)', dot: '#60C890' },
+                      };
+                      const sc = latestStatus ? (statusColors[latestStatus] || statusColors.paid) : null;
+                      return (
+                        <div key={tNum} style={{
+                          background: hasOrders ? sc.bg : 'var(--card)',
+                          border: `1px solid ${hasOrders ? sc.border : 'var(--border)'}`,
+                          borderRadius: '12px',
+                          padding: '14px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px',
+                          transition: 'all 0.2s',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '18px', fontWeight: 700 }}>T{tNum}</span>
+                            {hasOrders && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: sc.dot, display: 'inline-block', boxShadow: `0 0 6px ${sc.dot}` }} />}
+                          </div>
+                          <div style={{ fontSize: '11px', color: hasOrders ? 'var(--text-2)' : 'var(--muted)' }}>
+                            {hasOrders ? `${active.length} active order${active.length > 1 ? 's' : ''}` : 'Vacant'}
+                          </div>
+                          {hasOrders && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginTop: '2px' }}>
+                              {active.map(o => (
+                                <span key={o.id} style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '6px', background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--muted)' }}>
+                                  #{o.id} {o.status}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {!hasOrders && (
+                            <div style={{ fontSize: '10px', color: 'var(--border-h)', marginTop: '2px' }}>—</div>
+                          )}
+                          <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                            <a
+                              href={`/order?table=${tNum}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ fontSize: '10px', color: 'var(--gold)', textDecoration: 'none', background: 'rgba(200,148,56,0.10)', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(200,148,56,0.25)' }}
+                            >
+                              Open Menu →
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => confirmAction(
+                                hasOrders ? `Table ${tNum} has active orders. Delete it anyway?` : `Delete Table ${tNum}?`,
+                                () => deleteTable(tNum)
+                              )}
+                              disabled={tables.length <= 1}
+                              aria-label={`Delete Table ${tNum}`}
+                              style={{ border: '1px solid rgba(192,64,64,0.35)', borderRadius: '6px', background: 'rgba(192,64,64,0.10)', color: 'var(--d-tx)', padding: '3px 7px', fontSize: '10px', cursor: tables.length <= 1 ? 'not-allowed' : 'pointer', opacity: tables.length <= 1 ? 0.5 : 1 }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -687,8 +753,27 @@ export default function AdminPage() {
               <input className="inp" type="number" value={pPrice} onChange={e => setPPrice(e.target.value)} placeholder="120" min="1" />
             </div>
             <div className="field">
-              <label>Emoji</label>
+              <label>Emoji (Fallback)</label>
               <input className="inp" type="text" value={pEmoji} onChange={e => setPEmoji(e.target.value)} placeholder="☕" maxLength="4" />
+            </div>
+          </div>
+          <div className="field">
+            <label>Product Image</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {pImage ? (
+                <div style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
+                  <img src={pImage} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <button type="button" onClick={() => setPImage('')} style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', cursor: 'pointer', padding: '2px 6px', fontSize: '12px' }}>&times;</button>
+                </div>
+              ) : (
+                <div style={{ width: '60px', height: '60px', borderRadius: '8px', border: '1px dashed var(--border-h)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: 'var(--muted)', flexShrink: 0 }}>
+                  {pEmoji || '☕'}
+                </div>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <input type="file" accept="image/*" onChange={handleImageUpload} style={{ fontSize: '13px', width: '100%' }} />
+                <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '6px', lineHeight: 1.4 }}>Max 400x400. Images are automatically compressed to save space.</div>
+              </div>
             </div>
           </div>
           <div className="field">
