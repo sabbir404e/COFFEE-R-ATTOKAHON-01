@@ -29,9 +29,9 @@ export default function QRPrintPage() {
     }
     url = url.replace(/\/$/, ''); // Remove trailing slash
 
-    const list = configuredTables.map(num => ({
-      num,
-      link: `${url}/?table=${num}`
+    const list = configuredTables.map(table => ({
+      num: table.id,
+      link: `${url}/?table=${table.id}`
     }));
     setTables(list);
     setGenerated(true);

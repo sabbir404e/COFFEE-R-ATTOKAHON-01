@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 const readJson = (key, fallback) => {
   try {
@@ -13,24 +14,27 @@ const readJson = (key, fallback) => {
 };
 
 export default function AdminPage() {
-  const { toggleTheme, products, updateProducts, tables, addTable, deleteTable } = useApp();
+  // Context provides Supabase-backed state
+  const { toggleTheme, products, tables, orders, payments, users, deleteTable, feedback } = useApp();
+
   const [me, setMe] = useState(null);
   const [lUser, setLUser] = useState('');
   const [lPass, setLPass] = useState('');
   const [loginErr, setLoginErr] = useState(false);
 
   const [currentTab, setCurrentTab] = useState('dashboard');
-  const [orders, setOrders] = useState([]);
-  const [payments, setPayments] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [reportFrom, setReportFrom] = useState('');
+  const [reportTo, setReportTo] = useState('');
 
   // Modals state
   const [ovProduct, setOvProduct] = useState(false);
   const [ovAccount, setOvAccount] = useState(false);
+  const [ovTable, setOvTable] = useState(false);
   const [ovConfirm, setOvConfirm] = useState(false);
 
   const [editPid, setEditPid] = useState(null);
   const [editAccIdx, setEditAccIdx] = useState(null);
+  const [editTableId, setEditTableId] = useState(null);
 
   // Form Fields
   const [pName, setPName] = useState('');
@@ -45,67 +49,47 @@ export default function AdminPage() {
   const [aPass, setAPass] = useState('');
   const [aRole, setARole] = useState('admin');
 
+  const [tName, setTName] = useState('');
+  const [tNumber, setTNumber] = useState('');
+  const [tSeats, setTSeats] = useState('4');
+  const [tStatus, setTStatus] = useState('available');
+  const [tNote, setTNote] = useState('');
+
   const [confirmMsg, setConfirmMsg] = useState('');
   const [confirmCallback, setConfirmCallback] = useState(null);
   const [refunding, setRefunding] = useState(false);
 
-  const defaultUsers = () => [
-    {username:'admin',password:'admin123',role:'admin'}
-  ];
 
-  const loadAll = useCallback(() => {
-    try {
-      const u = readJson('ca_users', defaultUsers());
-      setUsers(u);
-      const o = readJson('ca_paid_orders', []);
-      setOrders(o);
-      const pay = readJson('ca_payments', []);
-      setPayments(pay);
-    } catch {}
-  }, []);
-
+  // On mount: restore admin session
   useEffect(() => {
     let active = true;
-
     queueMicrotask(() => {
       if (!active) return;
       const saved = localStorage.getItem('ca_admin_user');
       if (saved) {
         try { setMe(JSON.parse(saved)); } catch {}
       }
-      loadAll();
     });
+    return () => { active = false; };
+  }, []);
 
-    const handleStorageChange = (e) => {
-      if (!e || !e.key || e.key === 'ca_paid_orders' || e.key === 'ca_payments' || e.key === 'ca_table_count') {
-        loadAll();
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
+  const doLogin = async () => {
+    const { data: found } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', lUser.trim())
+      .eq('password', lPass)
+      .eq('role', 'admin')
+      .single();
 
-    // Auto-refresh every 3 seconds for live table status
-    const pollInterval = setInterval(() => {
-      if (active) loadAll();
-    }, 3000);
-
-    return () => {
-      active = false;
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(pollInterval);
-    };
-  }, [loadAll]);
-
-  const doLogin = () => {
-    const validUsers = readJson('ca_users', defaultUsers());
-    const found = validUsers.find(x => x.username === lUser.trim() && x.password === lPass);
-    if (!found || found.role !== 'admin') {
+    if (!found) {
       setLoginErr(true);
       return;
     }
     setLoginErr(false);
     setMe(found);
     localStorage.setItem('ca_admin_user', JSON.stringify(found));
-    loadAll();
+    loadFeedback();
   };
 
   const doLogout = () => {
@@ -170,42 +154,36 @@ export default function AdminPage() {
     reader.readAsDataURL(file);
   };
 
-  const saveProduct = () => {
+  const saveProduct = async () => {
     if (!pName.trim() || !pPrice) {
       alert('Name and price are required.');
       return;
     }
     const data = {
       name: pName.trim(),
-      cat: pCat,
+      category: pCat,
       price: parseInt(pPrice),
       emoji: pEmoji.trim() || '☕',
-      image: pImage,
-      desc: pDesc.trim(),
-      avail: pAvail === '1'
+      image_url: pImage,
+      description: pDesc.trim(),
+      is_available: pAvail === '1'
     };
-    let updated = [...products];
     if (editPid) {
-      const idx = updated.findIndex(p => p.id === editPid);
-      if (idx > -1) {
-        updated[idx] = { ...updated[idx], ...data };
-      }
+      await supabase.from('products').update(data).eq('id', editPid);
     } else {
-      const maxId = updated.reduce((m, p) => Math.max(m, parseInt(p.id || 0)), 0);
-      updated.push({ id: String(maxId + 1), ...data });
+      await supabase.from('products').insert(data);
     }
-    updateProducts(updated);
     setOvProduct(false);
   };
 
-  const toggleAvail = (id) => {
-    const updated = products.map(p => p.id === id ? { ...p, avail: !p.avail } : p);
-    updateProducts(updated);
+  const toggleAvail = async (id) => {
+    const prod = products.find(p => p.id === id);
+    if (!prod) return;
+    await supabase.from('products').update({ is_available: !(prod.avail !== false) }).eq('id', id);
   };
 
-  const deleteProduct = (id) => {
-    const updated = products.filter(p => p.id !== id);
-    updateProducts(updated);
+  const deleteProduct = async (id) => {
+    await supabase.from('products').delete().eq('id', id);
   };
 
   const openAccountModal = (idx) => {
@@ -218,37 +196,78 @@ export default function AdminPage() {
     } else {
       setAUser('');
       setAPass('');
-      setARole('admin');
+      setARole('kitchen');
     }
     setOvAccount(true);
   };
 
-  const saveAccount = () => {
+  const saveAccount = async () => {
     if (!aUser.trim() || !aPass.trim()) {
       alert('Username and password are required.');
       return;
     }
-    let updated = [...users];
     if (editAccIdx !== null) {
-      updated[editAccIdx] = { username: aUser.trim(), password: aPass.trim(), role: aRole };
+      const u = users[editAccIdx];
+      await supabase.from('users').update({ username: aUser.trim(), password: aPass.trim(), role: aRole }).eq('id', u.id);
     } else {
-      if (updated.find(u => u.username === aUser.trim())) {
-        alert('Username already exists.');
-        return;
-      }
-      updated.push({ username: aUser.trim(), password: aPass.trim(), role: aRole });
+      const exists = users.find(u => u.username === aUser.trim());
+      if (exists) { alert('Username already exists.'); return; }
+      await supabase.from('users').insert({ username: aUser.trim(), password: aPass.trim(), role: aRole });
     }
-    setUsers(updated);
-    localStorage.setItem('ca_users', JSON.stringify(updated));
     setOvAccount(false);
   };
 
-  const deleteAccount = (idx) => {
+  const deleteAccount = async (idx) => {
     if (users[idx]?.username === 'admin') return;
-    let updated = [...users];
-    updated.splice(idx, 1);
-    setUsers(updated);
-    localStorage.setItem('ca_users', JSON.stringify(updated));
+    await supabase.from('users').delete().eq('id', users[idx].id);
+  };
+
+  const openTableModal = (id = null) => {
+    setEditTableId(id);
+    const table = id === null ? null : tables.find(item => item.id === id);
+    if (table) {
+      setTName(table.name);
+      setTNumber(String(table.id));
+      setTSeats(String(table.seats));
+      setTStatus(table.status);
+      setTNote(table.note || '');
+    } else {
+      const nextId = tables.length ? Math.max(...tables.map(tableItem => tableItem.id)) + 1 : 1;
+      setTName(`Table ${nextId}`);
+      setTNumber(String(nextId));
+      setTSeats('4');
+      setTStatus('available');
+      setTNote('');
+    }
+    setOvTable(true);
+  };
+
+  const saveTable = async () => {
+    const id = Number.parseInt(tNumber, 10);
+    const seats = Math.max(1, Number.parseInt(tSeats, 10) || 4);
+    if (!tName.trim() || !Number.isInteger(id) || id < 1 || id > 100) {
+      alert('Enter a table name and a number from 1 to 100.');
+      return;
+    }
+    if (tables.some(table => table.id === id && table.id !== editTableId)) {
+      alert('A table with that number already exists.');
+      return;
+    }
+    const tableData = { id, name: tName.trim(), seats, status: tStatus, note: tNote.trim() };
+    if (editTableId === null) {
+      await supabase.from('dining_tables').insert(tableData);
+    } else {
+      await supabase.from('dining_tables').update({ name: tName.trim(), seats, status: tStatus, note: tNote.trim() }).eq('id', editTableId);
+    }
+    setOvTable(false);
+  };
+
+  const cycleTableStatus = async (id) => {
+    const statuses = ['available', 'occupied', 'reserved', 'cleaning'];
+    const t = tables.find(table => table.id === id);
+    if (!t) return;
+    const next = statuses[(statuses.indexOf(t.status) + 1) % statuses.length];
+    await supabase.from('dining_tables').update({ status: next }).eq('id', id);
   };
 
   const confirmAction = (msg, cb) => {
@@ -392,6 +411,8 @@ export default function AdminPage() {
             <button className={`nav-item${currentTab === 'payments' ? ' active' : ''}`} onClick={() => setCurrentTab('payments')}>💳 Payments</button>
             <button className={`nav-item${currentTab === 'tables' ? ' active' : ''}`} onClick={() => setCurrentTab('tables')}>🪑 Tables</button>
             <button className={`nav-item${currentTab === 'accounts' ? ' active' : ''}`} onClick={() => setCurrentTab('accounts')}>👥 Accounts</button>
+            <button className={`nav-item${currentTab === 'reports' ? ' active' : ''}`} onClick={() => setCurrentTab('reports')}>📈 Reports</button>
+            <button className={`nav-item${currentTab === 'feedback' ? ' active' : ''}`} onClick={() => setCurrentTab('feedback')}>⭐ Feedback</button>
             <hr className="nav-sep" />
             <button className="nav-item" onClick={() => window.open('/order', '_blank')}>🛒 Preview Menu</button>
             <button className="nav-item" onClick={() => window.open('/qr-print', '_blank')}>🖨 QR Code Printer</button>
@@ -613,6 +634,52 @@ export default function AdminPage() {
               </div>
             )}
 
+            {currentTab === 'reports' && (() => {
+              const from = reportFrom ? new Date(`${reportFrom}T00:00:00`) : null;
+              const to = reportTo ? new Date(`${reportTo}T23:59:59`) : null;
+              const reportOrders = orders.filter(order => {
+                const time = new Date(order.time || order.createdAt);
+                return !Number.isNaN(time.getTime()) && (!from || time >= from) && (!to || time <= to) && !['cancelled', 'failed', 'refunded'].includes(order.status);
+              });
+              const revenue = reportOrders.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
+              const byMethod = reportOrders.reduce((summary, order) => {
+                const method = order.paymentMethod || 'Other';
+                summary[method] = (summary[method] || 0) + (Number(order.total) || 0);
+                return summary;
+              }, {});
+              return (
+                <div>
+                  <div className="pg-title">Reports</div>
+                  <div className="pg-sub">Revenue and payment breakdown by date range.</div>
+                  <div className="toolbar" style={{ justifyContent: 'flex-start', alignItems: 'end' }}>
+                    <div className="field" style={{ margin: 0 }}><label htmlFor="reportFrom">From</label><input id="reportFrom" className="inp" type="date" value={reportFrom} onChange={event => setReportFrom(event.target.value)} /></div>
+                    <div className="field" style={{ margin: 0 }}><label htmlFor="reportTo">To</label><input id="reportTo" className="inp" type="date" value={reportTo} onChange={event => setReportTo(event.target.value)} /></div>
+                    <button className="btn-edit" onClick={() => { setReportFrom(''); setReportTo(''); }}>Clear range</button>
+                  </div>
+                  <div className="stats-grid">
+                    <div className="stat-card"><div className="stat-lbl">Orders</div><div className="stat-val">{reportOrders.length}</div></div>
+                    <div className="stat-card"><div className="stat-lbl">Revenue</div><div className="stat-val">৳{revenue.toLocaleString()}</div></div>
+                    <div className="stat-card"><div className="stat-lbl">Avg. Order</div><div className="stat-val">৳{reportOrders.length ? Math.round(revenue / reportOrders.length) : 0}</div></div>
+                  </div>
+                  <div className="pg-title" style={{ fontSize: '18px', marginBottom: '12px' }}>Payment Method Breakdown</div>
+                  <div className="tbl-wrap"><table><thead><tr><th>Method</th><th>Orders</th><th>Revenue</th><th>Share</th></tr></thead><tbody>{Object.entries(byMethod).length ? Object.entries(byMethod).sort((a, b) => b[1] - a[1]).map(([method, amount]) => <tr key={method}><td>{method}</td><td>{reportOrders.filter(order => (order.paymentMethod || 'Other') === method).length}</td><td style={{ color: 'var(--gold)', fontWeight: 600 }}>৳{amount.toLocaleString()}</td><td>{revenue ? Math.round((amount / revenue) * 100) : 0}%</td></tr>) : <tr><td colSpan="4" className="empty-tbl">No payment data.</td></tr>}</tbody></table></div>
+                </div>
+              );
+            })()}
+
+            {currentTab === 'feedback' && (
+              <div>
+                <div className="pg-title">Feedback</div>
+                <div className="pg-sub">Customer star ratings and comments after service.</div>
+                <div className="stats-grid">
+                  <div className="stat-card"><div className="stat-lbl">Total Reviews</div><div className="stat-val">{feedback.length}</div></div>
+                  <div className="stat-card"><div className="stat-lbl">Average Rating</div><div className="stat-val">{feedback.length ? (feedback.reduce((sum, item) => sum + (Number(item.rating) || 0), 0) / feedback.length).toFixed(1) : '0.0'} <small>/ 5</small></div></div>
+                  <div className="stat-card"><div className="stat-lbl">5-Star Reviews</div><div className="stat-val">{feedback.filter(item => Number(item.rating) === 5).length}</div></div>
+                </div>
+                <div className="tbl-wrap"><table><thead><tr><th>Table</th><th>Order</th><th>Rating</th><th>Comment</th><th>Time</th></tr></thead><tbody>{feedback.length ? [...feedback].reverse().map((item, index) => <tr key={`${item.orderId || 'feedback'}-${index}`}><td>{item.table || '—'}</td><td style={{ color: 'var(--gold)' }}>{item.orderId || '—'}</td><td style={{ color: 'var(--gold)' }}>{'★'.repeat(Number(item.rating) || 0)}{'☆'.repeat(5 - (Number(item.rating) || 0))}</td><td>{item.comment || '—'}</td><td style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(item.time).toLocaleString('en-BD', { dateStyle: 'short', timeStyle: 'short' })}</td></tr>) : <tr><td colSpan="5" className="empty-tbl">No feedback submitted yet.</td></tr>}</tbody></table></div>
+              </div>
+            )}
+
             {currentTab === 'tables' && (() => {
               const activeByTable = {};
               orders.forEach(o => {
@@ -630,7 +697,7 @@ export default function AdminPage() {
                         <span>Manage dining tables · <strong style={{color:'var(--gold)'}}>{tables.length} total</strong></span>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: 'var(--muted)' }}>
                           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--gold)', display: 'inline-block', animation: 'ftpulse 1.8s ease-in-out infinite' }} />
-                          Live · updates every 3s
+                          Live · instant updates
                         </span>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
@@ -645,7 +712,7 @@ export default function AdminPage() {
                     <button
                       className="btn-save"
                       style={{ minWidth: '118px', height: '40px', padding: '0 14px', marginBottom: 0, alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                      onClick={addTable}
+                      onClick={() => openTableModal(null)}
                       disabled={tables.length >= 100}
                       aria-label="Add Table"
                       title="Add Table"
@@ -794,6 +861,42 @@ export default function AdminPage() {
         </div>
       </div>
 
+      {/* Table Modal Overlay */}
+      <div className={`overlay${ovTable ? ' open' : ''}`} onClick={e => e.target === e.currentTarget && setOvTable(false)}>
+        <div className="modal">
+          <h3>{editTableId !== null ? 'Edit Table' : 'Add Table'}</h3>
+          <div className="field">
+            <label>Table Name</label>
+            <input className="inp" type="text" value={tName} onChange={e => setTName(e.target.value)} placeholder="e.g. Table 1" />
+          </div>
+          <div className="field">
+            <label>Table Number (ID)</label>
+            <input className="inp" type="number" value={tNumber} onChange={e => setTNumber(e.target.value)} placeholder="1" disabled={editTableId !== null} />
+          </div>
+          <div className="field">
+            <label>Seats</label>
+            <input className="inp" type="number" value={tSeats} onChange={e => setTSeats(e.target.value)} placeholder="4" />
+          </div>
+          <div className="field">
+            <label>Status</label>
+            <select className="inp" value={tStatus} onChange={e => setTStatus(e.target.value)}>
+              <option value="available">Available</option>
+              <option value="occupied">Occupied</option>
+              <option value="reserved">Reserved</option>
+              <option value="cleaning">Cleaning</option>
+            </select>
+          </div>
+          <div className="field">
+            <label>Note</label>
+            <input className="inp" type="text" value={tNote} onChange={e => setTNote(e.target.value)} placeholder="Optional note" />
+          </div>
+          <div className="modal-btns">
+            <button className="btn-cancel" onClick={() => setOvTable(false)}>Cancel</button>
+            <button className="btn-save" onClick={saveTable}>Save Table</button>
+          </div>
+        </div>
+      </div>
+
       {/* Account Modal Overlay */}
       <div className={`overlay${ovAccount ? ' open' : ''}`} onClick={e => e.target === e.currentTarget && setOvAccount(false)}>
         <div className="modal">
@@ -811,6 +914,7 @@ export default function AdminPage() {
             <select className="inp" value={aRole} onChange={e => setARole(e.target.value)}>
               <option value="customer">Customer</option>
               <option value="admin">Admin</option>
+              <option value="kitchen">Kitchen</option>
             </select>
           </div>
           <div className="modal-btns">

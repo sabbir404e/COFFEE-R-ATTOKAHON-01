@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 const FLOW = ['paid','preparing','ready','served'];
 const STATUS_META = {
@@ -24,20 +25,67 @@ function TrackPageContent() {
   const [orders, setOrders] = useState([]);
   const [mounted, setMounted] = useState(false);
 
-  const loadOrders = useCallback(() => {
+  const loadOrders = useCallback(async () => {
     try {
-      const all = JSON.parse(localStorage.getItem('ca_paid_orders') || '[]');
-      const filtered = tableNum ? all.filter(o => o.table === tableNum) : all;
-      setOrders(filtered);
+      let query = supabase
+        .from('orders')
+        .select('*, order_items(*)')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (tableNum) query = query.eq('table_id', tableNum);
+      const { data } = await query;
+      if (data) {
+        setOrders(data.map(o => ({
+          id: o.id, invoiceNum: o.invoice_num, table: o.table_id,
+          items: (o.order_items || []).map(i => ({ name: i.product_name, qty: i.quantity, emoji: '☕' })),
+          total: Number(o.total), status: o.status, time: o.created_at
+        })));
+      }
     } catch {}
   }, [tableNum]);
 
   useEffect(() => {
     setMounted(true);
     loadOrders();
-    const iv = setInterval(loadOrders, 3000);
-    return () => clearInterval(iv);
-  }, [loadOrders]);
+
+    // Real-time: listen for order status changes for this table
+    const channel = supabase
+      .channel(`rt_track_orders_${tableNum ?? 'all'}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          ...(tableNum ? { filter: `table_id=eq.${tableNum}` } : {}),
+        },
+        ({ new: updated }) => {
+          setOrders(prev =>
+            prev.map(o =>
+              o.id === updated.id ? { ...o, status: updated.status } : o
+            )
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'orders',
+          ...(tableNum ? { filter: `table_id=eq.${tableNum}` } : {}),
+        },
+        () => {
+          // New order came in — reload to get order_items too
+          loadOrders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [loadOrders, tableNum]);
 
   if (!mounted) return null;
 
@@ -114,7 +162,7 @@ function TrackPageContent() {
           <p>Live status updates for your table.</p>
           {tableNum && <div className="table-chip">🪑 Table {tableNum}</div>}
           <br />
-          <div className="live-badge"><div className="live-dot" />LIVE · updates every 3 sec</div>
+          <div className="live-badge"><div className="live-dot" />LIVE · instant updates</div>
         </div>
 
         <div>

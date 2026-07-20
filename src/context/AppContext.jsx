@@ -1,118 +1,142 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { supabase } from '@/lib/supabase';
 
 const AppContext = createContext();
 
-const DEFAULT_PRODUCTS = [
-  { id: '1', name: 'Espresso', cat: 'Coffee', price: 80, emoji: '☕', desc: 'Rich double shot, bold and intense.', avail: true },
-  { id: '2', name: 'Cappuccino', cat: 'Coffee', price: 120, emoji: '🥛', desc: 'Espresso with velvety steamed milk foam.', avail: true },
-  { id: '3', name: 'Caramel Latte', cat: 'Coffee', price: 140, emoji: '🍵', desc: 'Smooth latte with house caramel drizzle.', avail: true },
-  { id: '4', name: 'Cold Brew', cat: 'Coffee', price: 150, emoji: '🧊', desc: 'Slow-steeped, refreshing cold coffee.', avail: true },
-  { id: '5', name: 'Iced Mocha', cat: 'Coffee', price: 155, emoji: '🍫', desc: 'Espresso, chocolate, cold milk over ice.', avail: true },
-  { id: '6', name: 'Matcha Latte', cat: 'Specialty', price: 145, emoji: '🍃', desc: 'Ceremonial matcha blended with oat milk.', avail: true },
-  { id: '7', name: 'Mango Smoothie', cat: 'Specialty', price: 130, emoji: '🥭', desc: 'Fresh mango blended with yogurt and honey.', avail: true },
-  { id: '8', name: 'Croissant', cat: 'Food', price: 100, emoji: '🥐', desc: 'Buttery and flaky, baked fresh every morning.', avail: true },
-  { id: '9', name: 'Club Sandwich', cat: 'Food', price: 180, emoji: '🥪', desc: 'Chicken, lettuce, tomato, toasted bread.', avail: true },
-  { id: '10', name: 'Blueberry Muffin', cat: 'Food', price: 90, emoji: '🧁', desc: 'Soft muffin loaded with blueberries.', avail: true },
-  { id: '11', name: 'Cheesecake', cat: 'Dessert', price: 190, emoji: '🍰', desc: 'New York style with seasonal berry compote.', avail: true },
-  { id: '12', name: 'Avocado Toast', cat: 'Food', price: 160, emoji: '🥑', desc: 'Sourdough, smashed avocado, chilli flakes.', avail: true },
-];
+// ---------------------------------------------------------------------------
+// Feedback helper
+// ---------------------------------------------------------------------------
+function mapFeedback(f) {
+  return {
+    ...f,
+    orderId: f.order_id,
+    table: f.table_id,
+    time: f.created_at,
+  };
+}
 
-const DEFAULT_USERS = [
-  { username: 'admin', password: 'admin123', role: 'admin' }
-];
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function mapProduct(p) {
+  return {
+    id: p.id,
+    name: p.name,
+    cat: p.category,
+    price: Number(p.price),
+    emoji: p.emoji,
+    image: p.image_url,
+    desc: p.description,
+    avail: p.is_available,
+  };
+}
 
-// Default tables: 1..20
-const DEFAULT_TABLES = Array.from({ length: 20 }, (_, i) => i + 1);
+function mapOrder(o, orderItemsData) {
+  const items = orderItemsData
+    .filter((i) => i.order_id === o.id)
+    .map((i) => ({
+      id: i.product_id,
+      name: i.product_name,
+      price: Number(i.unit_price),
+      qty: i.quantity,
+      emoji: i.emoji,
+      customization: i.customization,
+    }));
+  return {
+    id: o.id,
+    invoiceNum: o.invoice_num,
+    table: o.table_id,
+    items,
+    subtotal: Number(o.subtotal),
+    serviceCharge: Number(o.service_charge),
+    total: Number(o.total),
+    note: o.note,
+    status: o.status,
+    paymentMethod: o.payment_method,
+    paymentId: o.payment_id,
+    time: o.created_at,
+  };
+}
 
+// ---------------------------------------------------------------------------
+// Provider
+// ---------------------------------------------------------------------------
 export function AppProvider({ children }) {
   const [theme, setTheme] = useState('dark');
   const [tableNum, setTableNum] = useState(null);
-  const [tables, setTables] = useState(DEFAULT_TABLES); // array of table numbers
+  const [tables, setTables] = useState([]);
   const [cart, setCart] = useState({});
-  const [products, setProducts] = useState(DEFAULT_PRODUCTS);
+  const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [payments, setPayments] = useState([]);
-  const [users, setUsers] = useState(DEFAULT_USERS);
+  const [users, setUsers] = useState([]);
+  const [feedback, setFeedback] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
 
-  // Safely initialize state from localStorage on client mount
+  // Keep a ref to raw order_items so we can re-enrich orders when items change
+  const orderItemsRef = useRef([]);
+
+  // --------------------------------------------------------------------------
+  // Initial load
+  // --------------------------------------------------------------------------
+  const fetchData = async () => {
+    try {
+      const [
+        { data: tablesData },
+        { data: productsData },
+        { data: ordersData },
+        { data: paymentsData },
+        { data: usersData },
+        { data: orderItemsData },
+        { data: feedbackData },
+      ] = await Promise.all([
+        supabase.from('dining_tables').select('*').order('id', { ascending: true }),
+        supabase.from('products').select('*').order('id', { ascending: true }),
+        supabase.from('orders').select('*').order('created_at', { ascending: false }),
+        supabase.from('payments').select('*').order('created_at', { ascending: false }),
+        supabase.from('users').select('*'),
+        supabase.from('order_items').select('*'),
+        supabase.from('feedback').select('*').order('created_at', { ascending: false }),
+      ]);
+
+      if (tablesData) setTables(tablesData);
+      if (productsData) setProducts(productsData.map(mapProduct));
+      if (usersData) setUsers(usersData);
+      if (paymentsData) setPayments(paymentsData);
+      if (feedbackData) setFeedback(feedbackData.map(mapFeedback));
+
+      const items = orderItemsData || [];
+      orderItemsRef.current = items;
+
+      if (ordersData) {
+        setOrders(ordersData.map((o) => mapOrder(o, items)));
+      }
+    } catch (error) {
+      console.error('Error fetching Supabase data:', error);
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // Theme & cart from localStorage
+  // --------------------------------------------------------------------------
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('ca_theme') || 'dark';
       setTheme(savedTheme);
       document.documentElement.setAttribute('data-theme', savedTheme);
 
-      // Load tables array (new key). Fall back to old ca_table_count for migration.
-      const savedTables = localStorage.getItem('ca_tables');
-      if (savedTables) {
-        try {
-          const parsed = JSON.parse(savedTables);
-          if (Array.isArray(parsed) && parsed.length > 0) setTables(parsed);
-        } catch (e) {}
-      } else {
-        // Migrate from old ca_table_count if present
-        const oldCount = localStorage.getItem('ca_table_count');
-        if (oldCount) {
-          const n = parseInt(oldCount);
-          if (!isNaN(n) && n >= 1) {
-            const migrated = Array.from({ length: n }, (_, i) => i + 1);
-            setTables(migrated);
-            localStorage.setItem('ca_tables', JSON.stringify(migrated));
-          }
-        } else {
-          localStorage.setItem('ca_tables', JSON.stringify(DEFAULT_TABLES));
-        }
-      }
-
-      // Load products
-      const savedProds = localStorage.getItem('ca_products');
-      if (savedProds) {
-        try {
-          setProducts(JSON.parse(savedProds));
-        } catch (e) {
-          localStorage.setItem('ca_products', JSON.stringify(DEFAULT_PRODUCTS));
-        }
-      } else {
-        localStorage.setItem('ca_products', JSON.stringify(DEFAULT_PRODUCTS));
-      }
-
-      // Load orders
-      const savedOrders = localStorage.getItem('ca_paid_orders');
-      if (savedOrders) {
-        try { setOrders(JSON.parse(savedOrders)); } catch (e) {}
-      }
-
-      // Load payments
-      const savedPayments = localStorage.getItem('ca_payments');
-      if (savedPayments) {
-        try { setPayments(JSON.parse(savedPayments)); } catch (e) {}
-      }
-
-      // Load users
-      const savedUsers = localStorage.getItem('ca_users');
-      if (savedUsers) {
-        try {
-          setUsers(JSON.parse(savedUsers));
-        } catch (e) {
-          localStorage.setItem('ca_users', JSON.stringify(DEFAULT_USERS));
-        }
-      } else {
-        localStorage.setItem('ca_users', JSON.stringify(DEFAULT_USERS));
-      }
-
-      // Load pending cart if exists
       const savedCart = localStorage.getItem('ca_pending_cart');
       if (savedCart) {
         try {
           const parsed = JSON.parse(savedCart);
           if (parsed && parsed.items) {
             const reconstructedCart = {};
-            parsed.items.forEach(item => {
+            parsed.items.forEach((item) => {
               reconstructedCart[item.id || item.name] = {
                 product: { name: item.name, emoji: item.emoji, price: item.price, id: item.id },
-                qty: item.qty
+                qty: item.qty,
               };
             });
             setCart(reconstructedCart);
@@ -122,60 +146,141 @@ export function AppProvider({ children }) {
     }
   }, []);
 
-  // Listen for changes in localStorage across tabs
+  // --------------------------------------------------------------------------
+  // Real-time subscriptions
+  // --------------------------------------------------------------------------
   useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (e.key === 'ca_products') {
-        try { setProducts(JSON.parse(e.newValue)); } catch (err) {}
-      } else if (e.key === 'ca_paid_orders') {
-        try { setOrders(JSON.parse(e.newValue)); } catch (err) {}
-      } else if (e.key === 'ca_payments') {
-        try { setPayments(JSON.parse(e.newValue)); } catch (err) {}
-      } else if (e.key === 'ca_users') {
-        try { setUsers(JSON.parse(e.newValue)); } catch (err) {}
-      } else if (e.key === 'ca_theme') {
-        if (e.newValue) {
-          setTheme(e.newValue);
-          document.documentElement.setAttribute('data-theme', e.newValue);
-        }
-      } else if (e.key === 'ca_tables') {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          if (Array.isArray(parsed)) setTables(parsed);
-        } catch (err) {}
-      }
-    };
+    fetchData();
 
-    window.addEventListener('storage', handleStorageChange);
+    // --- dining_tables ---
+    const tablesSub = supabase
+      .channel('rt_dining_tables')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dining_tables' }, ({ new: row }) => {
+        setTables((prev) => [...prev, row].sort((a, b) => a.id - b.id));
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'dining_tables' }, ({ new: row }) => {
+        setTables((prev) => prev.map((t) => (t.id === row.id ? row : t)));
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'dining_tables' }, ({ old: row }) => {
+        setTables((prev) => prev.filter((t) => t.id !== row.id));
+      })
+      .subscribe();
 
-    // Poll same-tab changes
-    const interval = setInterval(() => {
-      try {
-        const freshProds = JSON.parse(localStorage.getItem('ca_products'));
-        if (freshProds && JSON.stringify(freshProds) !== JSON.stringify(products)) {
-          setProducts(freshProds);
+    // --- products ---
+    const productsSub = supabase
+      .channel('rt_products')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'products' }, ({ new: row }) => {
+        setProducts((prev) => [...prev, mapProduct(row)]);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'products' }, ({ new: row }) => {
+        setProducts((prev) => prev.map((p) => (p.id === row.id ? mapProduct(row) : p)));
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'products' }, ({ old: row }) => {
+        setProducts((prev) => prev.filter((p) => p.id !== row.id));
+      })
+      .subscribe();
+
+    // --- orders ---
+    const ordersSub = supabase
+      .channel('rt_orders')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, ({ new: row }) => {
+        setOrders((prev) => [mapOrder(row, orderItemsRef.current), ...prev]);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, ({ new: row }) => {
+        setOrders((prev) =>
+          prev.map((o) => (o.id === row.id ? mapOrder(row, orderItemsRef.current) : o))
+        );
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, ({ old: row }) => {
+        setOrders((prev) => prev.filter((o) => o.id !== row.id));
+      })
+      .subscribe();
+
+    // --- order_items (re-enrich affected order on change) ---
+    const orderItemsSub = supabase
+      .channel('rt_order_items')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, async ({ new: row, old: oldRow }) => {
+        // Re-fetch all items for the affected order and update state
+        const affectedOrderId = row?.order_id || oldRow?.order_id;
+        if (!affectedOrderId) return;
+
+        const { data: freshItems } = await supabase
+          .from('order_items')
+          .select('*')
+          .eq('order_id', affectedOrderId);
+
+        if (freshItems) {
+          // Merge into the global ref
+          const otherItems = orderItemsRef.current.filter((i) => i.order_id !== affectedOrderId);
+          orderItemsRef.current = [...otherItems, ...freshItems];
+
+          setOrders((prev) =>
+            prev.map((o) =>
+              o.id === affectedOrderId
+                ? { ...o, items: freshItems.map((i) => ({ id: i.product_id, name: i.product_name, price: Number(i.unit_price), qty: i.quantity, emoji: i.emoji, customization: i.customization })) }
+                : o
+            )
+          );
         }
-        const freshOrders = JSON.parse(localStorage.getItem('ca_paid_orders'));
-        if (freshOrders && JSON.stringify(freshOrders) !== JSON.stringify(orders)) {
-          setOrders(freshOrders);
-        }
-        const freshPayments = JSON.parse(localStorage.getItem('ca_payments'));
-        if (freshPayments && JSON.stringify(freshPayments) !== JSON.stringify(payments)) {
-          setPayments(freshPayments);
-        }
-        const freshTables = JSON.parse(localStorage.getItem('ca_tables'));
-        if (freshTables && JSON.stringify(freshTables) !== JSON.stringify(tables)) {
-          setTables(freshTables);
-        }
-      } catch (err) {}
-    }, 1500);
+      })
+      .subscribe();
+
+    // --- payments ---
+    const paymentsSub = supabase
+      .channel('rt_payments')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'payments' }, ({ new: row }) => {
+        setPayments((prev) => [row, ...prev]);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'payments' }, ({ new: row }) => {
+        setPayments((prev) => prev.map((p) => (p.id === row.id ? row : p)));
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'payments' }, ({ old: row }) => {
+        setPayments((prev) => prev.filter((p) => p.id !== row.id));
+      })
+      .subscribe();
+
+    // --- users ---
+    const usersSub = supabase
+      .channel('rt_users')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'users' }, ({ new: row }) => {
+        setUsers((prev) => [...prev, row]);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'users' }, ({ new: row }) => {
+        setUsers((prev) => prev.map((u) => (u.id === row.id ? row : u)));
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'users' }, ({ old: row }) => {
+        setUsers((prev) => prev.filter((u) => u.id !== row.id));
+      })
+      .subscribe();
+
+    // --- feedback ---
+    const feedbackSub = supabase
+      .channel('rt_feedback')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feedback' }, ({ new: row }) => {
+        setFeedback((prev) => [mapFeedback(row), ...prev]);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'feedback' }, ({ new: row }) => {
+        setFeedback((prev) => prev.map((f) => (f.id === row.id ? mapFeedback(row) : f)));
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'feedback' }, ({ old: row }) => {
+        setFeedback((prev) => prev.filter((f) => f.id !== row.id));
+      })
+      .subscribe();
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
+      tablesSub.unsubscribe();
+      productsSub.unsubscribe();
+      ordersSub.unsubscribe();
+      orderItemsSub.unsubscribe();
+      paymentsSub.unsubscribe();
+      usersSub.unsubscribe();
+      feedbackSub.unsubscribe();
     };
-  }, [products, orders, payments, tables]);
+  }, []);
 
+  // --------------------------------------------------------------------------
+  // Theme
+  // --------------------------------------------------------------------------
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
     setTheme(next);
@@ -183,11 +288,32 @@ export function AppProvider({ children }) {
     localStorage.setItem('ca_theme', next);
   };
 
-  const addToCart = (productId, customization = null) => {
-    const prod = products.find(p => p.id === productId);
-    if (!prod || prod.avail === false) return;
+  // --------------------------------------------------------------------------
+  // Cart helpers
+  // --------------------------------------------------------------------------
+  const savePendingCartToLocalStorage = (currentCart, currentTable) => {
+    const items = Object.keys(currentCart).map((key) => ({
+      id: currentCart[key].product.id,
+      name: currentCart[key].product.name,
+      emoji: currentCart[key].product.emoji,
+      qty: currentCart[key].qty,
+      price: currentCart[key].product.price,
+      customization: currentCart[key].product.customization || null,
+    }));
+    const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+    const serviceCharge = Math.round(subtotal * 0.05);
+    const total = subtotal + serviceCharge;
+    if (items.length === 0) {
+      localStorage.removeItem('ca_pending_cart');
+    } else {
+      localStorage.setItem('ca_pending_cart', JSON.stringify({ tableNum: currentTable, items, subtotal, serviceCharge, total }));
+    }
+  };
 
-    setCart(prev => {
+  const addToCart = (productId, customization = null) => {
+    const prod = products.find((p) => p.id === productId);
+    if (!prod || prod.avail === false) return;
+    setCart((prev) => {
       const surcharge = customization?.surcharge || 0;
       const key = customization
         ? `${prod.id}-${customization.size}-${customization.sugar}-${customization.milk}-${customization.extraShot}-${customization.notes}`
@@ -196,26 +322,18 @@ export function AppProvider({ children }) {
       const cartProduct = customization
         ? { ...prod, cartKey: key, price: prod.price + surcharge, customization }
         : { ...prod, cartKey: key };
-      const updated = {
-        ...prev,
-        [key]: {
-          product: cartProduct,
-          qty: existing ? existing.qty + 1 : 1
-        }
-      };
+      const updated = { ...prev, [key]: { product: cartProduct, qty: existing ? existing.qty + 1 : 1 } };
       savePendingCartToLocalStorage(updated, tableNum);
       return updated;
     });
   };
 
   const removeFromCart = (productId) => {
-    setCart(prev => {
+    setCart((prev) => {
       const updated = { ...prev };
       if (updated[productId]) {
         updated[productId].qty--;
-        if (updated[productId].qty <= 0) {
-          delete updated[productId];
-        }
+        if (updated[productId].qty <= 0) delete updated[productId];
       }
       savePendingCartToLocalStorage(updated, tableNum);
       return updated;
@@ -223,43 +341,15 @@ export function AppProvider({ children }) {
   };
 
   const changeCartQty = (productId, delta) => {
-    setCart(prev => {
+    setCart((prev) => {
       const updated = { ...prev };
       if (updated[productId]) {
         updated[productId].qty += delta;
-        if (updated[productId].qty <= 0) {
-          delete updated[productId];
-        }
+        if (updated[productId].qty <= 0) delete updated[productId];
       }
       savePendingCartToLocalStorage(updated, tableNum);
       return updated;
     });
-  };
-
-  const savePendingCartToLocalStorage = (currentCart, currentTable) => {
-    const items = Object.keys(currentCart).map(key => ({
-      id: currentCart[key].product.id,
-      name: currentCart[key].product.name,
-      emoji: currentCart[key].product.emoji,
-      qty: currentCart[key].qty,
-      price: currentCart[key].product.price,
-      customization: currentCart[key].product.customization || null
-    }));
-    const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-    const serviceCharge = Math.round(subtotal * 0.05);
-    const total = subtotal + serviceCharge;
-
-    if (items.length === 0) {
-      localStorage.removeItem('ca_pending_cart');
-    } else {
-      localStorage.setItem('ca_pending_cart', JSON.stringify({
-        tableNum: currentTable,
-        items,
-        subtotal,
-        serviceCharge,
-        total
-      }));
-    }
   };
 
   const clearCart = () => {
@@ -267,68 +357,36 @@ export function AppProvider({ children }) {
     localStorage.removeItem('ca_pending_cart');
   };
 
-  const updateProducts = (newProductsList) => {
-    setProducts(newProductsList);
-    localStorage.setItem('ca_products', JSON.stringify(newProductsList));
-  };
-
-  const updateOrders = (newOrdersList) => {
-    setOrders(newOrdersList);
-    localStorage.setItem('ca_paid_orders', JSON.stringify(newOrdersList));
-  };
-
-  const updatePayments = (newPaymentsList) => {
-    setPayments(newPaymentsList);
-    localStorage.setItem('ca_payments', JSON.stringify(newPaymentsList));
-  };
-
-  const updateUsers = (newUsersList) => {
-    setUsers(newUsersList);
-    localStorage.setItem('ca_users', JSON.stringify(newUsersList));
-  };
-
-  // Update the full tables array and persist
-  const updateTables = (newTables) => {
-    const sorted = [...newTables].sort((a, b) => a - b);
-    setTables(sorted);
-    localStorage.setItem('ca_tables', JSON.stringify(sorted));
-  };
-
-  // Add one new table (next number after max)
-  const addTable = () => {
-    const nextNum = tables.length > 0 ? Math.max(...tables) + 1 : 1;
-    if (nextNum > 100) { alert('Maximum 100 tables supported.'); return; }
-    updateTables([...tables, nextNum]);
-  };
-
-  // Remove the last table (highest number)
-  const removeLastTable = () => {
-    if (tables.length === 0) return;
-    if (tables.length === 1) { alert('At least 1 table must remain.'); return; }
-    const sorted = [...tables].sort((a, b) => a - b);
-    updateTables(sorted.slice(0, -1));
-  };
-
-  // Delete a specific table by its number
-  const deleteTable = (num) => {
-    if (tables.length === 1) { alert('At least 1 table must remain.'); return; }
-    updateTables(tables.filter(t => t !== num));
+  // --------------------------------------------------------------------------
+  // Legacy shims (kept for compatibility)
+  // --------------------------------------------------------------------------
+  const updateProducts = async (list) => setProducts(list);
+  const updateOrders = async (list) => setOrders(list);
+  const updatePayments = async (list) => setPayments(list);
+  const updateUsers = async (list) => setUsers(list);
+  const updateTables = async (list) => setTables(list);
+  const addTable = () => {};
+  const removeLastTable = () => {};
+  const deleteTable = async (id) => {
+    await supabase.from('dining_tables').delete().eq('id', id);
+    // Realtime DELETE event will update state automatically
   };
 
   return (
-    <AppContext.Provider value={{
-      theme, toggleTheme,
-      tableNum, setTableNum,
-      tables, updateTables, addTable, removeLastTable, deleteTable,
-      // legacy shim so old code reading tableCount still works
-      tableCount: tables.length,
-      cart, setCart, addToCart, removeFromCart, changeCartQty, clearCart,
-      products, updateProducts,
-      orders, updateOrders,
-      payments, updatePayments,
-      users, updateUsers,
-      currentUser, setCurrentUser
-    }}>
+    <AppContext.Provider
+      value={{
+        theme, toggleTheme, tableNum, setTableNum,
+        tables, updateTables, addTable, removeLastTable, deleteTable, tableCount: tables.length,
+        cart, setCart, addToCart, removeFromCart, changeCartQty, clearCart,
+        products, updateProducts,
+        orders, updateOrders,
+        payments, updatePayments,
+        users, updateUsers,
+        feedback,
+        currentUser, setCurrentUser,
+        fetchData,
+      }}
+    >
       {children}
     </AppContext.Provider>
   );
@@ -336,8 +394,6 @@ export function AppProvider({ children }) {
 
 export function useApp() {
   const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useApp must be used within an AppProvider');
-  }
+  if (!context) throw new Error('useApp must be used within an AppProvider');
   return context;
 }

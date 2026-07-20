@@ -23,15 +23,16 @@ function OrderPageContent() {
   const [lastOrderId, setLastOrderId] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [customization, setCustomization] = useState({ size: 'Regular', sugar: '100%', milk: 'Full Cream', extraShot: false, notes: '' });
+  const availableTables = tables.filter(table => table.status === 'available');
 
   useEffect(() => {
     setMounted(true);
-    if (urlTable && tables.includes(urlTable)) {
+    if (urlTable && availableTables.some(table => table.id === urlTable)) {
       setLocalTable(urlTable);
       setTableNum(urlTable);
       setStep('menu');
     }
-  }, [urlTable, setTableNum, tables]);
+  }, [urlTable, setTableNum, availableTables]);
 
   useEffect(() => {
     if (lastOrderId) {
@@ -42,7 +43,7 @@ function OrderPageContent() {
 
   const confirmTable = () => {
     const val = parseInt(customTableInput);
-    if (!val || !tables.includes(val)) { alert('Please select an available table number.'); return; }
+    if (!val || !availableTables.some(table => table.id === val)) { alert('Please select an available table number.'); return; }
     setLocalTable(val);
     setTableNum(val);
     setStep('menu');
@@ -189,9 +190,9 @@ function OrderPageContent() {
             <h2>Select Your Table</h2>
             <p>Choose your table number to start ordering</p>
             <div className="table-grid">
-              {tables.map(n => (
-                <button key={n} className={`t-btn${selectedBtn===n?' sel':''}`}
-                  onClick={() => { setSelectedBtn(n); setCustomTableInput(String(n)); }}>{n}</button>
+              {availableTables.map(table => (
+                <button key={table.id} className={`t-btn${selectedBtn===table.id?' sel':''}`}
+                  onClick={() => { setSelectedBtn(table.id); setCustomTableInput(String(table.id)); }}>{table.id}</button>
               ))}
             </div>
             <div className="or-line">or enter manually</div>

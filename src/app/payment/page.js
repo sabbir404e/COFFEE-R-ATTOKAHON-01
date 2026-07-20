@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { QRCodeSVG } from 'qrcode.react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 const METHODS = {
   bkash:  { name: 'bKash (Manual)',  num: '01712-345678', icon: '📱' },
@@ -64,46 +65,66 @@ export default function PaymentPage() {
 
 
 
-    setTimeout(() => {
-      const pid = parseInt(localStorage.getItem('ca_pid') || '1');
-      localStorage.setItem('ca_pid', pid + 1);
-      const oid = parseInt(localStorage.getItem('ca_oid') || '1');
-      localStorage.setItem('ca_oid', oid + 1);
+    setTimeout(async () => {
+      const txnId = 'TXN' + Date.now().toString(36).toUpperCase() + Math.floor(Math.random()*1000);
+      const invoiceNum = 'INV-' + new Date().getFullYear() + '-' + Date.now().toString().slice(-4);
 
-      const txnId = 'TXN' + Date.now().toString(36).toUpperCase() + pid;
-      const invoiceNum = 'INV-' + new Date().getFullYear() + '-' + String(oid).padStart(4, '0');
-
-      const order = {
-        id: oid, invoiceNum,
-        table: cart.tableNum || null,
-        items: cart.items,
+      const { data: orderData, error: orderErr } = await supabase.from('orders').insert({
+        invoice_num: invoiceNum,
+        table_id: cart.tableNum || null,
         subtotal: cart.subtotal || cart.total,
-        serviceCharge: cart.serviceCharge || 0,
+        service_charge: cart.serviceCharge || 0,
         total: cart.total,
         note: cart.note || '',
         status: 'paid',
-        paymentMethod: METHODS[selectedMethod].name,
-        paymentId: txnId,
-        createdAt: Date.now(),
-        time: new Date().toISOString(),
-      };
+        payment_method: METHODS[selectedMethod].name,
+        payment_id: txnId
+      }).select().single();
 
-      const paidOrders = JSON.parse(localStorage.getItem('ca_paid_orders') || '[]');
-      paidOrders.unshift(order);
-      localStorage.setItem('ca_paid_orders', JSON.stringify(paidOrders));
+      if (orderErr) {
+        alert('Error placing order: ' + orderErr.message);
+        setProcessing(false);
+        return;
+      }
 
-      const payments = JSON.parse(localStorage.getItem('ca_payments') || '[]');
-      payments.unshift({
-        id: pid, txnId, invoiceNum, orderId: oid,
-        table: cart.tableNum, amount: cart.total,
+      const orderId = orderData.id;
+
+      const itemsToInsert = cart.items.map(item => ({
+        order_id: orderId,
+        product_id: parseInt(item.id) || null,
+        product_name: item.name,
+        unit_price: item.price,
+        quantity: item.qty,
+        customization: item.customization || null
+      }));
+      await supabase.from('order_items').insert(itemsToInsert);
+
+      await supabase.from('payments').insert({
+        txn_id: txnId,
+        invoice_num: invoiceNum,
+        order_id: orderId,
+        table_id: cart.tableNum || null,
+        amount: cart.total,
         method: METHODS[selectedMethod].name,
-        time: new Date().toISOString(),
+        status: 'paid'
       });
-      localStorage.setItem('ca_payments', JSON.stringify(payments));
-      localStorage.setItem('ca_last_order_id', String(oid));
-      localStorage.removeItem('ca_pending_cart');
 
-      setConfirmedOrder(order);
+      if (cart.tableNum) {
+        await supabase.from('dining_tables').update({ status: 'occupied' }).eq('id', cart.tableNum);
+      }
+
+      localStorage.removeItem('ca_pending_cart');
+      localStorage.setItem('ca_last_order_id', String(orderId));
+
+      setConfirmedOrder({
+        id: orderId,
+        invoiceNum,
+        paymentId: txnId,
+        table: cart.tableNum,
+        total: cart.total,
+        paymentMethod: METHODS[selectedMethod].name,
+        time: orderData.created_at
+      });
       setProcessing(false);
     }, 1700);
   };

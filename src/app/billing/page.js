@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 const STATUS_FLOW = ['paid','preparing','ready','served'];
 const STATUS_META = {
@@ -15,13 +16,22 @@ const STATUS_META = {
 
 function esc(s) { return String(s); }
 
-const readOrders = () => {
+const readOrders = async () => {
   try {
-    const orders = JSON.parse(localStorage.getItem('ca_paid_orders') || '[]');
-    return Array.isArray(orders) ? orders : [];
-  } catch {
-    return [];
-  }
+    const { data: ordersData } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+    const { data: itemsData } = await supabase.from('order_items').select('*');
+    if (!ordersData) return [];
+    return ordersData.map(o => ({
+      id: o.id, invoiceNum: o.invoice_num, table: o.table_id,
+      items: (itemsData || []).filter(i => i.order_id === o.id).map(i => ({
+        name: i.product_name, price: Number(i.unit_price), qty: i.quantity, emoji: '☕'
+      })),
+      subtotal: Number(o.subtotal), serviceCharge: Number(o.service_charge),
+      total: Number(o.total), note: o.note, status: o.status,
+      paymentMethod: o.payment_method, paymentId: o.payment_id,
+      time: o.created_at
+    }));
+  } catch { return []; }
 };
 
 export default function BillingPage() {
@@ -34,9 +44,9 @@ export default function BillingPage() {
   const [rating, setRating] = useState(0);
   const [feedbackText, setFeedbackText] = useState('');
 
-  const loadOrder = useCallback(() => {
+  const loadOrder = useCallback(async () => {
     const lastId = parseInt(localStorage.getItem('ca_last_order_id'));
-    const orders = readOrders();
+    const orders = await readOrders();
     if (!orders.length) return null;
     if (lastId) {
       const o = orders.find(x => x.id === lastId);
@@ -47,33 +57,28 @@ export default function BillingPage() {
 
   useEffect(() => {
     let active = true;
-
-    queueMicrotask(() => {
+    (async () => {
       if (!active) return;
-      const o = loadOrder();
+      const o = await loadOrder();
       setOrder(o);
       if (o) setLiveStatus(o.status);
       setHydrated(true);
-    });
-
-    return () => {
-      active = false;
-    };
+    })();
+    return () => { active = false; };
   }, [loadOrder]);
 
-  // Poll for live status
+  // Poll Supabase for live status every 5 seconds
   useEffect(() => {
     if (!order) return;
-    const iv = setInterval(() => {
+    const iv = setInterval(async () => {
       try {
-        const orders = readOrders();
-        const found = orders.find(o2 => o2.id === order.id);
-        if (found) {
-          setOrder(found);
-          setLiveStatus(found.status);
+        const { data } = await supabase.from('orders').select('status').eq('id', order.id).single();
+        if (data) {
+          setLiveStatus(data.status);
+          setOrder(prev => ({ ...prev, status: data.status }));
         }
       } catch {}
-    }, 3000);
+    }, 5000);
     return () => clearInterval(iv);
   }, [order]);
 
@@ -209,7 +214,17 @@ export default function BillingPage() {
               value={feedbackText}
               onChange={e => setFeedbackText(e.target.value)}
             />
-            <button className="f-submit" onClick={() => setShowFeedback(false)}>Submit Feedback</button>
+            <button className="f-submit" onClick={async () => {
+              if (order) {
+                await supabase.from('feedback').insert({
+                  order_id: order.id,
+                  table_id: order.table || null,
+                  rating,
+                  comment: feedbackText
+                });
+              }
+              setShowFeedback(false);
+            }}>Submit Feedback</button>
             <button className="f-skip" onClick={() => setShowFeedback(false)}>Skip for now</button>
           </div>
         </div>

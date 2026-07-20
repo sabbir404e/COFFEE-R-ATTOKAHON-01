@@ -1,47 +1,72 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import { supabase } from '@/lib/supabase';
+
+const DEFAULT_KITCHEN_USERS = [
+  { username: 'chef', password: 'chef123', role: 'kitchen' },
+  { username: 'admin', password: 'admin123', role: 'admin' },
+];
+const STATUS_FLOW = { paid: 'preparing', preparing: 'ready', ready: 'served' };
+const TERMINAL_STATUSES = new Set(['served', 'cancelled', 'failed', 'refunded']);
+const STATUS_LABELS = { paid: 'Paid ✓', preparing: 'Preparing', ready: 'Ready!', served: 'Served' };
+
+function readJson(key, fallback) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key));
+    return value ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function orderTimestamp(order) {
+  const candidate = order.createdAt ?? order.time;
+  const timestamp = typeof candidate === 'number' ? candidate : new Date(candidate).getTime();
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
 
 export default function KitchenPage() {
-  const { toggleTheme } = useApp();
+  const { toggleTheme, orders: allOrders, tables } = useApp();
   
   const [me, setMe] = useState(null);
   const [loginUser, setLoginUser] = useState('');
   const [loginPass, setLoginPass] = useState('');
   const [loginErr, setLoginErr] = useState(false);
   
-  const [allOrders, setAllOrders] = useState([]);
   const [kFilter, setKFilter] = useState('active');
   const [soundOn, setSoundOn] = useState(false);
-  const [prevNew, setPrevNew] = useState(0);
-  const [mounted, setMounted] = useState(false);
+  const [now, setNow] = useState(0);
 
-  const pollTimerRef = useRef(null);
+  const paidCountRef = useRef(0);
+  const hasLoadedOrdersRef = useRef(false);
+  const audioContextRef = useRef(null);
 
   useEffect(() => {
-    setMounted(true);
-    return () => clearInterval(pollTimerRef.current);
-  }, []);
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setNow(Date.now());
+      const savedUser = readJson('ca_kitchen_user', null);
+      if (savedUser && ['kitchen', 'admin'].includes(savedUser.role)) setMe(savedUser);
+    });
+    
+    const interval = setInterval(() => setNow(Date.now()), 60000);
 
-  const loadOrders = () => {
-    try {
-      const orders = JSON.parse(localStorage.getItem('ca_paid_orders') || '[]');
-      setAllOrders(orders);
-    } catch {
-      setAllOrders([]);
-    }
-  };
+    return () => {
+      active = false;
+      clearInterval(interval);
+      audioContextRef.current?.close?.().catch(() => {});
+    };
+  }, []);
 
   const doLogin = () => {
     const u = loginUser.trim();
     const p = loginPass;
-    let users = [{username:'chef',password:'chef123',role:'kitchen'},{username:'admin',password:'admin123',role:'admin'}];
-    try {
-      const lsUsers = JSON.parse(localStorage.getItem('ca_users'));
-      if (lsUsers && lsUsers.length) users = lsUsers;
-    } catch (e) {}
+    const savedUsers = readJson('ca_users', DEFAULT_KITCHEN_USERS);
+    const users = Array.isArray(savedUsers) && savedUsers.length ? savedUsers : DEFAULT_KITCHEN_USERS;
     
     const found = users.find(x => x.username === u && x.password === p);
     if (!found || !['kitchen','admin'].includes(found.role)) {
@@ -50,32 +75,37 @@ export default function KitchenPage() {
     }
     setLoginErr(false);
     setMe(found);
-    loadOrders();
-    pollTimerRef.current = setInterval(loadOrders, 3000);
+    localStorage.setItem('ca_kitchen_user', JSON.stringify(found));
   };
 
   const doLogout = () => {
     setMe(null);
-    clearInterval(pollTimerRef.current);
     setLoginUser('');
     setLoginPass('');
+    localStorage.removeItem('ca_kitchen_user');
   };
 
-  const advOrder = (id, nextStatus) => {
-    try {
-      const orders = JSON.parse(localStorage.getItem('ca_paid_orders') || '[]');
-      const idx = orders.findIndex(o => String(o.id) === String(id));
-      if (idx > -1) {
-        orders[idx].status = nextStatus;
-        localStorage.setItem('ca_paid_orders', JSON.stringify(orders));
-      }
-      loadOrders();
-    } catch (e) {}
+  const advOrder = async (id, expectedStatus) => {
+    const nextStatus = STATUS_FLOW[expectedStatus];
+    if (!nextStatus) return;
+
+    const idx = allOrders.findIndex(order => String(order.id) === String(id));
+    if (idx < 0 || allOrders[idx].status !== expectedStatus) {
+      return;
+    }
+    const order = allOrders[idx];
+
+    await supabase.from('orders').update({ status: nextStatus, status_updated_at: new Date().toISOString() }).eq('id', id);
+
+    if (nextStatus === 'served' && order.table) {
+      await supabase.from('dining_tables').update({ status: 'cleaning' }).eq('id', order.table);
+    }
   };
 
   const playChime = () => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      audioContextRef.current = ctx;
       [523, 659, 784].forEach((f, i) => {
         const o = ctx.createOscillator(), g = ctx.createGain();
         o.connect(g); g.connect(ctx.destination);
@@ -85,6 +115,7 @@ export default function KitchenPage() {
         g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
         o.start(t); o.stop(t + 0.3);
       });
+      window.setTimeout(() => ctx.close().catch(() => {}), 1000);
     } catch {}
   };
 
@@ -93,17 +124,16 @@ export default function KitchenPage() {
   counts.active = counts.paid + counts.preparing + counts.ready;
 
   useEffect(() => {
-    if (soundOn && counts.paid > prevNew) {
-      playChime();
-    }
-    setPrevNew(counts.paid);
-  }, [counts.paid, soundOn, prevNew]);
+    const paidCount = allOrders.filter(order => order.status === 'paid').length;
+    if (hasLoadedOrdersRef.current && soundOn && paidCount > paidCountRef.current) playChime();
+    paidCountRef.current = paidCount;
+    hasLoadedOrdersRef.current = true;
+  }, [allOrders, soundOn]);
 
-  const list = kFilter === 'active' 
-    ? allOrders.filter(o => o.status !== 'served') 
+  const list = kFilter === 'active'
+    ? allOrders.filter(o => !TERMINAL_STATUSES.has(o.status))
     : allOrders.filter(o => o.status === kFilter);
 
-  const flow = { paid: 'preparing', preparing: 'ready', ready: 'served' };
   const btnMap = {
     paid: ['adv-new', '▶ Start Preparing'],
     preparing: ['adv-prep', '✓ Mark as Ready'],
@@ -111,25 +141,23 @@ export default function KitchenPage() {
   };
 
   const formatTime = (o) => {
-    const ts = o.createdAt || (o.time ? new Date(o.time).getTime() : Date.now());
-    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const timestamp = orderTimestamp(o);
+    return timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Unknown time';
   };
 
   const formatElapsed = (o) => {
-    const ts = o.createdAt || (o.time ? new Date(o.time).getTime() : Date.now());
-    const mins = Math.floor((Date.now() - ts) / 60000);
+    const timestamp = orderTimestamp(o);
+    if (!timestamp) return 'Time unavailable';
+    const mins = Math.max(0, Math.floor((now - timestamp) / 60000));
     if (mins < 1) return 'Just now';
     if (mins < 60) return mins + 'm ago';
     return Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm ago';
   };
 
   const isLate = (o) => {
-    if (o.status === 'served') return false;
-    const ts = o.createdAt || (o.time ? new Date(o.time).getTime() : Date.now());
-    return (Date.now() - ts) > 20 * 60000;
+    const timestamp = orderTimestamp(o);
+    return !TERMINAL_STATUSES.has(o.status) && Boolean(timestamp) && (now - timestamp) > 20 * 60000;
   };
-
-  if (!mounted) return null;
 
   return (
     <>
@@ -309,7 +337,8 @@ export default function KitchenPage() {
                 list.map(o => {
                   const key = String(o.id);
                   const [btnCls, btnLbl] = btnMap[o.status] || [];
-                  const statusLabel = { paid: 'Paid ✓', preparing: 'Preparing', ready: 'Ready!', served: 'Served' }[o.status] || o.status;
+                  const statusLabel = STATUS_LABELS[o.status] || o.status || 'Unknown';
+                  const items = Array.isArray(o.items) ? o.items : [];
                   
                   return (
                     <div key={key} className={`order-card s-${o.status}`}>
@@ -330,11 +359,11 @@ export default function KitchenPage() {
                       )}
                       
                       <div className="o-items">
-                        {o.items.map((i, idx) => (
+                        {items.length ? items.map((i, idx) => (
                           <div key={idx}>
                             {i.emoji || '☕'} <strong>{i.name}</strong> × {i.qty}
                           </div>
-                        ))}
+                        )) : <div>Order items unavailable</div>}
                       </div>
                       
                       {o.note && (
@@ -346,7 +375,7 @@ export default function KitchenPage() {
                       <div className="o-total">Total: <span>৳{o.total}</span></div>
                       
                       {btnLbl && (
-                        <button className={`adv-btn ${btnCls}`} onClick={() => advOrder(key, flow[o.status])}>
+                        <button className={`adv-btn ${btnCls}`} onClick={() => advOrder(key, o.status)}>
                           {btnLbl}
                         </button>
                       )}
