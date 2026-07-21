@@ -21,6 +21,7 @@ export default function AdminPage() {
   const [lUser, setLUser] = useState('');
   const [lPass, setLPass] = useState('');
   const [loginErr, setLoginErr] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
 
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [reportFrom, setReportFrom] = useState('');
@@ -74,6 +75,9 @@ export default function AdminPage() {
   }, []);
 
   const doLogin = async () => {
+    if (!lUser.trim() || !lPass) return;
+    setLoginLoading(true);
+    setLoginErr(false);
     const { data: found } = await supabase
       .from('users')
       .select('*')
@@ -81,7 +85,7 @@ export default function AdminPage() {
       .eq('password', lPass)
       .eq('role', 'admin')
       .single();
-
+    setLoginLoading(false);
     if (!found) {
       setLoginErr(true);
       return;
@@ -89,7 +93,6 @@ export default function AdminPage() {
     setLoginErr(false);
     setMe(found);
     localStorage.setItem('ca_admin_user', JSON.stringify(found));
-    loadFeedback();
   };
 
   const doLogout = () => {
@@ -296,7 +299,9 @@ export default function AdminPage() {
               <label>Password</label>
               <input className="inp" type="password" value={lPass} onChange={e => setLPass(e.target.value)} placeholder="password" onKeyDown={e => e.key === 'Enter' && doLogin()} />
             </div>
-            <button className="btn-login" onClick={doLogin}>Sign In →</button>
+            <button className="btn-login" onClick={doLogin} disabled={loginLoading}>
+              {loginLoading ? 'Signing in…' : 'Sign In →'}
+            </button>
             <div className="login-hint">Default: <b>admin</b> / <b>admin123</b></div>
           </div>
         </div>
@@ -464,12 +469,12 @@ export default function AdminPage() {
                     <tbody>
                       {payments.slice(0, 6).map(p => (
                         <tr key={p.id}>
-                          <td style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--gold)' }}>{p.txnId}</td>
-                          <td style={{ fontSize: '12px' }}>{p.invoiceNum || '—'}</td>
-                          <td>{p.table || '—'}</td>
-                          <td>{p.method}</td>
+                          <td style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--gold)' }}>{p.txn_id || p.txnId || '—'}</td>
+                          <td style={{ fontSize: '12px' }}>{p.invoice_num || p.invoiceNum || '—'}</td>
+                          <td>{p.table_id || p.table || '—'}</td>
+                          <td>{p.payment_method || p.method || '—'}</td>
                           <td style={{ fontWeight: 600, color: 'var(--success-tx)' }}>৳{p.amount}</td>
-                          <td style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(p.time).toLocaleString('en-BD', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                          <td style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(p.created_at || p.time).toLocaleString('en-BD', { dateStyle: 'short', timeStyle: 'short' })}</td>
                         </tr>
                       ))}
                       {payments.length === 0 && <tr><td colSpan="6" className="empty-tbl">No payments yet.</td></tr>}
@@ -576,18 +581,17 @@ export default function AdminPage() {
                     <tbody>
                       {payments.map(p => (
                         <tr key={p.id}>
-                          <td style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--gold)' }}>{p.txnId}</td>
-                          <td style={{ fontSize: '12px' }}>{p.invoiceNum || '—'}</td>
-                          <td>{p.table || '—'}</td>
-                          <td>{p.method}</td>
+                          <td style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--gold)' }}>{p.txn_id || p.txnId || '—'}</td>
+                          <td style={{ fontSize: '12px' }}>{p.invoice_num || p.invoiceNum || '—'}</td>
+                          <td>{p.table_id || p.table || '—'}</td>
+                          <td>{p.payment_method || p.method || '—'}</td>
                           <td style={{ fontWeight: 600, color: 'var(--success-tx)' }}>৳{p.amount}</td>
                           <td>
                             <span className={`badge b-${p.status || 'paid'}`}>
                               {p.status || 'paid'}
                             </span>
                           </td>
-                          <td style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(p.time).toLocaleString('en-BD', { dateStyle: 'short', timeStyle: 'short' })}</td>
-
+                          <td style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(p.created_at || p.time).toLocaleString('en-BD', { dateStyle: 'short', timeStyle: 'short' })}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -705,7 +709,7 @@ export default function AdminPage() {
                           🔴 {Object.keys(activeByTable).length} occupied
                         </span>
                         <span style={{ padding: '3px 12px', borderRadius: '20px', background: 'rgba(42,114,72,0.12)', border: '1px solid rgba(42,114,72,0.30)', fontSize: '11px', color: '#60C890', fontWeight: 600 }}>
-                          🟢 {tables.filter(tNum => !activeByTable[tNum]).length} vacant
+                          🟢 {tables.filter(t => !activeByTable[t.id]).length} vacant
                         </span>
                       </div>
                     </div>
@@ -723,18 +727,19 @@ export default function AdminPage() {
 
                   {/* Live Table Status Grid */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px' }}>
-                    {tables.map(tNum => {
-                      const active = activeByTable[tNum] || [];
+                    {tables.map(t => {
+                      const active = activeByTable[t.id] || [];
                       const hasOrders = active.length > 0;
                       const latestStatus = hasOrders ? active[active.length - 1].status : null;
                       const statusColors = {
-                        paid: { bg: 'rgba(200,148,56,0.10)', border: 'rgba(200,148,56,0.35)', dot: 'var(--gold)' },
+                        paid:      { bg: 'rgba(200,148,56,0.10)', border: 'rgba(200,148,56,0.35)', dot: 'var(--gold)' },
                         preparing: { bg: 'rgba(58,120,200,0.10)', border: 'rgba(58,120,200,0.35)', dot: '#6AABFF' },
-                        ready: { bg: 'rgba(42,114,72,0.12)', border: 'rgba(42,114,72,0.35)', dot: '#60C890' },
+                        ready:     { bg: 'rgba(42,114,72,0.12)',  border: 'rgba(42,114,72,0.35)',  dot: '#60C890' },
                       };
                       const sc = latestStatus ? (statusColors[latestStatus] || statusColors.paid) : null;
+                      const tableLabel = t.name || `Table ${t.id}`;
                       return (
-                        <div key={tNum} style={{
+                        <div key={t.id} style={{
                           background: hasOrders ? sc.bg : 'var(--card)',
                           border: `1px solid ${hasOrders ? sc.border : 'var(--border)'}`,
                           borderRadius: '12px',
@@ -745,11 +750,11 @@ export default function AdminPage() {
                           transition: 'all 0.2s',
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '18px', fontWeight: 700 }}>T{tNum}</span>
+                            <span style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '16px', fontWeight: 700 }}>{tableLabel}</span>
                             {hasOrders && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: sc.dot, display: 'inline-block', boxShadow: `0 0 6px ${sc.dot}` }} />}
                           </div>
                           <div style={{ fontSize: '11px', color: hasOrders ? 'var(--text-2)' : 'var(--muted)' }}>
-                            {hasOrders ? `${active.length} active order${active.length > 1 ? 's' : ''}` : 'Vacant'}
+                            {t.seats ? `${t.seats} seats · ` : ''}{hasOrders ? `${active.length} active order${active.length > 1 ? 's' : ''}` : 'Vacant'}
                           </div>
                           {hasOrders && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginTop: '2px' }}>
@@ -765,7 +770,7 @@ export default function AdminPage() {
                           )}
                           <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
                             <a
-                              href={`/order?table=${tNum}`}
+                              href={`/order?table=${t.id}`}
                               target="_blank"
                               rel="noreferrer"
                               style={{ fontSize: '10px', color: 'var(--gold)', textDecoration: 'none', background: 'rgba(200,148,56,0.10)', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(200,148,56,0.25)' }}
@@ -775,11 +780,11 @@ export default function AdminPage() {
                             <button
                               type="button"
                               onClick={() => confirmAction(
-                                hasOrders ? `Table ${tNum} has active orders. Delete it anyway?` : `Delete Table ${tNum}?`,
-                                () => deleteTable(tNum)
+                                hasOrders ? `${tableLabel} has active orders. Delete it anyway?` : `Delete ${tableLabel}?`,
+                                () => deleteTable(t.id)
                               )}
                               disabled={tables.length <= 1}
-                              aria-label={`Delete Table ${tNum}`}
+                              aria-label={`Delete ${tableLabel}`}
                               style={{ border: '1px solid rgba(192,64,64,0.35)', borderRadius: '6px', background: 'rgba(192,64,64,0.10)', color: 'var(--d-tx)', padding: '3px 7px', fontSize: '10px', cursor: tables.length <= 1 ? 'not-allowed' : 'pointer', opacity: tables.length <= 1 ? 0.5 : 1 }}
                             >
                               Delete
