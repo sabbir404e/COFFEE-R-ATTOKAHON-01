@@ -302,7 +302,6 @@ export default function AdminPage() {
             <button className="btn-login" onClick={doLogin} disabled={loginLoading}>
               {loginLoading ? 'Signing in…' : 'Sign In →'}
             </button>
-            <div className="login-hint">Default: <b>admin</b> / <b>admin123</b></div>
           </div>
         </div>
       </div>

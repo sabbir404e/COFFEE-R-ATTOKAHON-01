@@ -529,18 +529,18 @@ export default function KitchenPage() {
                         <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
                           <button
                             className={`adv-btn ${btnCls}`}
-                            style={{ flex: 1 }}
+                            style={{ flex: 1, width: 'auto' }}
                             onClick={() => advOrder(key, o.status)}
                           >
                             {btnLbl}
                           </button>
                           <button
                             className="adv-btn"
-                            style={{ flex: '0 0 auto', padding: '10px 14px', background: 'var(--bg2)', borderColor: '#E08080', color: '#E08080' }}
+                            style={{ flex: '0 0 auto', width: 'auto', padding: '10px 14px', background: 'var(--bg2)', borderColor: '#E08080', color: '#E08080' }}
                             onClick={() => failOrder(key)}
                             title="Mark as Failed (Invalid Payment)"
                           >
-                            ✗ Fail
+                            Order Fail
                           </button>
                         </div>
                       )}
