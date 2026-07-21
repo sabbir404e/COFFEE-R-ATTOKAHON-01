@@ -101,6 +101,31 @@ export default function KitchenPage() {
     }
   };
 
+  // ── Fail order ────────────────────────────────────────────────────────────
+  const failOrder = async (id) => {
+    if (!confirm(`Are you sure you want to mark order #${id} as FAILED? This is usually for invalid payments.`)) return;
+    
+    const order = allOrders.find(o => String(o.id) === String(id));
+    if (!order) return;
+
+    // Update order status
+    await supabase
+      .from('orders')
+      .update({ status: 'failed', status_updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    // Update payment status
+    await supabase
+      .from('payments')
+      .update({ status: 'failed' })
+      .eq('order_id', id);
+
+    // Free up table if occupied by this order
+    if (order.table) {
+      await supabase.from('dining_tables').update({ status: 'available' }).eq('id', order.table);
+    }
+  };
+
   // ── Chime ─────────────────────────────────────────────────────────────────
   const playChime = () => {
     try {
@@ -501,12 +526,23 @@ export default function KitchenPage() {
                       </div>
 
                       {btnLbl && (
-                        <button
-                          className={`adv-btn ${btnCls}`}
-                          onClick={() => advOrder(key, o.status)}
-                        >
-                          {btnLbl}
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
+                          <button
+                            className={`adv-btn ${btnCls}`}
+                            style={{ flex: 1 }}
+                            onClick={() => advOrder(key, o.status)}
+                          >
+                            {btnLbl}
+                          </button>
+                          <button
+                            className="adv-btn"
+                            style={{ flex: '0 0 auto', padding: '10px 14px', background: 'var(--bg2)', borderColor: '#E08080', color: '#E08080' }}
+                            onClick={() => failOrder(key)}
+                            title="Mark as Failed (Invalid Payment)"
+                          >
+                            ✗ Fail
+                          </button>
+                        </div>
                       )}
                     </div>
                   );

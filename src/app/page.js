@@ -6,18 +6,18 @@ import { useApp } from '@/context/AppContext';
 import Image from 'next/image';
 
 const MENU_ITEMS = [
-  { id:'1', name:'Espresso',       cat:'Coffee',    price:80,  emoji:'☕', desc:'Rich double shot, bold and intense.' },
-  { id:'2', name:'Cappuccino',     cat:'Coffee',    price:120, emoji:'🥛', desc:'Espresso with velvety steamed milk foam.' },
-  { id:'3', name:'Caramel Latte',  cat:'Coffee',    price:140, emoji:'🍵', desc:'Smooth latte with house caramel drizzle.' },
-  { id:'4', name:'Cold Brew',      cat:'Coffee',    price:150, emoji:'🧊', desc:'Slow-steeped, refreshing cold coffee.' },
-  { id:'5', name:'Iced Mocha',     cat:'Coffee',    price:155, emoji:'🍫', desc:'Espresso, chocolate, cold milk over ice.' },
-  { id:'6', name:'Matcha Latte',   cat:'Specialty', price:145, emoji:'🍃', desc:'Ceremonial matcha blended with oat milk.' },
-  { id:'7', name:'Mango Smoothie', cat:'Specialty', price:130, emoji:'🥭', desc:'Fresh mango blended with yogurt and honey.' },
-  { id:'8', name:'Croissant',      cat:'Food',      price:100, emoji:'🥐', desc:'Buttery and flaky, baked fresh every morning.' },
-  { id:'9', name:'Club Sandwich',  cat:'Food',      price:180, emoji:'🥪', desc:'Chicken, lettuce, tomato, toasted bread.' },
-  { id:'10',name:'Cheesecake',     cat:'Dessert',   price:190, emoji:'🍰', desc:'New York style with seasonal berry compote.' },
-  { id:'11',name:'Avocado Toast',  cat:'Food',      price:160, emoji:'🥑', desc:'Sourdough, smashed avocado, chilli flakes.' },
-  { id:'12',name:'Blueberry Muffin',cat:'Dessert',  price:90,  emoji:'🧁', desc:'Soft muffin loaded with blueberries.' },
+  { id: '1', name: 'Espresso', cat: 'Coffee', price: 80, emoji: '☕', desc: 'Rich double shot, bold and intense.' },
+  { id: '2', name: 'Cappuccino', cat: 'Coffee', price: 120, emoji: '🥛', desc: 'Espresso with velvety steamed milk foam.' },
+  { id: '3', name: 'Caramel Latte', cat: 'Coffee', price: 140, emoji: '🍵', desc: 'Smooth latte with house caramel drizzle.' },
+  { id: '4', name: 'Cold Brew', cat: 'Coffee', price: 150, emoji: '🧊', desc: 'Slow-steeped, refreshing cold coffee.' },
+  { id: '5', name: 'Iced Mocha', cat: 'Coffee', price: 155, emoji: '🍫', desc: 'Espresso, chocolate, cold milk over ice.' },
+  { id: '6', name: 'Matcha Latte', cat: 'Specialty', price: 145, emoji: '🍃', desc: 'Ceremonial matcha blended with oat milk.' },
+  { id: '7', name: 'Mango Smoothie', cat: 'Specialty', price: 130, emoji: '🥭', desc: 'Fresh mango blended with yogurt and honey.' },
+  { id: '8', name: 'Croissant', cat: 'Food', price: 100, emoji: '🥐', desc: 'Buttery and flaky, baked fresh every morning.' },
+  { id: '9', name: 'Club Sandwich', cat: 'Food', price: 180, emoji: '🥪', desc: 'Chicken, lettuce, tomato, toasted bread.' },
+  { id: '10', name: 'Cheesecake', cat: 'Dessert', price: 190, emoji: '🍰', desc: 'New York style with seasonal berry compote.' },
+  { id: '11', name: 'Avocado Toast', cat: 'Food', price: 160, emoji: '🥑', desc: 'Sourdough, smashed avocado, chilli flakes.' },
+  { id: '12', name: 'Blueberry Muffin', cat: 'Dessert', price: 90, emoji: '🧁', desc: 'Soft muffin loaded with blueberries.' },
 ];
 
 export default function HomePage() {
@@ -249,10 +249,10 @@ export default function HomePage() {
           <h1 className="hero-title">Where Every Cup<br />Tells a <em>Story</em></h1>
           <p className="hero-sub">Handcrafted coffees, seasonal flavors, and food made with intention — served in a space designed for moments that matter.</p>
           {scannedTable && (
-            <div style={{ 
-              fontSize: '18px', 
-              fontWeight: '600', 
-              color: 'var(--gold)', 
+            <div style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: 'var(--gold)',
               marginBottom: '32px',
               padding: '12px 24px',
               background: 'rgba(200,148,56,0.1)',
@@ -298,10 +298,10 @@ export default function HomePage() {
               <p className="section-sub">Coffee-r Attokahon began with a single pour-over and a belief that great coffee deserves unhurried attention. Every bean is sourced with care, every drink made with intention, and every visit designed to feel like a pause worth taking.</p>
               <div className="about-values">
                 {[
-                  { icon:'🌱', title:'Ethically Sourced', desc:'Direct trade with farms that prioritize sustainability and fair pay.' },
-                  { icon:'🔥', title:'In-House Roasted', desc:'Beans roasted weekly to peak freshness, never shipped stale.' },
-                  { icon:'🧑‍🍳', title:'Made to Order', desc:'Every item prepared fresh when you order, not before.' },
-                  { icon:'☕', title:'Barista Trained', desc:'Our team trains extensively so your cup is always consistent.' },
+                  { icon: '🌱', title: 'Ethically Sourced', desc: 'Direct trade with farms that prioritize sustainability and fair pay.' },
+                  { icon: '🔥', title: 'In-House Roasted', desc: 'Beans roasted weekly to peak freshness, never shipped stale.' },
+                  { icon: '🧑‍🍳', title: 'Made to Order', desc: 'Every item prepared fresh when you order, not before.' },
+                  { icon: '☕', title: 'Barista Trained', desc: 'Our team trains extensively so your cup is always consistent.' },
                 ].map((v, i) => (
                   <div className="value-card" key={i}>
                     <div className="value-icon">{v.icon}</div>
@@ -393,19 +393,19 @@ export default function HomePage() {
       </section>
 
       {/* EXPERIENCE */}
-      <section className="section" id="experience" style={{ background:'var(--bg2)' }}>
+      <section className="section" id="experience" style={{ background: 'var(--bg2)' }}>
         <div className="section-inner">
           <div className="section-eyebrow">The Experience</div>
           <h2 className="section-title">More than coffee,<br />it&apos;s a <em>ritual</em></h2>
           <div className="section-divider" />
           <div className="exp-grid">
             {[
-              { icon:'📱', title:'Scan & Order', desc:"Scan the QR on your table and order directly from your phone — no waving, no waiting for a waiter." },
-              { icon:'⚡', title:'Live Kitchen Updates', desc:"Watch your order move from confirmed to ready in real time. No more wondering where your food is." },
-              { icon:'💳', title:'Instant Payment', desc:"Pay instantly with bKash, Nagad, or Rocket. Receive a digital invoice the moment it's done." },
-              { icon:'🌙', title:'Curated Atmosphere', desc:"Warm lighting, carefully chosen music, and interiors that invite you to slow down and stay awhile." },
-              { icon:'🎯', title:'Zero Compromise', desc:"Every drink leaves our bar only when it meets the standard. Consistency is non-negotiable here." },
-              { icon:'🌿', title:'Seasonal Specials', desc:"Our menu evolves with the seasons. Come back for limited offerings you won't find anywhere else." },
+              { icon: '📱', title: 'Scan & Order', desc: "Scan the QR on your table and order directly from your phone — no waving, no waiting for a waiter." },
+              { icon: '⚡', title: 'Live Kitchen Updates', desc: "Watch your order move from confirmed to ready in real time. No more wondering where your food is." },
+              { icon: '💳', title: 'Instant Payment', desc: "Pay instantly with bKash, Nagad, or Rocket. Receive a digital invoice the moment it's done." },
+              { icon: '🌙', title: 'Curated Atmosphere', desc: "Warm lighting, carefully chosen music, and interiors that invite you to slow down and stay awhile." },
+              { icon: '🎯', title: 'Zero Compromise', desc: "Every drink leaves our bar only when it meets the standard. Consistency is non-negotiable here." },
+              { icon: '🌿', title: 'Seasonal Specials', desc: "Our menu evolves with the seasons. Come back for limited offerings you won't find anywhere else." },
             ].map((e, i) => (
               <div className="exp-card" key={i}>
                 <div className="exp-icon">{e.icon}</div>
@@ -425,14 +425,14 @@ export default function HomePage() {
           <div className="section-divider" />
           <div className="gallery-grid">
             <div className="gallery-item">☕</div>
-            <div className="gallery-item wide" style={{ fontSize:'36px', flexDirection:'column', gap:'8px' }}>
-              <span style={{ fontSize:'52px' }}>🫘</span>
-              <span style={{ fontFamily:'var(--font-playfair)', fontSize:'16px', color:'var(--gold)' }}>Single Origin</span>
+            <div className="gallery-item wide" style={{ fontSize: '36px', flexDirection: 'column', gap: '8px' }}>
+              <span style={{ fontSize: '52px' }}>🫘</span>
+              <span style={{ fontFamily: 'var(--font-playfair)', fontSize: '16px', color: 'var(--gold)' }}>Single Origin</span>
             </div>
             <div className="gallery-item">🥐</div>
-            <div className="gallery-item tall" style={{ fontSize:'48px', flexDirection:'column', gap:'10px' }}>
-              <span style={{ fontSize:'64px' }}>🍃</span>
-              <span style={{ fontFamily:'var(--font-playfair)', fontSize:'14px', color:'var(--gold)', textAlign:'center' }}>Matcha Season</span>
+            <div className="gallery-item tall" style={{ fontSize: '48px', flexDirection: 'column', gap: '10px' }}>
+              <span style={{ fontSize: '64px' }}>🍃</span>
+              <span style={{ fontFamily: 'var(--font-playfair)', fontSize: '14px', color: 'var(--gold)', textAlign: 'center' }}>Matcha Season</span>
             </div>
             <div className="gallery-item">🍰</div>
             <div className="gallery-item">🧊</div>
@@ -472,8 +472,8 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-              <div style={{ marginTop:'28px' }}>
-                <div className="section-eyebrow" style={{ marginBottom:'10px' }}>Opening Hours</div>
+              <div style={{ marginTop: '28px' }}>
+                <div className="section-eyebrow" style={{ marginBottom: '10px' }}>Opening Hours</div>
                 <div className="hours-grid">
                   <div className="hours-row"><span className="hours-day">Mon – Fri</span><span className="hours-time">8am – 11pm</span></div>
                   <div className="hours-row"><span className="hours-day">Saturday</span><span className="hours-time">9am – 12am</span></div>
@@ -485,10 +485,10 @@ export default function HomePage() {
             <div>
               <div className="map-placeholder">
                 <div className="map-icon">🗺️</div>
-                <h4 style={{ fontFamily:'var(--font-playfair)', fontSize:'18px', marginBottom:'4px' }}>Rajapur, Pabna</h4>
-                <p style={{ fontSize:'13px', color:'var(--muted)', lineHeight:'1.6' }}>House 12, Road 7<br />Near Rajapur Lake</p>
+                <h4 style={{ fontFamily: 'var(--font-playfair)', fontSize: '18px', marginBottom: '4px' }}>Rajapur, Pabna</h4>
+                <p style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.6' }}>House 12, Road 7<br />Near Rajapur Lake</p>
                 <a href="https://maps.google.com" target="_blank" rel="noreferrer"
-                  style={{ marginTop:'16px', display:'inline-block', padding:'10px 24px', background:'var(--gold)', color:'#fff', borderRadius:'10px', textDecoration:'none', fontSize:'13px', fontWeight:'600' }}>
+                  style={{ marginTop: '16px', display: 'inline-block', padding: '10px 24px', background: 'var(--gold)', color: '#fff', borderRadius: '10px', textDecoration: 'none', fontSize: '13px', fontWeight: '600' }}>
                   Open in Maps →
                 </a>
               </div>
@@ -517,15 +517,10 @@ export default function HomePage() {
               <a href="#experience">Experience</a>
               <a href="#contact">Find Us</a>
             </div>
-            <div className="footer-col">
-              <h5>Staff</h5>
-              <Link href="/admin">Admin Panel</Link>
-              <Link href="/qr-print">QR Generator</Link>
-            </div>
           </div>
           <div className="footer-bottom">
             <span>© 2026 Coffee-r Attokahon. All rights reserved.</span>
-            <span style={{ color:'var(--gold)' }}>☕ Crafted with care in Pabna, Bangladesh</span>
+            <span style={{ color: 'var(--gold)' }}>☕ Crafted with care in Pabna, Bangladesh</span>
           </div>
         </div>
       </footer>

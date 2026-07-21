@@ -110,8 +110,11 @@ export default function BillingPage() {
       <style>{`
         .main{max-width:560px;margin:0 auto;padding:24px 20px 48px;position:relative;z-index:1;}
         .paid-banner{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--success-bg);border:1px solid var(--success-bd);border-radius:14px;padding:14px 20px;margin-bottom:24px;animation:fadeIn 0.4s ease;}
+        .paid-banner.failed{background:rgba(224,128,128,0.1);border-color:rgba(224,128,128,0.3);}
         .paid-check{width:32px;height:32px;border-radius:50%;background:var(--success-bd);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+        .paid-banner.failed .paid-check{background:rgba(224,128,128,0.2);color:#C04040;}
         .paid-banner-text h4{font-size:15px;font-weight:600;color:var(--success-tx);}
+        .paid-banner.failed .paid-banner-text h4{color:#C04040;}
         .paid-banner-text p{font-size:12px;color:var(--muted);margin-top:2px;}
         .invoice{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:var(--shadow);animation:fadeIn 0.4s 0.1s ease both;}
         .invoice-head{padding:24px 24px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;}
@@ -122,6 +125,7 @@ export default function BillingPage() {
         .inv-meta .inv-num{font-family:var(--font-playfair),'Playfair Display',serif;font-size:16px;color:var(--gold);}
         .inv-meta .inv-date{font-size:11px;color:var(--muted);margin-top:4px;}
         .inv-meta .inv-status{display:inline-block;background:var(--success-bg);border:1px solid var(--success-bd);border-radius:6px;padding:2px 10px;font-size:10px;font-weight:700;color:var(--success-tx);text-transform:uppercase;letter-spacing:1px;margin-top:6px;}
+        .inv-meta .inv-status.failed{background:rgba(224,128,128,0.1);border-color:rgba(224,128,128,0.3);color:#C04040;}
         .invoice-info{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-bottom:1px solid var(--border);}
         .inv-info-cell{padding:14px 20px;border-right:1px solid var(--border);}
         .inv-info-cell:last-child{border-right:none;}
@@ -259,36 +263,46 @@ export default function BillingPage() {
           const timeStr = date.toLocaleTimeString('en-BD', {hour:'2-digit',minute:'2-digit'});
           const subtotal = order.subtotal || order.items.reduce((s,i)=>s+i.price*i.qty,0);
           const service = order.serviceCharge || 0;
+          const isFailed = liveStatus === 'failed';
 
           return (
             <>
-              <div className="paid-banner">
-                <div className="paid-check">✓</div>
+              <div className={`paid-banner ${isFailed ? 'failed' : ''}`}>
+                <div className="paid-check">{isFailed ? '✗' : '✓'}</div>
                 <div className="paid-banner-text">
-                  <h4>Payment Confirmed — Order #{order.id}</h4>
-                  <p>Your order has been sent to the kitchen.</p>
+                  <h4>{isFailed ? `Order Failed — #${order.id}` : `Payment Confirmed — Order #${order.id}`}</h4>
+                  <p>{isFailed ? 'Your payment could not be verified.' : 'Your order has been sent to the kitchen.'}</p>
                 </div>
               </div>
 
-              <div className="tracker-card">
-                <div className="tracker-title">📍 Live Order Status</div>
-                <div className="tracker-sub">Auto-updates every 3 seconds — no refresh needed.</div>
-                <div className="tracker-steps">
-                  <div className="tracker-progress" style={{width:`calc(${progressPct}% - 32px)`}} />
-                  {STATUS_FLOW.map((s, i) => {
-                    const sm = STATUS_META[s];
-                    const cls = i < currentIdx ? 'done' : i === currentIdx ? 'active' : 'pending';
-                    return (
-                      <div className={`t-step ${cls}`} key={s}>
-                        <div className="t-dot">{i < currentIdx ? '✓' : sm.icon}</div>
-                        <div className="t-label">{sm.label}</div>
-                      </div>
-                    );
-                  })}
+              {isFailed ? (
+                <div className="tracker-card" style={{ borderColor: 'rgba(224,128,128,0.3)' }}>
+                  <div className="tracker-title" style={{ color: '#C04040', marginBottom: '12px' }}>❌ Order Failed / Cancelled</div>
+                  <div className="tracker-msg" style={{ background: 'rgba(224,128,128,0.1)', borderColor: 'rgba(224,128,128,0.2)', color: '#C04040', marginTop: '0', textAlign: 'left' }}>
+                    This order was marked as failed by the kitchen. This usually happens if the provided <strong>Transaction ID</strong> or <strong>Sender Number</strong> was incorrect. Please contact the staff or place a new order.
+                  </div>
                 </div>
-                <div className={`tracker-msg ${msgClass}`}>{meta.msg}</div>
-                <div className="tracker-refresh"><div className="refresh-dot" /><span>Live tracking</span></div>
-              </div>
+              ) : (
+                <div className="tracker-card">
+                  <div className="tracker-title">📍 Live Order Status</div>
+                  <div className="tracker-sub">Auto-updates every 5 seconds — no refresh needed.</div>
+                  <div className="tracker-steps">
+                    <div className="tracker-progress" style={{width:`calc(${progressPct}% - 32px)`}} />
+                    {STATUS_FLOW.map((s, i) => {
+                      const sm = STATUS_META[s];
+                      const cls = i < currentIdx ? 'done' : i === currentIdx ? 'active' : 'pending';
+                      return (
+                        <div className={`t-step ${cls}`} key={s}>
+                          <div className="t-dot">{i < currentIdx ? '✓' : sm.icon}</div>
+                          <div className="t-label">{sm.label}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className={`tracker-msg ${msgClass}`}>{meta.msg}</div>
+                  <div className="tracker-refresh"><div className="refresh-dot" /><span>Live tracking</span></div>
+                </div>
+              )}
 
               <div className="invoice">
                 <div className="invoice-head">
@@ -299,7 +313,7 @@ export default function BillingPage() {
                   <div className="inv-meta">
                     <div className="inv-num">{esc(order.invoiceNum || 'INV-' + order.id)}</div>
                     <div className="inv-date">{dateStr} · {timeStr}</div>
-                    <div className="inv-status">✓ Paid</div>
+                    <div className={`inv-status ${isFailed ? 'failed' : ''}`}>{isFailed ? '✗ Failed' : '✓ Paid'}</div>
                   </div>
                 </div>
 
@@ -343,7 +357,7 @@ export default function BillingPage() {
 
                 <div className="invoice-payment">
                   <div className="pay-row txn"><span>Transaction ID</span><span>{esc(order.paymentId || '—')}</span></div>
-                  <div className="pay-row"><span>Payment Status</span><span style={{color:'var(--success-tx)'}}>✓ Verified</span></div>
+                  <div className="pay-row"><span>Payment Status</span><span style={{color: isFailed ? '#C04040' : 'var(--success-tx)'}}>{isFailed ? '✗ Failed / Invalid' : '✓ Verified'}</span></div>
                 </div>
 
                 {order.note && (
