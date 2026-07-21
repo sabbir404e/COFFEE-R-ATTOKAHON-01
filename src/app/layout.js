@@ -19,6 +19,10 @@ export const metadata = {
   title: "Coffee-r Attokahon — Artisan Coffee & Cuisine",
   description:
     "Handcrafted coffees, seasonal flavors, and food made with intention — served in a space designed for moments that matter.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({ children }) {
