@@ -23,20 +23,24 @@ export default function PaymentPage() {
   const [timeLeft, setTimeLeft] = useState(600);
   const [processing, setProcessing] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState(null);
+  const [paymentRef, setPaymentRef] = useState('');
   const timerRef = useRef(null);
 
   useEffect(() => {
-    setMounted(true);
-    try {
-      const pc = JSON.parse(localStorage.getItem('ca_pending_cart'));
-      if (pc && pc.items && pc.items.length) {
-        setCart(pc);
-      } else {
+    const handle = requestAnimationFrame(() => {
+      setMounted(true);
+      setPaymentRef(`CAFE-${Date.now()}`);
+      try {
+        const pc = JSON.parse(localStorage.getItem('ca_pending_cart'));
+        if (pc && pc.items && pc.items.length) {
+          setCart(pc);
+        } else {
+          router.push('/order');
+        }
+      } catch {
         router.push('/order');
       }
-    } catch {
-      router.push('/order');
-    }
+    });
 
     timerRef.current = setInterval(() => {
       setTimeLeft(t => {
@@ -45,7 +49,10 @@ export default function PaymentPage() {
       });
     }, 1000);
 
-    return () => clearInterval(timerRef.current);
+    return () => {
+      cancelAnimationFrame(handle);
+      clearInterval(timerRef.current);
+    };
   }, [router]);
 
   const fmtTime = (secs) => {
@@ -133,11 +140,10 @@ export default function PaymentPage() {
     if (!cart) return '';
     const num = METHODS[selectedMethod].num.replace('-', '');
     const amt = cart.total;
-    const ref = `CAFE-${Date.now()}`;
     
-    if (selectedMethod === 'bkash') return `bkash://payment?merchant=${num}&amount=${amt}&reference=${ref}`;
-    if (selectedMethod === 'nagad') return `nagad://payment?merchant=${num}&amount=${amt}&reference=${ref}`;
-    if (selectedMethod === 'rocket') return `rocket://payment?merchant=${num}&amount=${amt}&reference=${ref}`;
+    if (selectedMethod === 'bkash') return `bkash://payment?merchant=${num}&amount=${amt}&reference=${paymentRef}`;
+    if (selectedMethod === 'nagad') return `nagad://payment?merchant=${num}&amount=${amt}&reference=${paymentRef}`;
+    if (selectedMethod === 'rocket') return `rocket://payment?merchant=${num}&amount=${amt}&reference=${paymentRef}`;
     
     return `${METHODS[selectedMethod].name}|MERCHANT:${num}|AMOUNT:${amt}`;
   };

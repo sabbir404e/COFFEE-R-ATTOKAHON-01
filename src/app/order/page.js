@@ -26,18 +26,27 @@ function OrderPageContent() {
   const availableTables = tables.filter(table => table.status === 'available');
 
   useEffect(() => {
-    setMounted(true);
-    if (urlTable && availableTables.some(table => table.id === urlTable)) {
-      setLocalTable(urlTable);
-      setTableNum(urlTable);
-      setStep('menu');
-    }
+    const handle = requestAnimationFrame(() => {
+      setMounted(true);
+      if (urlTable && availableTables.some(table => table.id === urlTable)) {
+        setLocalTable(urlTable);
+        setTableNum(urlTable);
+        setStep('menu');
+      }
+    });
+    return () => cancelAnimationFrame(handle);
   }, [urlTable, setTableNum, availableTables]);
 
   useEffect(() => {
+    let handle;
     if (lastOrderId) {
-      setStep('success');
+      handle = requestAnimationFrame(() => {
+        setStep('success');
+      });
     }
+    return () => {
+      if (handle) cancelAnimationFrame(handle);
+    };
   }, [lastOrderId]);
 
 

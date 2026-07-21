@@ -45,8 +45,12 @@ function TrackPageContent() {
   }, [tableNum]);
 
   useEffect(() => {
-    setMounted(true);
-    loadOrders();
+    const handle = requestAnimationFrame(() => {
+      setMounted(true);
+      loadOrders();
+    });
+
+    let insertTimer;
 
     // Real-time: listen for order status changes for this table
     const channel = supabase
@@ -76,13 +80,33 @@ function TrackPageContent() {
           ...(tableNum ? { filter: `table_id=eq.${tableNum}` } : {}),
         },
         () => {
-          // New order came in — reload to get order_items too
-          loadOrders();
+          // New order came in — reload to get order_items too (debounced to allow items to be inserted)
+          if (insertTimer) clearTimeout(insertTimer);
+          insertTimer = setTimeout(() => {
+            loadOrders();
+          }, 300);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'order_items',
+        },
+        () => {
+          // Order items inserted — reload orders to capture them
+          if (insertTimer) clearTimeout(insertTimer);
+          insertTimer = setTimeout(() => {
+            loadOrders();
+          }, 100);
         }
       )
       .subscribe();
 
     return () => {
+      cancelAnimationFrame(handle);
+      if (insertTimer) clearTimeout(insertTimer);
       channel.unsubscribe();
     };
   }, [loadOrders, tableNum]);

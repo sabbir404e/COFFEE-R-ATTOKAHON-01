@@ -29,12 +29,18 @@ export default function HomePage() {
   const [scannedTable, setScannedTable] = useState(null);
 
   React.useEffect(() => {
+    let handle;
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.get('table')) {
-        setScannedTable(params.get('table'));
+        handle = requestAnimationFrame(() => {
+          setScannedTable(params.get('table'));
+        });
       }
     }
+    return () => {
+      if (handle) cancelAnimationFrame(handle);
+    };
   }, []);
 
   const cats = ['all', ...new Set(displayProducts.map(p => p.cat))];

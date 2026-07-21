@@ -122,35 +122,40 @@ export function AppProvider({ children }) {
   // Theme & cart from localStorage
   // --------------------------------------------------------------------------
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('ca_theme') || 'dark';
-      setTheme(savedTheme);
-      document.documentElement.setAttribute('data-theme', savedTheme);
+    const handle = requestAnimationFrame(() => {
+      if (typeof window !== 'undefined') {
+        const savedTheme = localStorage.getItem('ca_theme') || 'dark';
+        setTheme(savedTheme);
+        document.documentElement.setAttribute('data-theme', savedTheme);
 
-      const savedCart = localStorage.getItem('ca_pending_cart');
-      if (savedCart) {
-        try {
-          const parsed = JSON.parse(savedCart);
-          if (parsed && parsed.items) {
-            const reconstructedCart = {};
-            parsed.items.forEach((item) => {
-              reconstructedCart[item.id || item.name] = {
-                product: { name: item.name, emoji: item.emoji, price: item.price, id: item.id },
-                qty: item.qty,
-              };
-            });
-            setCart(reconstructedCart);
-          }
-        } catch (e) {}
+        const savedCart = localStorage.getItem('ca_pending_cart');
+        if (savedCart) {
+          try {
+            const parsed = JSON.parse(savedCart);
+            if (parsed && parsed.items) {
+              const reconstructedCart = {};
+              parsed.items.forEach((item) => {
+                reconstructedCart[item.id || item.name] = {
+                  product: { name: item.name, emoji: item.emoji, price: item.price, id: item.id },
+                  qty: item.qty,
+                };
+              });
+              setCart(reconstructedCart);
+            }
+          } catch (e) {}
+        }
       }
-    }
+    });
+    return () => cancelAnimationFrame(handle);
   }, []);
 
   // --------------------------------------------------------------------------
   // Real-time subscriptions
   // --------------------------------------------------------------------------
   useEffect(() => {
-    fetchData();
+    const handle = requestAnimationFrame(() => {
+      fetchData();
+    });
 
     // --- dining_tables ---
     const tablesSub = supabase
@@ -268,6 +273,7 @@ export function AppProvider({ children }) {
       .subscribe();
 
     return () => {
+      cancelAnimationFrame(handle);
       tablesSub.unsubscribe();
       productsSub.unsubscribe();
       ordersSub.unsubscribe();

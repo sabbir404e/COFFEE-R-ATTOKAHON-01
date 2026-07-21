@@ -12,10 +12,13 @@ export default function QRPrintPage() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    if (typeof window !== 'undefined') {
-      setSiteUrl(window.location.origin);
-    }
+    const handle = requestAnimationFrame(() => {
+      setMounted(true);
+      if (typeof window !== 'undefined') {
+        setSiteUrl(window.location.origin);
+      }
+    });
+    return () => cancelAnimationFrame(handle);
   }, []);
 
   const generateAll = () => {

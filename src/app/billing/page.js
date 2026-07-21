@@ -83,12 +83,18 @@ export default function BillingPage() {
   }, [order]);
 
   useEffect(() => {
+    let handle;
     if (liveStatus === 'served' && order && order.id) {
       if (!localStorage.getItem(`ca_feedback_shown_${order.id}`)) {
-        setShowFeedback(true);
-        localStorage.setItem(`ca_feedback_shown_${order.id}`, 'true');
+        handle = requestAnimationFrame(() => {
+          setShowFeedback(true);
+          localStorage.setItem(`ca_feedback_shown_${order.id}`, 'true');
+        });
       }
     }
+    return () => {
+      if (handle) cancelAnimationFrame(handle);
+    };
   }, [liveStatus, order]);
 
   if (!hydrated) return null;
