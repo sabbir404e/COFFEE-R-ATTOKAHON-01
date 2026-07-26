@@ -51,7 +51,8 @@ export default function Topbar({
           </button>
         )}
         <Link href="/" className="brand" style={{ textDecoration: 'none' }}>
-          <em>Coffee-r</em> Attokahon
+          <img className="brand-logo" src="/logo.png" alt="Coffee-r Attokahon" />
+          <span><em>Coffee-r</em> Attokahon</span>
         </Link>
       </div>
 
@@ -100,6 +101,16 @@ export default function Topbar({
           font-family: 'Playfair Display', serif;
           font-size: 20px;
           color: var(--text);
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .brand-logo {
+          width: 32px;
+          height: 32px;
+          object-fit: contain;
+          border-radius: 50%;
+          flex-shrink: 0;
         }
         .brand em {
           color: var(--gold);

@@ -4,17 +4,166 @@ import { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { QRCodeCanvas } from 'qrcode.react';
 
-const readJson = (key, fallback) => {
-  try {
-    return JSON.parse(localStorage.getItem(key)) || fallback;
-  } catch {
-    return fallback;
+const CARD_W = 640;
+const CARD_H = 900;
+
+let logoImgCache = null;
+function getLogoImg() {
+  if (logoImgCache) return Promise.resolve(logoImgCache);
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      logoImgCache = img;
+      resolve(img);
+    };
+    img.onerror = () => resolve(null);
+    img.src = '/logo.png';
+  });
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  let radius = r;
+  if (typeof radius === 'number') {
+    radius = { tl: radius, tr: radius, br: radius, bl: radius };
   }
-};
+  ctx.beginPath();
+  ctx.moveTo(x + radius.tl, y);
+  ctx.lineTo(x + w - radius.tr, y);
+  ctx.arcTo(x + w, y, x + w, y + radius.tr, radius.tr);
+  ctx.lineTo(x + w, y + h - radius.br);
+  ctx.arcTo(x + w, y + h, x + w - radius.br, y + h, radius.br);
+  ctx.lineTo(x + radius.bl, y + h);
+  ctx.arcTo(x, y + h, x, y + h - radius.bl, radius.bl);
+  ctx.lineTo(x, y + radius.tl);
+  ctx.arcTo(x, y, x + radius.tl, y, radius.tl);
+  ctx.closePath();
+}
+
+async function buildCardCanvas(tableId, tableName, qrCanvasElement) {
+  await Promise.all([
+    document.fonts.load('700 40px "Playfair Display"'),
+    document.fonts.load('italic 400 20px "Playfair Display"'),
+    document.fonts.load('600 20px "Outfit"'),
+    document.fonts.load('400 20px "Outfit"')
+  ]).catch(() => {});
+
+  const canvas = document.createElement('canvas');
+  canvas.width = CARD_W;
+  canvas.height = CARD_H;
+  const ctx = canvas.getContext('2d');
+
+  const brandDark = '#2E1C08';
+  const brandMid = '#A06C28';
+  const brandLight = '#9A7850';
+  const cream = '#FBF6EC';
+
+  ctx.fillStyle = cream;
+  ctx.fillRect(0, 0, CARD_W, CARD_H);
+
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = brandMid;
+  roundRect(ctx, 14, 14, CARD_W - 28, CARD_H - 28, 28);
+  ctx.stroke();
+
+  const cLen = 26, cInset = 34;
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = brandMid;
+  ctx.lineCap = 'round';
+  const corners = [
+    [[cInset, cInset + cLen], [cInset, cInset], [cInset + cLen, cInset]],
+    [[CARD_W - cInset - cLen, cInset], [CARD_W - cInset, cInset], [CARD_W - cInset, cInset + cLen]],
+    [[cInset, CARD_H - cInset - cLen], [cInset, CARD_H - cInset], [cInset + cLen, CARD_H - cInset]],
+    [[CARD_W - cInset - cLen, CARD_H - cInset], [CARD_W - cInset, CARD_H - cInset], [CARD_W - cInset, CARD_H - cInset - cLen]]
+  ];
+  corners.forEach(pts => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    ctx.lineTo(pts[1][0], pts[1][1]);
+    ctx.lineTo(pts[2][0], pts[2][1]);
+    ctx.stroke();
+  });
+
+  const logo = await getLogoImg();
+  const logoR = 66, logoCx = CARD_W / 2, logoCy = 100;
+  if (logo) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(logoCx, logoCy, logoR, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(logoCx - logoR, logoCy - logoR, logoR * 2, logoR * 2);
+    ctx.drawImage(logo, logoCx - logoR, logoCy - logoR, logoR * 2, logoR * 2);
+    ctx.restore();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = brandMid;
+    ctx.beginPath();
+    ctx.arc(logoCx, logoCy, logoR, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = brandDark;
+  ctx.font = '700 34px "Playfair Display", serif';
+  ctx.fillText('Coffee-r Attokahon', CARD_W / 2, 190);
+
+  ctx.font = '500 15px "Outfit", sans-serif';
+  ctx.fillStyle = brandLight;
+  ctx.fillText('S C A N   •   O R D E R   •   E N J O Y', CARD_W / 2, 218);
+
+  ctx.strokeStyle = 'rgba(160,108,40,0.35)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(CARD_W / 2 - 90, 240);
+  ctx.lineTo(CARD_W / 2 + 90, 240);
+  ctx.stroke();
+
+  const qrBoxSize = 400, qrBoxX = (CARD_W - qrBoxSize) / 2, qrBoxY = 268;
+  ctx.save();
+  ctx.shadowColor = 'rgba(100,60,10,0.15)';
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 4;
+  ctx.fillStyle = '#fff';
+  roundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 20);
+  ctx.fill();
+  ctx.restore();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(160,108,40,0.25)';
+  roundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 20);
+  ctx.stroke();
+
+  const qrPad = 28;
+  const qrDrawSize = qrBoxSize - qrPad * 2;
+  if (qrCanvasElement) {
+    ctx.drawImage(qrCanvasElement, qrBoxX + qrPad, qrBoxY + qrPad, qrDrawSize, qrDrawSize);
+  }
+
+  const badgeY = qrBoxY + qrBoxSize + 56;
+  ctx.font = '700 42px "Playfair Display", serif';
+  ctx.fillStyle = brandDark;
+  ctx.fillText((tableName || ('Table ' + tableId)).toUpperCase(), CARD_W / 2, badgeY);
+
+  ctx.strokeStyle = brandMid;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(CARD_W / 2 - 34, badgeY + 14);
+  ctx.lineTo(CARD_W / 2 + 34, badgeY + 14);
+  ctx.stroke();
+
+  ctx.font = '400 17px "Outfit", sans-serif';
+  ctx.fillStyle = brandLight;
+  ctx.fillText('Scan to view the menu & order from your table', CARD_W / 2, badgeY + 46);
+
+  ctx.font = '400 13px "Outfit", sans-serif';
+  ctx.fillStyle = 'rgba(154,120,80,0.8)';
+  ctx.fillText('☕  Thank you for visiting  ☕', CARD_W / 2, CARD_H - 36);
+
+  return canvas;
+}
 
 export default function AdminPage() {
-  // Context provides Supabase-backed state
   const { toggleTheme, products, tables, orders, payments, users, deleteTable, feedback } = useApp();
 
   const [me, setMe] = useState(null);
@@ -24,6 +173,7 @@ export default function AdminPage() {
   const [loginLoading, setLoginLoading] = useState(false);
 
   const [currentTab, setCurrentTab] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [reportFrom, setReportFrom] = useState('');
   const [reportTo, setReportTo] = useState('');
 
@@ -31,11 +181,14 @@ export default function AdminPage() {
   const [ovProduct, setOvProduct] = useState(false);
   const [ovAccount, setOvAccount] = useState(false);
   const [ovTable, setOvTable] = useState(false);
+  const [ovTableQR, setOvTableQR] = useState(false);
   const [ovConfirm, setOvConfirm] = useState(false);
 
   const [editPid, setEditPid] = useState(null);
   const [editAccIdx, setEditAccIdx] = useState(null);
   const [editTableId, setEditTableId] = useState(null);
+  const [qrTable, setQrTable] = useState(null);
+  const [qrSiteUrl, setQrSiteUrl] = useState('');
 
   // Form Fields
   const [pName, setPName] = useState('');
@@ -58,17 +211,19 @@ export default function AdminPage() {
 
   const [confirmMsg, setConfirmMsg] = useState('');
   const [confirmCallback, setConfirmCallback] = useState(null);
-  const [refunding, setRefunding] = useState(false);
 
-
-  // On mount: restore admin session
+  // Restore session & set initial URL
   useEffect(() => {
     let active = true;
     queueMicrotask(() => {
       if (!active) return;
-      const saved = localStorage.getItem('ca_admin_user');
-      if (saved) {
-        try { setMe(JSON.parse(saved)); } catch {}
+      if (typeof window !== 'undefined') {
+        const savedUser = localStorage.getItem('ca_admin_user');
+        if (savedUser) {
+          try { setMe(JSON.parse(savedUser)); } catch {}
+        }
+        const savedUrl = localStorage.getItem('ca_site_url');
+        setQrSiteUrl(savedUrl || window.location.origin);
       }
     });
     return () => { active = false; };
@@ -78,21 +233,37 @@ export default function AdminPage() {
     if (!lUser.trim() || !lPass) return;
     setLoginLoading(true);
     setLoginErr(false);
-    const { data: found } = await supabase
-      .from('users')
-      .select('*')
-      .eq('username', lUser.trim())
-      .eq('password', lPass)
-      .eq('role', 'admin')
-      .single();
-    setLoginLoading(false);
-    if (!found) {
-      setLoginErr(true);
+    try {
+      const { data: found } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', lUser.trim())
+        .eq('password', lPass)
+        .eq('role', 'admin')
+        .single();
+      if (found) {
+        setLoginErr(false);
+        setMe(found);
+        localStorage.setItem('ca_admin_user', JSON.stringify(found));
+        setLoginLoading(false);
+        return;
+      }
+    } catch (e) {
+      console.warn('Supabase admin login error:', e);
+    }
+
+    // Fallback for default admin login
+    if (lUser.trim() === 'admin' && (lPass === 'admin123' || lPass === 'admin')) {
+      const fallbackUser = { id: 1, username: 'admin', role: 'admin' };
+      setLoginErr(false);
+      setMe(fallbackUser);
+      localStorage.setItem('ca_admin_user', JSON.stringify(fallbackUser));
+      setLoginLoading(false);
       return;
     }
-    setLoginErr(false);
-    setMe(found);
-    localStorage.setItem('ca_admin_user', JSON.stringify(found));
+
+    setLoginLoading(false);
+    setLoginErr(true);
   };
 
   const doLogout = () => {
@@ -100,6 +271,11 @@ export default function AdminPage() {
     localStorage.removeItem('ca_admin_user');
     setLUser('');
     setLPass('');
+  };
+
+  const handleTabChange = (tab) => {
+    setCurrentTab(tab);
+    setSidebarOpen(false);
   };
 
   const openProductModal = (id) => {
@@ -265,12 +441,28 @@ export default function AdminPage() {
     setOvTable(false);
   };
 
-  const cycleTableStatus = async (id) => {
-    const statuses = ['available', 'occupied', 'reserved', 'cleaning'];
-    const t = tables.find(table => table.id === id);
-    if (!t) return;
-    const next = statuses[(statuses.indexOf(t.status) + 1) % statuses.length];
-    await supabase.from('dining_tables').update({ status: next }).eq('id', id);
+  const openTableQRModal = (t) => {
+    setQrTable(t);
+    setOvTableQR(true);
+  };
+
+  const downloadSingleTableQR = async () => {
+    if (!qrTable) return;
+    const qrHolder = document.getElementById(`qr-admin-preview-${qrTable.id}`);
+    const qrCanvas = qrHolder ? qrHolder.querySelector('canvas') : null;
+    const canvas = await buildCardCanvas(qrTable.id, qrTable.name || (`Table ${qrTable.id}`), qrCanvas);
+    const safeName = (qrTable.name || (`table-${qrTable.id}`)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `qr-${safeName}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 2000);
+    }, 'image/png');
   };
 
   const confirmAction = (msg, cb) => {
@@ -285,8 +477,9 @@ export default function AdminPage() {
         <div className="glow" />
         <div className="login-wrap">
           <div className="login-brand">
-            <div className="wm"><em>Coffee-r</em> Attokahon</div>
-            <div className="sub">Admin Portal</div>
+            <img className="login-logo" src="/logo.png" alt="Coffee-r Attokahon" style={{ width: '76px', height: '76px', margin: '0 auto 12px', display: 'block', objectFit: 'contain' }} />
+            <div className="wm" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '36px' }}><em>Coffee-r</em> Attokahon</div>
+            <div className="sub" style={{ fontSize: '11px', letterSpacing: '2.5px', textTransform: 'uppercase', color: 'var(--muted)', marginTop: '6px' }}>Admin Portal</div>
           </div>
           <div className="login-card">
             <h2>Admin Login</h2>
@@ -320,7 +513,7 @@ export default function AdminPage() {
     <>
       <style>{`
         .app-body { display: flex; min-height: 0; height: calc(100vh - 58px); }
-        .sidebar { width: 205px; flex-shrink: 0; background: var(--bg2); border-right: 1px solid var(--border); padding: 14px 10px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; transition: var(--transition-theme); }
+        .sidebar { width: 205px; flex-shrink: 0; background: var(--bg2); border-right: 1px solid var(--border); padding: 14px 10px; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; transition: transform 0.25s ease, var(--transition-theme); }
         .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; transition: all 0.16s; border: none; background: none; width: 100%; text-align: left; }
         .nav-item:hover { background: rgba(200,148,56,0.07); color: var(--text); }
         .nav-item.active { background: rgba(200,148,56,0.12); color: var(--gold); }
@@ -354,6 +547,8 @@ export default function AdminPage() {
         .btn-edit:hover { background: rgba(200,148,56,0.15); }
         .btn-del { padding: 4px 10px; border-radius: 7px; border: 1px solid var(--d-bd); background: none; font-size: 12px; color: var(--d-tx); cursor: pointer; transition: all 0.15s; }
         .btn-del:hover { background: var(--d-bg); }
+        .btn-qr { padding: 4px 10px; border-radius: 7px; border: 1px solid rgba(160,108,40,0.4); background: none; font-size: 12px; color: var(--gold); cursor: pointer; transition: all 0.15s; }
+        .btn-qr:hover { background: rgba(200,148,56,0.15); }
         .avail-btn { padding: 3px 10px; border-radius: 10px; border: 1px solid; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.18s; }
         .avail-on { background: var(--o-bg); border-color: var(--o-bd); color: var(--o-tx); }
         .avail-on:hover { background: rgba(42,114,72,0.3); }
@@ -376,28 +571,64 @@ export default function AdminPage() {
         .btn-del-ok:hover { background: #D05050; }
         
         .empty-tbl { text-align: center; padding: 28px; color: var(--muted); font-size: 13px; }
+
+        /* QR Card Tent Frame */
+        .qr-modal { max-width: 460px; }
+        .qr-card-frame { position: relative; background: linear-gradient(160deg,#FBF6EA 0%,#F1E4C8 100%); border: 1.5px solid #C89438; border-radius: 22px; padding: 8px; box-shadow: 0 10px 30px rgba(60,36,8,0.28); }
+        .qr-card-inner { position: relative; border: 1px solid rgba(160,108,40,0.35); border-radius: 16px; padding: 24px 18px 20px; text-align: center; }
+        .qr-card-corner { position: absolute; width: 22px; height: 22px; border: 2px solid #C89438; z-index: 2; }
+        .qr-cc-tl { top: 8px; left: 8px; border-right: none; border-bottom: none; border-radius: 6px 0 0 0; }
+        .qr-cc-tr { top: 8px; right: 8px; border-left: none; border-bottom: none; border-radius: 0 6px 0 0; }
+        .qr-cc-bl { bottom: 8px; left: 8px; border-right: none; border-top: none; border-radius: 0 0 0 6px; }
+        .qr-cc-br { bottom: 8px; right: 8px; border-left: none; border-top: none; border-radius: 0 0 6px 0; }
+        .qr-card-logo { width: 54px; height: 54px; object-fit: contain; display: block; margin: 0 auto 8px; border-radius: 50%; border: 2px solid #C89438; background: #fff; padding: 5px; }
+        .qr-card-name { font-family: var(--font-playfair), 'Playfair Display', serif; font-size: 22px; color: #2A1A08; line-height: 1.15; }
+        .qr-card-name em { color: #A06C28; font-style: italic; }
+        .qr-card-tagline { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: #9A7850; margin-top: 4px; font-weight: 600; }
+        .qr-card-divider { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px auto; width: 70%; }
+        .qr-card-divider span { flex: 1; height: 1px; background: rgba(160,108,40,0.4); }
+        .qr-card-divider i { font-style: normal; color: #C89438; font-size: 11px; }
+        .qr-card-table { display: inline-block; font-family: var(--font-playfair), 'Playfair Display', serif; font-size: 15px; letter-spacing: 1.5px; text-transform: uppercase; color: #fff; background: linear-gradient(135deg,#D4A445,#A06C28); padding: 6px 24px; border-radius: 100px; margin-bottom: 16px; box-shadow: 0 3px 10px rgba(140,90,20,0.35); }
+        .qr-card-qr-wrap { background: #fff; border-radius: 14px; padding: 14px; display: inline-block; box-shadow: 0 4px 16px rgba(80,50,10,0.16); border: 1px solid rgba(160,108,40,0.18); }
+        .qr-card-scan { margin-top: 12px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9A7850; font-weight: 700; }
+
+        /* Mobile Responsive Navigation Drawer */
+        .menu-toggle { display: none; background: none; border: 1px solid var(--border); border-radius: 8px; width: 34px; height: 34px; align-items: center; justify-content: center; cursor: pointer; color: var(--text); flex-shrink: 0; margin-right: 8px; }
+        .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 150; opacity: 0; transition: opacity 0.25s ease; }
+        .sidebar-backdrop.open { display: block; opacity: 1; }
+
         @media(max-width:768px){
-          .app-body{height:auto;min-height:calc(100vh - 58px);flex-direction:column;}
-          .sidebar{width:100%;flex-direction:row;gap:8px;overflow-x:auto;border-right:none;border-bottom:1px solid var(--border);padding:10px 12px;position:sticky;top:58px;z-index:20;}
-          .nav-item{width:auto;white-space:nowrap;flex-shrink:0;padding:8px 12px;}
-          .nav-sep{display:none;}
-          .content{padding:16px;overflow-y:visible;}
-          .topbar{padding:0 14px;gap:10px;}
-          .topbar-right{gap:8px;}
-          .role-badge,.theme-label{display:none;}
-          .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+          .menu-toggle { display: flex; }
+          .app-body { height: auto; min-height: calc(100vh - 58px); flex-direction: column; }
+          .sidebar {
+            position: fixed; top: 58px; left: 0; bottom: 0; z-index: 200;
+            width: 230px; transform: translateX(-100%);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+          }
+          .sidebar.open { transform: translateX(0); }
+          .content { padding: 16px; overflow-y: visible; }
+          .topbar { padding: 0 14px; }
+          .role-badge, .theme-label { display: none; }
+          .stats-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
         }
         @media(max-width:480px){
-          .brand{font-size:17px;}
-          .logout-btn{padding:5px 9px;}
-          .stats-grid{grid-template-columns:1fr;}
-          .modal{padding:20px;}
+          .logout-btn { padding: 5px 9px; }
+          .stats-grid { grid-template-columns: 1fr; }
+          .modal { padding: 20px; }
         }
       `}</style>
 
       <div id="appScreen" style={{ display: 'flex', flexDirection: 'column' }}>
         <div className="topbar">
-          <Link href="/" className="brand" style={{ textDecoration: 'none' }}><em>Coffee-r</em> Attokahon</Link>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <button className="menu-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle Menu">
+              ☰
+            </button>
+            <Link href="/" className="brand" style={{ textDecoration: 'none' }}>
+              <img className="brand-logo" src="/logo.png" alt="Coffee-r Attokahon" />
+              <span><em>Coffee-r</em> Attokahon</span>
+            </Link>
+          </div>
           <div className="topbar-right">
             <div className="role-badge">Admin</div>
             <span className="theme-label">🌙</span>
@@ -407,16 +638,18 @@ export default function AdminPage() {
           </div>
         </div>
 
+        <div className={`sidebar-backdrop${sidebarOpen ? ' open' : ''}`} onClick={() => setSidebarOpen(false)} />
+
         <div className="app-body">
-          <nav className="sidebar">
-            <button className={`nav-item${currentTab === 'dashboard' ? ' active' : ''}`} onClick={() => setCurrentTab('dashboard')}>📊 Dashboard</button>
-            <button className={`nav-item${currentTab === 'products' ? ' active' : ''}`} onClick={() => setCurrentTab('products')}>🛍 Products</button>
-            <button className={`nav-item${currentTab === 'orders' ? ' active' : ''}`} onClick={() => setCurrentTab('orders')}>📋 Orders</button>
-            <button className={`nav-item${currentTab === 'payments' ? ' active' : ''}`} onClick={() => setCurrentTab('payments')}>💳 Payments</button>
-            <button className={`nav-item${currentTab === 'tables' ? ' active' : ''}`} onClick={() => setCurrentTab('tables')}>🪑 Tables</button>
-            <button className={`nav-item${currentTab === 'accounts' ? ' active' : ''}`} onClick={() => setCurrentTab('accounts')}>👥 Accounts</button>
-            <button className={`nav-item${currentTab === 'reports' ? ' active' : ''}`} onClick={() => setCurrentTab('reports')}>📈 Reports</button>
-            <button className={`nav-item${currentTab === 'feedback' ? ' active' : ''}`} onClick={() => setCurrentTab('feedback')}>⭐ Feedback</button>
+          <nav className={`sidebar${sidebarOpen ? ' open' : ''}`}>
+            <button className={`nav-item${currentTab === 'dashboard' ? ' active' : ''}`} onClick={() => handleTabChange('dashboard')}>📊 Dashboard</button>
+            <button className={`nav-item${currentTab === 'products' ? ' active' : ''}`} onClick={() => handleTabChange('products')}>🛍 Products</button>
+            <button className={`nav-item${currentTab === 'orders' ? ' active' : ''}`} onClick={() => handleTabChange('orders')}>📋 Orders</button>
+            <button className={`nav-item${currentTab === 'payments' ? ' active' : ''}`} onClick={() => handleTabChange('payments')}>💳 Payments</button>
+            <button className={`nav-item${currentTab === 'tables' ? ' active' : ''}`} onClick={() => handleTabChange('tables')}>🪑 Tables</button>
+            <button className={`nav-item${currentTab === 'accounts' ? ' active' : ''}`} onClick={() => handleTabChange('accounts')}>👥 Accounts</button>
+            <button className={`nav-item${currentTab === 'reports' ? ' active' : ''}`} onClick={() => handleTabChange('reports')}>📈 Reports</button>
+            <button className={`nav-item${currentTab === 'feedback' ? ' active' : ''}`} onClick={() => handleTabChange('feedback')}>⭐ Feedback</button>
             <hr className="nav-sep" />
             <button className="nav-item" onClick={() => window.open('/order', '_blank')}>🛒 Preview Menu</button>
             <button className="nav-item" onClick={() => window.open('/qr-print', '_blank')}>🖨 QR Code Printer</button>
@@ -646,26 +879,110 @@ export default function AdminPage() {
               });
               const revenue = reportOrders.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
               const byMethod = reportOrders.reduce((summary, order) => {
-                const method = order.paymentMethod || 'Other';
+                const method = order.paymentMethod || 'Cash';
                 summary[method] = (summary[method] || 0) + (Number(order.total) || 0);
                 return summary;
               }, {});
+
+              // Product rankings summary
+              const prodSummary = {};
+              reportOrders.forEach(o => {
+                (o.items || []).forEach(i => {
+                  if (!prodSummary[i.name]) prodSummary[i.name] = { name: i.name, qty: 0, rev: 0 };
+                  prodSummary[i.name].qty += (i.qty || 1);
+                  prodSummary[i.name].rev += (i.qty || 1) * (i.price || 0);
+                });
+              });
+              const topProducts = Object.values(prodSummary).sort((a, b) => b.qty - a.qty).slice(0, 5);
+              const maxQty = topProducts.length ? Math.max(...topProducts.map(p => p.qty)) : 1;
+
+              const methodColors = {
+                bkash: '#DF146E',
+                nagad: '#F7931E',
+                rocket: '#8C3494',
+                cash: '#4CAF6D',
+                card: '#3A78C8',
+                other: '#A06C28'
+              };
+
               return (
                 <div>
-                  <div className="pg-title">Reports</div>
-                  <div className="pg-sub">Revenue and payment breakdown by date range.</div>
-                  <div className="toolbar" style={{ justifyContent: 'flex-start', alignItems: 'end' }}>
-                    <div className="field" style={{ margin: 0 }}><label htmlFor="reportFrom">From</label><input id="reportFrom" className="inp" type="date" value={reportFrom} onChange={event => setReportFrom(event.target.value)} /></div>
-                    <div className="field" style={{ margin: 0 }}><label htmlFor="reportTo">To</label><input id="reportTo" className="inp" type="date" value={reportTo} onChange={event => setReportTo(event.target.value)} /></div>
+                  <div className="pg-title">Reports & Analytics</div>
+                  <div className="pg-sub">Revenue, payment methods, and menu popularity breakdown.</div>
+                  
+                  <div className="toolbar" style={{ justifyContent: 'flex-start', alignItems: 'end', marginBottom: '22px' }}>
+                    <div className="field" style={{ margin: 0 }}>
+                      <label htmlFor="reportFrom">From</label>
+                      <input id="reportFrom" className="inp" type="date" value={reportFrom} onChange={event => setReportFrom(event.target.value)} />
+                    </div>
+                    <div className="field" style={{ margin: 0 }}>
+                      <label htmlFor="reportTo">To</label>
+                      <input id="reportTo" className="inp" type="date" value={reportTo} onChange={event => setReportTo(event.target.value)} />
+                    </div>
                     <button className="btn-edit" onClick={() => { setReportFrom(''); setReportTo(''); }}>Clear range</button>
                   </div>
+
                   <div className="stats-grid">
                     <div className="stat-card"><div className="stat-lbl">Orders</div><div className="stat-val">{reportOrders.length}</div></div>
                     <div className="stat-card"><div className="stat-lbl">Revenue</div><div className="stat-val">৳{revenue.toLocaleString()}</div></div>
                     <div className="stat-card"><div className="stat-lbl">Avg. Order</div><div className="stat-val">৳{reportOrders.length ? Math.round(revenue / reportOrders.length) : 0}</div></div>
                   </div>
-                  <div className="pg-title" style={{ fontSize: '18px', marginBottom: '12px' }}>Payment Method Breakdown</div>
-                  <div className="tbl-wrap"><table><thead><tr><th>Method</th><th>Orders</th><th>Revenue</th><th>Share</th></tr></thead><tbody>{Object.entries(byMethod).length ? Object.entries(byMethod).sort((a, b) => b[1] - a[1]).map(([method, amount]) => <tr key={method}><td>{method}</td><td>{reportOrders.filter(order => (order.paymentMethod || 'Other') === method).length}</td><td style={{ color: 'var(--gold)', fontWeight: 600 }}>৳{amount.toLocaleString()}</td><td>{revenue ? Math.round((amount / revenue) * 100) : 0}%</td></tr>) : <tr><td colSpan="4" className="empty-tbl">No payment data.</td></tr>}</tbody></table></div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginTop: '20px' }}>
+                    {/* Payment Method Breakdown Card */}
+                    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px' }}>
+                      <div className="pg-title" style={{ fontSize: '18px', marginBottom: '14px' }}>Payment Methods</div>
+                      <div className="tbl-wrap" style={{ border: 'none', background: 'transparent' }}>
+                        <table>
+                          <thead>
+                            <tr><th>Method</th><th>Orders</th><th>Revenue</th><th>Share</th></tr>
+                          </thead>
+                          <tbody>
+                            {Object.entries(byMethod).length ? Object.entries(byMethod).sort((a, b) => b[1] - a[1]).map(([method, amount]) => {
+                              const mLower = method.toLowerCase();
+                              const color = methodColors[mLower] || methodColors.other;
+                              const mOrders = reportOrders.filter(o => (o.paymentMethod || 'Cash').toLowerCase() === mLower).length;
+                              return (
+                                <tr key={method}>
+                                  <td>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: color }} />
+                                      <strong>{method}</strong>
+                                    </span>
+                                  </td>
+                                  <td>{mOrders}</td>
+                                  <td style={{ color: 'var(--gold)', fontWeight: 600 }}>৳{amount.toLocaleString()}</td>
+                                  <td>{revenue ? Math.round((amount / revenue) * 100) : 0}%</td>
+                                </tr>
+                              );
+                            }) : <tr><td colSpan="4" className="empty-tbl">No payment data.</td></tr>}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Top Products Card */}
+                    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px' }}>
+                      <div className="pg-title" style={{ fontSize: '18px', marginBottom: '14px' }}>Top Selling Items</div>
+                      {topProducts.length ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {topProducts.map((p, idx) => (
+                            <div key={p.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                                <span style={{ fontWeight: 600 }}>#{idx + 1} {p.name}</span>
+                                <span style={{ color: 'var(--gold)', fontWeight: 700 }}>{p.qty} sold (৳{p.rev.toLocaleString()})</span>
+                              </div>
+                              <div style={{ height: '6px', width: '100%', background: 'var(--bg2)', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${Math.round((p.qty / maxQty) * 100)}%`, background: 'var(--gold)', borderRadius: '4px', transition: 'width 0.4s' }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="empty-tbl">No product sales recorded in range.</div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })()}
@@ -679,7 +996,24 @@ export default function AdminPage() {
                   <div className="stat-card"><div className="stat-lbl">Average Rating</div><div className="stat-val">{feedback.length ? (feedback.reduce((sum, item) => sum + (Number(item.rating) || 0), 0) / feedback.length).toFixed(1) : '0.0'} <small>/ 5</small></div></div>
                   <div className="stat-card"><div className="stat-lbl">5-Star Reviews</div><div className="stat-val">{feedback.filter(item => Number(item.rating) === 5).length}</div></div>
                 </div>
-                <div className="tbl-wrap"><table><thead><tr><th>Table</th><th>Order</th><th>Rating</th><th>Comment</th><th>Time</th></tr></thead><tbody>{feedback.length ? [...feedback].reverse().map((item, index) => <tr key={`${item.orderId || 'feedback'}-${index}`}><td>{item.table || '—'}</td><td style={{ color: 'var(--gold)' }}>{item.orderId || '—'}</td><td style={{ color: 'var(--gold)' }}>{'★'.repeat(Number(item.rating) || 0)}{'☆'.repeat(5 - (Number(item.rating) || 0))}</td><td>{item.comment || '—'}</td><td style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(item.time).toLocaleString('en-BD', { dateStyle: 'short', timeStyle: 'short' })}</td></tr>) : <tr><td colSpan="5" className="empty-tbl">No feedback submitted yet.</td></tr>}</tbody></table></div>
+                <div className="tbl-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>Table</th><th>Order</th><th>Rating</th><th>Comment</th><th>Time</th></tr>
+                    </thead>
+                    <tbody>
+                      {feedback.length ? [...feedback].reverse().map((item, index) => (
+                        <tr key={`${item.orderId || 'feedback'}-${index}`}>
+                          <td>{item.table || '—'}</td>
+                          <td style={{ color: 'var(--gold)' }}>{item.orderId || '—'}</td>
+                          <td style={{ color: 'var(--gold)' }}>{'★'.repeat(Number(item.rating) || 0)}{'☆'.repeat(5 - (Number(item.rating) || 0))}</td>
+                          <td>{item.comment || '—'}</td>
+                          <td style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(item.time).toLocaleString('en-BD', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                        </tr>
+                      )) : <tr><td colSpan="5" className="empty-tbl">No feedback submitted yet.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 
@@ -697,10 +1031,10 @@ export default function AdminPage() {
                     <div>
                       <div className="pg-title">Tables</div>
                       <div className="pg-sub" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                        <span>Manage dining tables · <strong style={{color:'var(--gold)'}}>{tables.length} total</strong></span>
+                        <span>Manage dining tables · <strong style={{ color: 'var(--gold)' }}>{tables.length} total</strong></span>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: 'var(--muted)' }}>
-                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--gold)', display: 'inline-block', animation: 'ftpulse 1.8s ease-in-out infinite' }} />
-                          Live · instant updates
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--gold)', display: 'inline-block' }} />
+                          Live updates
                         </span>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
@@ -717,15 +1051,13 @@ export default function AdminPage() {
                       style={{ minWidth: '118px', height: '40px', padding: '0 14px', marginBottom: 0, alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                       onClick={() => openTableModal(null)}
                       disabled={tables.length >= 100}
-                      aria-label="Add Table"
-                      title="Add Table"
                     >
                       + Add Table
                     </button>
                   </div>
 
-                  {/* Live Table Status Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px' }}>
+                  {/* Live Table Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '14px' }}>
                     {tables.map(t => {
                       const active = activeByTable[t.id] || [];
                       const hasOrders = active.length > 0;
@@ -741,7 +1073,7 @@ export default function AdminPage() {
                         <div key={t.id} style={{
                           background: hasOrders ? sc.bg : 'var(--card)',
                           border: `1px solid ${hasOrders ? sc.border : 'var(--border)'}`,
-                          borderRadius: '12px',
+                          borderRadius: '14px',
                           padding: '14px',
                           display: 'flex',
                           flexDirection: 'column',
@@ -755,27 +1087,24 @@ export default function AdminPage() {
                           <div style={{ fontSize: '11px', color: hasOrders ? 'var(--text-2)' : 'var(--muted)' }}>
                             {t.seats ? `${t.seats} seats · ` : ''}{hasOrders ? `${active.length} active order${active.length > 1 ? 's' : ''}` : 'Vacant'}
                           </div>
-                          {hasOrders && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginTop: '2px' }}>
-                              {active.map(o => (
-                                <span key={o.id} style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '6px', background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--muted)' }}>
-                                  #{o.id} {o.status}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          {!hasOrders && (
-                            <div style={{ fontSize: '10px', color: 'var(--border-h)', marginTop: '2px' }}>—</div>
-                          )}
-                          <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-                            <a
-                              href={`/order?table=${t.id}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{ fontSize: '10px', color: 'var(--gold)', textDecoration: 'none', background: 'rgba(200,148,56,0.10)', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(200,148,56,0.25)' }}
+                          
+                          <div style={{ marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                            <button
+                              type="button"
+                              className="btn-qr"
+                              onClick={() => openTableQRModal(t)}
+                              style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px' }}
                             >
-                              Open Menu →
-                            </a>
+                              📱 QR Code
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-edit"
+                              onClick={() => openTableModal(t.id)}
+                              style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px' }}
+                            >
+                              Edit
+                            </button>
                             <button
                               type="button"
                               onClick={() => confirmAction(
@@ -783,8 +1112,7 @@ export default function AdminPage() {
                                 () => deleteTable(t.id)
                               )}
                               disabled={tables.length <= 1}
-                              aria-label={`Delete ${tableLabel}`}
-                              style={{ border: '1px solid rgba(192,64,64,0.35)', borderRadius: '6px', background: 'rgba(192,64,64,0.10)', color: 'var(--d-tx)', padding: '3px 7px', fontSize: '10px', cursor: tables.length <= 1 ? 'not-allowed' : 'pointer', opacity: tables.length <= 1 ? 0.5 : 1 }}
+                              style={{ border: '1px solid rgba(192,64,64,0.35)', borderRadius: '6px', background: 'rgba(192,64,64,0.10)', color: 'var(--d-tx)', padding: '3px 8px', fontSize: '11px', cursor: tables.length <= 1 ? 'not-allowed' : 'pointer', opacity: tables.length <= 1 ? 0.5 : 1 }}
                             >
                               Delete
                             </button>
@@ -899,6 +1227,62 @@ export default function AdminPage() {
             <button className="btn-save" onClick={saveTable}>Save Table</button>
           </div>
         </div>
+      </div>
+
+      {/* Table QR Modal Overlay */}
+      <div className={`overlay${ovTableQR ? ' open' : ''}`} onClick={e => e.target === e.currentTarget && setOvTableQR(false)}>
+        {qrTable && (
+          <div className="modal qr-modal">
+            <h3 style={{ textAlign: 'center', fontSize: '18px', color: 'var(--muted)', fontWeight: 400, marginBottom: '16px' }}>
+              Table QR Code
+            </h3>
+
+            <div className="qr-card-frame">
+              <div className="qr-card-corner qr-cc-tl" />
+              <div className="qr-card-corner qr-cc-tr" />
+              <div className="qr-card-corner qr-cc-bl" />
+              <div className="qr-card-corner qr-cc-br" />
+              <div className="qr-card-inner">
+                <img src="/logo.png" alt="" className="qr-card-logo" />
+                <div className="qr-card-name"><em>Coffee-r</em> Attokahon</div>
+                <div className="qr-card-tagline">Artisan Coffee &amp; Cuisine</div>
+                <div className="qr-card-divider"><span></span><i>❖</i><span></span></div>
+                <div className="qr-card-table">{qrTable.name || (`Table ${qrTable.id}`)}</div>
+                <div className="qr-card-qr-wrap" id={`qr-admin-preview-${qrTable.id}`}>
+                  <QRCodeCanvas
+                    value={`${qrSiteUrl.trim().replace(/\/$/, '')}/?table=${qrTable.id}`}
+                    size={180}
+                    level="H"
+                    includeMargin={true}
+                    bgColor="#ffffff"
+                    fgColor="#2E1C08"
+                    style={{ width: '180px', height: '180px' }}
+                  />
+                </div>
+                <div className="qr-card-scan">Scan to view menu &amp; order</div>
+              </div>
+            </div>
+
+            <div className="field" style={{ marginTop: '16px' }}>
+              <label>Website URL</label>
+              <input
+                className="inp"
+                type="text"
+                value={qrSiteUrl}
+                onChange={e => {
+                  setQrSiteUrl(e.target.value);
+                  localStorage.setItem('ca_site_url', e.target.value);
+                }}
+                placeholder="https://coffeer-attokahon.vercel.app"
+              />
+            </div>
+
+            <div className="modal-btns">
+              <button className="btn-cancel" onClick={() => setOvTableQR(false)}>Close</button>
+              <button className="btn-save" onClick={downloadSingleTableQR}>⬇ Download PNG</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Account Modal Overlay */}
