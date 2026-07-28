@@ -111,7 +111,6 @@ export default function PaymentPage() {
           status: 'paid',
           payment_method: activeMethod.name,
           payment_id: finalTxnId,
-          sender_phone: cleanPhone,
         })
         .select()
         .single();
