@@ -193,9 +193,10 @@ function OrderPageContent() {
         @keyframes slideIn { from { opacity:0; transform:translateX(100%); } to { opacity:1; transform:none; } }
         @keyframes spin { to { transform:rotate(360deg); } }
 
-        .topbar { background: var(--card); border-bottom: 1px solid var(--border); height: 58px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; position: sticky; top: 0; z-index: 100; transition: var(--transition-theme); box-shadow: var(--shadow); }
-        .brand { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--text); display: flex; align-items: center; gap: 8px; text-decoration: none; }
-        .brand-logo { width: 30px; height: 30px; object-fit: contain; border-radius: 50%; flex-shrink: 0; }
+        .topbar { background: var(--card); border-bottom: 1px solid var(--border); height: 66px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; position: sticky; top: 0; z-index: 100; transition: var(--transition-theme); box-shadow: var(--shadow); }
+        .brand { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--text); display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        .brand-logo { width: 52px; height: 52px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(0 2px 10px rgba(200,148,56,0.30)); transition: transform 0.3s ease; }
+        .brand:hover .brand-logo { transform: scale(1.08) rotate(-3deg); }
         .brand em { color: var(--gold); font-style: normal; }
         .topbar-right { display: flex; align-items: center; gap: 10px; }
         
@@ -215,7 +216,7 @@ function OrderPageContent() {
         .table-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 36px 30px; width: 100%; max-width: 380px; text-align: center; position: relative; z-index: 1; box-shadow: var(--shadow); animation: fadeIn 0.4s ease; transition: var(--transition-theme); }
         .table-card .logo { font-family: 'Playfair Display', serif; font-size: 40px; margin-bottom: 4px; }
         .table-card .logo em { color: var(--gold); font-style: normal; }
-        .table-card .logo-img { width: 84px; height: 84px; object-fit: contain; margin: 0 auto 10px; display: block; }
+        .table-card .logo-img { width: 84px; height: 84px; object-fit: contain; margin: 0 auto 10px; display: block; filter: drop-shadow(0 6px 16px rgba(200,148,56,0.35)); }
         .table-card .tagline { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 28px; }
         .table-card h2 { font-family: 'Playfair Display', serif; font-size: 22px; margin-bottom: 6px; }
         .table-card p { font-size: 13px; color: var(--muted); margin-bottom: 20px; }

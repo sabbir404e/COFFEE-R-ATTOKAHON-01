@@ -129,9 +129,10 @@ export default function CheckoutPage() {
 
         .glow { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(200,148,56,0.09) 0%, transparent 65%); z-index: 0; }
 
-        .topbar { background: var(--card); border-bottom: 1px solid var(--border); height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); transition: var(--tt); }
-        .brand { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--text); display: flex; align-items: center; gap: 8px; text-decoration: none; }
-        .brand-logo { width: 30px; height: 30px; object-fit: contain; border-radius: 50%; flex-shrink: 0; }
+        .topbar { background: var(--card); border-bottom: 1px solid var(--border); height: 66px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); transition: var(--tt); }
+        .brand { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--text); display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        .brand-logo { width: 52px; height: 52px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(0 2px 10px rgba(200,148,56,0.30)); transition: transform 0.3s ease; }
+        .brand:hover .brand-logo { transform: scale(1.08) rotate(-3deg); }
         .brand em { color: var(--gold); font-style: normal; }
         .topbar-right { display: flex; align-items: center; gap: 10px; }
         .back-btn { display: flex; align-items: center; gap: 6px; background: none; border: 1px solid var(--border); border-radius: 9px; padding: 6px 14px; font-size: 13px; color: var(--muted); cursor: pointer; transition: all 0.2s; }

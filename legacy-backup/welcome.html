@@ -127,9 +127,18 @@ body {
   margin-bottom: 36px;
   animation: wIn 0.9s cubic-bezier(0.16,1,0.3,1) both;
 }
+.welcome-logo-img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 10px 30px rgba(200,148,56,0.35));
+  animation: logoBreathe 5s ease-in-out infinite;
+}
+@keyframes logoBreathe{0%,100%{transform:scale(1);}50%{transform:scale(1.03);}}
 .wc-logo {
   font-family: 'Playfair Display', serif;
-  font-size: 46px; line-height: 1.05;
+  font-size: 32px; line-height: 1.15;
   letter-spacing: -0.5px;
 }
 .wc-logo em { color: var(--gold); font-style: normal; }
@@ -302,7 +311,8 @@ body {
 
 <div class="welcome-wrap">
   <div class="wc-logo-block">
-    <div class="wc-logo"><em>Coffee-r</em><br>Attokahon</div>
+    <img class="welcome-logo-img" src="logo.png" alt="Coffee-r Attokahon">
+    <div class="wc-logo"><em>Coffee-r</em> Attokahon</div>
     <div class="wc-tagline">Artisan Coffee &amp; Cuisine</div>
   </div>
 

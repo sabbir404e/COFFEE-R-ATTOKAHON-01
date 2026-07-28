@@ -53,10 +53,11 @@ button,input{font-family:'Outfit',sans-serif;}
 .glow{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 40% at 50% 10%,rgba(200,148,56,0.09) 0%,transparent 70%);}
 [data-theme="light"] .glow{background:radial-gradient(ellipse 60% 40% at 50% 10%,rgba(160,108,40,0.07) 0%,transparent 70%);}
 .login-wrap{width:100%;max-width:340px;position:relative;z-index:1;}
-.login-brand{text-align:center;margin-bottom:28px;}
-.login-brand .wm{font-family:'Playfair Display',serif;font-size:36px;}
+.kitchen-login-logo { width: 76px; height: 76px; object-fit: contain; margin: 0 auto 12px; display: block; filter: drop-shadow(0 6px 18px rgba(200,148,56,0.30)); }
+.login-brand{text-align:center;margin-bottom:24px;}
+.login-brand .wm{font-family:'Playfair Display',serif;font-size:28px;}
 .login-brand .wm em{color:var(--gold);font-style:normal;}
-.login-brand .sub{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-top:6px;}
+.login-brand .sub{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-top:4px;}
 .login-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:26px;animation:slideUp 0.35s;box-shadow:var(--shadow);transition:var(--tt);}
 .login-card h2{font-family:'Playfair Display',serif;font-size:20px;margin-bottom:20px;}
 .field{margin-bottom:14px;}
@@ -80,7 +81,9 @@ button,input{font-family:'Outfit',sans-serif;}
 /* TOPBAR */
 #appScreen{display:none;min-height:100vh;flex-direction:column;}
 .topbar{background:var(--card);border-bottom:1px solid var(--border);height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);transition:var(--tt);}
-.brand{font-family:'Playfair Display',serif;font-size:20px;}
+.brand{font-family:'Playfair Display',serif;font-size:20px;display:flex;align-items:center;gap:10px;}
+.brand-logo{width:38px;height:38px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 2px 8px rgba(200,148,56,0.25));transition:transform 0.3s ease;}
+.brand:hover .brand-logo{transform:scale(1.08) rotate(-3deg);}
 .brand em{color:var(--gold);font-style:normal;}
 .topbar-r{display:flex;align-items:center;gap:10px;}
 .live-pill{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);}
@@ -155,6 +158,7 @@ button,input{font-family:'Outfit',sans-serif;}
   </div>
   <div class="login-wrap">
     <div class="login-brand">
+      <img class="kitchen-login-logo" src="logo.png" alt="Coffee-r Attokahon">
       <div class="wm"><em>Coffee-r</em> Attokahon</div>
       <div class="sub">Kitchen Staff Portal</div>
     </div>
@@ -178,7 +182,10 @@ button,input{font-family:'Outfit',sans-serif;}
 <!-- APP -->
 <div id="appScreen">
   <div class="topbar">
-    <div class="brand"><em>Coffee-r</em> Attokahon</div>
+    <div class="brand">
+      <img class="brand-logo" src="logo.png" alt="Coffee-r Attokahon">
+      <span><em>Coffee-r</em> Attokahon</span>
+    </div>
     <div class="topbar-r">
       <div class="live-pill"><div class="live-dot"></div><span id="liveCount">0 active</span></div>
       <div class="role-badge">Kitchen</div>

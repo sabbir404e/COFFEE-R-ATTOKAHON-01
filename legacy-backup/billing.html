@@ -35,7 +35,8 @@ button{font-family:'Outfit',sans-serif;}
 
 /* TOPBAR */
 .topbar{background:var(--card);border-bottom:1px solid var(--border);height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);transition:var(--tt);}
-.brand{font-family:'Playfair Display',serif;font-size:18px;}
+.brand{font-family:'Playfair Display',serif;font-size:18px;display:flex;align-items:center;gap:8px;}
+.brand-logo{width:36px;height:36px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 2px 6px rgba(200,148,56,0.25));}
 .brand em{color:var(--gold);font-style:normal;}
 .topbar-right{display:flex;align-items:center;gap:8px;}
 .theme-toggle{width:38px;height:20px;background:var(--border-h);border-radius:10px;border:none;cursor:pointer;position:relative;}
@@ -57,7 +58,8 @@ button{font-family:'Outfit',sans-serif;}
 .invoice{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:var(--shadow);animation:fadeIn 0.4s 0.1s ease both;}
 
 .invoice-head{padding:24px 24px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;}
-.inv-brand .logo{font-family:'Playfair Display',serif;font-size:22px;}
+.inv-brand .logo{font-family:'Playfair Display',serif;font-size:20px;display:flex;align-items:center;gap:10px;}
+.inv-logo-img{width:42px;height:42px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 2px 6px rgba(200,148,56,0.25));}
 .inv-brand .logo em{color:var(--gold);font-style:normal;}
 .inv-brand .tagline{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-top:4px;}
 .inv-meta{text-align:right;}
@@ -224,7 +226,10 @@ button{font-family:'Outfit',sans-serif;}
 <div class="glow"></div>
 
 <div class="topbar">
-  <div class="brand"><em>Coffee-r</em> Attokahon</div>
+  <div class="brand">
+    <img class="brand-logo" src="logo.png" alt="Coffee-r Attokahon">
+    <span><em>Coffee-r</em> Attokahon</span>
+  </div>
   <div class="topbar-right">
     <button class="icon-btn" onclick="window.print()">🖨 Print</button>
     <button class="theme-toggle" onclick="toggleTheme()"></button>
@@ -304,7 +309,10 @@ function renderInvoice(o) {
 
       <div class="invoice-head">
         <div class="inv-brand">
-          <div class="logo"><em>Coffee-r</em> Attokahon</div>
+          <div class="logo">
+            <img class="inv-logo-img" src="logo.png" alt="Coffee-r Attokahon">
+            <span><em>Coffee-r</em> Attokahon</span>
+          </div>
           <div class="tagline">Artisan Coffee &amp; Cuisine</div>
         </div>
         <div class="inv-meta">

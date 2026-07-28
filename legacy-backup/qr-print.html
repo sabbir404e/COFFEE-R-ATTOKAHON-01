@@ -152,13 +152,29 @@ body {
     box-shadow: none;
   }
 }
+/* ── LOGO ── */
+.header-logo {
+  width: 72px; height: 72px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 10px;
+  filter: drop-shadow(0 4px 12px rgba(160,108,40,0.25));
+}
+.qr-card .brand {
+  font-family: 'Playfair Display', serif;
+  font-size: 13px;
+  color: #9A7850;
+  display: flex; align-items: center; gap: 6px;
+}
+.qr-card-logo { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>☕ <em>Coffee-r</em> Attokahon</h1>
-  <p>Generate & print QR codes for all 20 tables</p>
+  <img class="header-logo" src="logo.png" alt="Coffee-r Attokahon">
+  <h1><em>Coffee-r</em> Attokahon</h1>
+  <p>Generate &amp; print QR codes for all 20 tables</p>
 </div>
 
 <div class="url-box">
@@ -193,7 +209,7 @@ function generateAll() {
     const card = document.createElement('div');
     card.className = 'qr-card';
     card.innerHTML = `
-      <div class="brand"><em>Coffee-r</em> Attokahon</div>
+      <div class="brand"><img class="qr-card-logo" src="logo.png" alt=""><em>Coffee-r</em> Attokahon</div>
       <div class="qr-canvas" id="qr${i}"></div>
       <div class="table-label">Table ${i}</div>
       <div class="scan-text">Scan to order from your table</div>

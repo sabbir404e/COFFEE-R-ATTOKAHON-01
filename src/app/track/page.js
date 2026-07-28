@@ -223,7 +223,7 @@ function TrackPageContent() {
 
         .topbar{background:var(--card);border-bottom:1px solid var(--border);height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);}
         .brand{font-family:'Playfair Display',serif;font-size:18px;display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--text);}
-        .brand-logo{width:30px;height:30px;object-fit:contain;border-radius:50%;flex-shrink:0;}
+        .brand-logo{width:44px;height:44px;object-fit:contain;flex-shrink:0;}
         .brand em{color:var(--gold);font-style:normal;}
         .topbar-right{display:flex;align-items:center;gap:10px;}
         .back-btn{background:none;border:1px solid var(--border);border-radius:9px;padding:6px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all 0.2s;}

@@ -581,7 +581,7 @@ export default function AdminPage() {
         .qr-cc-tr { top: 8px; right: 8px; border-left: none; border-bottom: none; border-radius: 0 6px 0 0; }
         .qr-cc-bl { bottom: 8px; left: 8px; border-right: none; border-top: none; border-radius: 0 0 0 6px; }
         .qr-cc-br { bottom: 8px; right: 8px; border-left: none; border-top: none; border-radius: 0 0 6px 0; }
-        .qr-card-logo { width: 54px; height: 54px; object-fit: contain; display: block; margin: 0 auto 8px; border-radius: 50%; border: 2px solid #C89438; background: #fff; padding: 5px; }
+        .qr-card-logo { width: 54px; height: 54px; object-fit: contain; display: block; margin: 0 auto 8px; filter: drop-shadow(0 4px 10px rgba(200,148,56,0.45)); }
         .qr-card-name { font-family: var(--font-playfair), 'Playfair Display', serif; font-size: 22px; color: #2A1A08; line-height: 1.15; }
         .qr-card-name em { color: #A06C28; font-style: italic; }
         .qr-card-tagline { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: #9A7850; margin-top: 4px; font-weight: 600; }

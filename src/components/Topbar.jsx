@@ -106,10 +106,9 @@ export default function Topbar({
           gap: 10px;
         }
         .brand-logo {
-          width: 32px;
-          height: 32px;
+          width: 44px;
+          height: 44px;
           object-fit: contain;
-          border-radius: 50%;
           flex-shrink: 0;
         }
         .brand em {

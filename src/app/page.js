@@ -113,9 +113,9 @@ export default function HomePage() {
           padding:0 40px;
           transition:var(--tt);
         }
-        [data-theme="light"] nav{background:rgba(240,232,216,0.80);}
-        .nav-brand{font-family:'Playfair Display',serif;font-size:21px;text-decoration:none;color:var(--text);display:flex;align-items:center;gap:10px;}
-        .nav-brand-img{width:34px;height:34px;object-fit:contain;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 2px var(--gold-soft);}
+        .nav-brand{font-family:'Playfair Display',serif;font-size:21px;text-decoration:none;color:var(--text);display:flex;align-items:center;gap:12px;}
+        .nav-brand-img{width:52px;height:52px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 2px 10px rgba(200,148,56,0.35));transition:transform 0.3s ease;}
+        .nav-brand:hover .nav-brand-img{transform:scale(1.08) rotate(-3deg);}
         .nav-brand em{color:var(--gold);font-style:normal;}
         .nav-links{display:flex;align-items:center;gap:30px;}
         .nav-links a{font-size:13px;color:var(--muted);text-decoration:none;transition:color 0.2s;letter-spacing:0.3px;position:relative;}
@@ -236,18 +236,28 @@ export default function HomePage() {
 
         .hero-logo-wrap{
           position:relative;display:flex;align-items:center;justify-content:center;
-          width:264px;height:264px;margin:0 auto 28px;
+          width:264px;height:264px;margin:32px auto 28px;
           animation:fadeUp 0.8s 0.05s cubic-bezier(0.16,1,0.3,1) both;
         }
-        .hero-logo-glow{position:absolute;inset:-24px;border-radius:50%;background:radial-gradient(circle,var(--gold-soft) 0%,transparent 70%);filter:blur(6px);}
-        .hero-logo-ring{position:absolute;inset:-10px;border-radius:50%;border:1px dashed var(--border-h);animation:spinSlow 40s linear infinite;}
+        .hero-logo-wire{
+          position:absolute;top:-105px;left:50%;transform:translateX(-50%);
+          width:2px;height:108px;
+          background:linear-gradient(to bottom,transparent,rgba(200,148,56,0.3) 25%,rgba(200,148,56,0.85) 90%,#C89438 100%);
+          box-shadow:0 0 8px rgba(200,148,56,0.5);
+          z-index:2;pointer-events:none;
+        }
+        .hero-logo-wire::after{
+          content:'';position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);
+          width:8px;height:8px;border-radius:50%;background:#C89438;
+          box-shadow:0 0 10px rgba(200,148,56,0.9);
+        }
+        .hero-logo-glow{position:absolute;inset:-36px;border-radius:50%;background:radial-gradient(circle,rgba(200,148,56,0.25) 0%,rgba(200,148,56,0.08) 50%,transparent 72%);filter:blur(10px);}
+        .hero-logo-outer-ring{position:absolute;inset:-24px;border-radius:50%;border:1px dotted rgba(200,148,56,0.30);animation:spinSlow 70s linear infinite reverse;}
+        .hero-logo-ring{position:absolute;inset:-10px;border-radius:50%;border:1.5px dashed var(--border-h);box-shadow:0 0 16px rgba(200,148,56,0.18);animation:spinSlow 45s linear infinite;}
         .hero-logo{
-          position:relative;width:236px;height:236px;object-fit:contain;border-radius:50%;
+          position:relative;width:240px;height:240px;object-fit:contain;
           display:block;flex-shrink:0;
-          filter:drop-shadow(0 14px 34px rgba(0,0,0,0.35));
-          background:var(--card);
-          padding:8px;
-          border:1px solid var(--border-h);
+          filter:drop-shadow(0 16px 36px rgba(0,0,0,0.55)) drop-shadow(0 0 18px rgba(200,148,56,0.22));
           animation:logoBreathe 5s ease-in-out infinite;
         }
         @keyframes logoBreathe{0%,100%{transform:scale(1);}50%{transform:scale(1.025);}}
@@ -458,8 +468,8 @@ export default function HomePage() {
       {/* NAV */}
       <nav>
         <Link className="nav-brand" href="/">
-          <img className="nav-brand-img" src="/logo.png" alt="" />
-          <em>Coffee-r</em> Attokahon
+          <img className="nav-brand-img" src="/logo.png" alt="Coffee-r Attokahon" />
+          <span><em>Coffee-r</em> Attokahon</span>
         </Link>
         <div className="nav-links">
         </div>
@@ -511,7 +521,9 @@ export default function HomePage() {
           </div>
 
           <div className="hero-logo-wrap">
+            <div className="hero-logo-wire"></div>
             <div className="hero-logo-glow"></div>
+            <div className="hero-logo-outer-ring"></div>
             <div className="hero-logo-ring"></div>
             <span className="steam s1"></span><span className="steam s2"></span><span className="steam s3"></span>
             <img className="hero-logo" src="/logo.png" alt="Coffee-r Attokahon" />

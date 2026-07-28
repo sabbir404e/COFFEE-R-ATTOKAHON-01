@@ -89,7 +89,9 @@ button, input, select { font-family: 'Outfit', sans-serif; }
   transition: var(--transition-theme);
   box-shadow: var(--shadow);
 }
-.brand { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--text); }
+.brand { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--text); display: flex; align-items: center; gap: 10px; }
+.brand-logo { width: 38px; height: 38px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(0 2px 8px rgba(200,148,56,0.25)); transition: transform 0.3s ease; }
+.brand:hover .brand-logo { transform: scale(1.08) rotate(-3deg); }
 .brand em { color: var(--gold); font-style: normal; }
 .topbar-right { display: flex; align-items: center; gap: 10px; }
 
@@ -160,8 +162,10 @@ button, input, select { font-family: 'Outfit', sans-serif; }
   box-shadow: var(--shadow); animation: fadeIn 0.4s ease;
   transition: var(--transition-theme);
 }
-.table-card .logo { font-family: 'Playfair Display', serif; font-size: 40px; margin-bottom: 4px; }
+.table-card .logo { font-family: 'Playfair Display', serif; font-size: 24px; margin-bottom: 8px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .table-card .logo em { color: var(--gold); font-style: normal; }
+.table-card-logo-img { width: 84px; height: 84px; object-fit: contain; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.30)); transition: transform 0.3s ease; }
+.table-card:hover .table-card-logo-img { transform: scale(1.06) rotate(3deg); }
 .table-card .tagline {
   font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
   color: var(--muted); margin-bottom: 28px;
@@ -441,7 +445,10 @@ button, input, select { font-family: 'Outfit', sans-serif; }
     <span class="theme-label" id="tsLabel2">☀️</span>
   </div>
   <div class="table-card">
-    <div class="logo"><em>Coffee-r</em> Attokahon</div>
+    <div class="logo">
+      <img class="table-card-logo-img" src="logo.png" alt="Coffee-r Attokahon">
+      <div><em>Coffee-r</em> Attokahon</div>
+    </div>
     <div class="tagline">Artisan Coffee &amp; More</div>
     <h2>Select Your Table</h2>
     <p>Choose your table number to start ordering</p>
@@ -457,7 +464,10 @@ button, input, select { font-family: 'Outfit', sans-serif; }
   <div class="topbar">
     <div style="display:flex;align-items:center;gap:12px;">
       <button onclick="history.back()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0;line-height:1;">←</button>
-      <div class="brand"><em>Coffee-r</em> Attokahon</div>
+      <div class="brand">
+        <img class="brand-logo" src="logo.png" alt="Coffee-r Attokahon">
+        <span><em>Coffee-r</em> Attokahon</span>
+      </div>
     </div>
     <div class="topbar-right">
       <button class="track-nav-btn" onclick="openTrackSheet()">
