@@ -115,13 +115,16 @@ export default function HomePage() {
         /* ── NAV ──────────────────────────────────────────────── */
         nav{
           position:fixed;top:0;left:0;right:0;z-index:100;
-          background:rgba(26,20,16,0.78);
+          background:rgba(26,20,16,0.82);
           backdrop-filter:blur(16px) saturate(140%);
           border-bottom:1px solid var(--border);
           height:66px;
           display:flex;align-items:center;justify-content:space-between;
           padding:0 40px;
-          transition:var(--tt);
+          transition:background 0.3s ease, border-color 0.3s ease;
+        }
+        [data-theme="light"] nav{
+          background:rgba(244,236,220,0.88);
         }
         .nav-brand{font-family:'Playfair Display',serif;font-size:21px;text-decoration:none;color:var(--text);display:flex;align-items:center;gap:12px;}
         .nav-brand-img{width:52px;height:52px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 2px 10px rgba(200,148,56,0.35));transition:transform 0.3s ease;}
