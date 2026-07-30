@@ -60,14 +60,17 @@ async function buildCardCanvas(tableId, tableName, qrCanvasElement) {
   const brandLight = '#9A7850';
   const cream = '#FBF6EC';
 
+  // ── Background ──────────────────────────────────────────────────────────────
   ctx.fillStyle = cream;
   ctx.fillRect(0, 0, CARD_W, CARD_H);
 
+  // Outer border
   ctx.lineWidth = 3;
   ctx.strokeStyle = brandMid;
   roundRect(ctx, 14, 14, CARD_W - 28, CARD_H - 28, 28);
   ctx.stroke();
 
+  // Corner accent marks
   const cLen = 26, cInset = 34;
   ctx.lineWidth = 4;
   ctx.strokeStyle = brandMid;
@@ -86,8 +89,9 @@ async function buildCardCanvas(tableId, tableName, qrCanvasElement) {
     ctx.stroke();
   });
 
+  // ── Logo ────────────────────────────────────────────────────────────────────
   const logo = await getLogoImg();
-  const logoR = 66, logoCx = CARD_W / 2, logoCy = 100;
+  const logoR = 60, logoCx = CARD_W / 2, logoCy = 88;
   if (logo) {
     ctx.save();
     ctx.beginPath();
@@ -104,23 +108,57 @@ async function buildCardCanvas(tableId, tableName, qrCanvasElement) {
     ctx.stroke();
   }
 
+  // ── Brand name ──────────────────────────────────────────────────────────────
   ctx.textAlign = 'center';
   ctx.fillStyle = brandDark;
   ctx.font = '700 34px "Playfair Display", serif';
-  ctx.fillText('Coffee-r Attokahon', CARD_W / 2, 190);
+  ctx.fillText('Coffee-r Attokahon', CARD_W / 2, 178);
 
-  ctx.font = '500 15px "Outfit", sans-serif';
+  // ── Tagline ─────────────────────────────────────────────────────────────────
+  ctx.font = '600 12px "Outfit", sans-serif';
   ctx.fillStyle = brandLight;
-  ctx.fillText('S C A N   •   O R D E R   •   E N J O Y', CARD_W / 2, 218);
+  ctx.fillText('ARTISAN COFFEE & CUISINE', CARD_W / 2, 202);
 
+  // ── Divider with ❖ ──────────────────────────────────────────────────────────
   ctx.strokeStyle = 'rgba(160,108,40,0.35)';
   ctx.lineWidth = 1.5;
+  ctx.lineCap = 'butt';
   ctx.beginPath();
-  ctx.moveTo(CARD_W / 2 - 90, 240);
-  ctx.lineTo(CARD_W / 2 + 90, 240);
+  ctx.moveTo(CARD_W / 2 - 100, 222);
+  ctx.lineTo(CARD_W / 2 - 12, 222);
+  ctx.stroke();
+  ctx.fillStyle = brandMid;
+  ctx.font = '700 14px serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('❖', CARD_W / 2, 227);
+  ctx.beginPath();
+  ctx.moveTo(CARD_W / 2 + 12, 222);
+  ctx.lineTo(CARD_W / 2 + 100, 222);
   ctx.stroke();
 
-  const qrBoxSize = 400, qrBoxX = (CARD_W - qrBoxSize) / 2, qrBoxY = 268;
+  // ── TABLE BADGE — placed ABOVE the QR code ──────────────────────────────────
+  const badgeLabel = (tableName || ('Table ' + tableId)).toUpperCase();
+  const badgeH = 46, badgeW = 240, badgeX = (CARD_W - badgeW) / 2, badgeTop = 244;
+
+  const badgeGrad = ctx.createLinearGradient(badgeX, badgeTop, badgeX + badgeW, badgeTop + badgeH);
+  badgeGrad.addColorStop(0, '#D4A445');
+  badgeGrad.addColorStop(1, '#A06C28');
+  ctx.save();
+  ctx.shadowColor = 'rgba(140,90,20,0.4)';
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetY = 4;
+  ctx.fillStyle = badgeGrad;
+  roundRect(ctx, badgeX, badgeTop, badgeW, badgeH, 23);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.fillStyle = '#fff';
+  ctx.font = '700 20px "Playfair Display", serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(badgeLabel, CARD_W / 2, badgeTop + badgeH / 2 + 7);
+
+  // ── QR Code box (below badge) ────────────────────────────────────────────────
+  const qrBoxSize = 370, qrBoxX = (CARD_W - qrBoxSize) / 2, qrBoxY = 306;
   ctx.save();
   ctx.shadowColor = 'rgba(100,60,10,0.15)';
   ctx.shadowBlur = 18;
@@ -134,34 +172,28 @@ async function buildCardCanvas(tableId, tableName, qrCanvasElement) {
   roundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 20);
   ctx.stroke();
 
-  const qrPad = 28;
+  const qrPad = 26;
   const qrDrawSize = qrBoxSize - qrPad * 2;
   if (qrCanvasElement) {
     ctx.drawImage(qrCanvasElement, qrBoxX + qrPad, qrBoxY + qrPad, qrDrawSize, qrDrawSize);
   }
 
-  const badgeY = qrBoxY + qrBoxSize + 56;
-  ctx.font = '700 42px "Playfair Display", serif';
-  ctx.fillStyle = brandDark;
-  ctx.fillText((tableName || ('Table ' + tableId)).toUpperCase(), CARD_W / 2, badgeY);
-
-  ctx.strokeStyle = brandMid;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(CARD_W / 2 - 34, badgeY + 14);
-  ctx.lineTo(CARD_W / 2 + 34, badgeY + 14);
-  ctx.stroke();
-
-  ctx.font = '400 17px "Outfit", sans-serif';
+  // ── "SCAN TO VIEW MENU & ORDER" ──────────────────────────────────────────────
+  const scanY = qrBoxY + qrBoxSize + 36;
+  ctx.font = '700 12px "Outfit", sans-serif';
   ctx.fillStyle = brandLight;
-  ctx.fillText('Scan to view the menu & order from your table', CARD_W / 2, badgeY + 46);
+  ctx.textAlign = 'center';
+  ctx.fillText('SCAN TO VIEW MENU & ORDER', CARD_W / 2, scanY);
 
+  // ── Footer ──────────────────────────────────────────────────────────────────
   ctx.font = '400 13px "Outfit", sans-serif';
-  ctx.fillStyle = 'rgba(154,120,80,0.8)';
+  ctx.fillStyle = 'rgba(154,120,80,0.75)';
+  ctx.textAlign = 'center';
   ctx.fillText('☕  Thank you for visiting  ☕', CARD_W / 2, CARD_H - 36);
 
   return canvas;
 }
+
 
 export default function AdminPage() {
   const { toggleTheme, products, tables, orders, payments, users, deleteTable, feedback } = useApp();
@@ -211,6 +243,10 @@ export default function AdminPage() {
 
   const [confirmMsg, setConfirmMsg] = useState('');
   const [confirmCallback, setConfirmCallback] = useState(null);
+
+  // Orders tab filters
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState('all');
 
   // Restore session & set initial URL
   useEffect(() => {
@@ -353,6 +389,17 @@ export default function AdminPage() {
       await supabase.from('products').insert(data);
     }
     setOvProduct(false);
+  };
+
+  // Order actions
+  const ORDER_STATUSES = ['pending', 'paid', 'preparing', 'ready', 'served', 'cancelled'];
+
+  const updateOrderStatus = async (id, newStatus) => {
+    await supabase.from('orders').update({ status: newStatus }).eq('id', id);
+  };
+
+  const deleteOrder = async (id) => {
+    await supabase.from('orders').delete().eq('id', id);
   };
 
   const toggleAvail = async (id) => {
@@ -507,10 +554,14 @@ export default function AdminPage() {
   // Dashboard Stats
   const activeOrders = orders.filter(o => o.status !== 'served' && o.status !== 'cancelled' && o.status !== 'failed').length;
   const servedOrders = orders.filter(o => o.status === 'served').length;
+  const cancelledOrders = orders.filter(o => o.status === 'cancelled').length;
   const totalRevenue = orders.filter(o => o.status !== 'cancelled' && o.status !== 'failed').reduce((acc, curr) => acc + (curr.total || 0), 0);
   const todayStr = new Date().toDateString();
   const todayRev = orders.filter(o => new Date(o.time).toDateString() === todayStr && o.status !== 'cancelled' && o.status !== 'failed').reduce((acc, curr) => acc + (curr.total || 0), 0);
   const todayOrders = orders.filter(o => new Date(o.time).toDateString() === todayStr && o.status !== 'cancelled' && o.status !== 'failed').length;
+  const occupiedTablesCount = new Set(orders.filter(o => o.table && o.status !== 'served' && o.status !== 'cancelled' && o.status !== 'failed').map(o => o.table)).size;
+  const totalTablesCount = tables.length || 20;
+  const avgRatingText = feedback.length ? (feedback.reduce((sum, item) => sum + (Number(item.rating) || 0), 0) / feedback.length).toFixed(1) : '—';
 
   return (
     <>
@@ -536,6 +587,16 @@ export default function AdminPage() {
         .stat-val { font-family: var(--font-playfair), 'Playfair Display', serif; font-size: 30px; line-height: 1; }
         .stat-val small { font-size: 15px; color: var(--gold); }
         
+        /* Order status action buttons */
+        .order-actions { display: flex; flex-wrap: wrap; gap: 5px; min-width: 190px; }
+        .btn-status { padding: 3px 8px; border-radius: 6px; border: 1px solid var(--border-h); background: none; font-size: 11px; font-weight: 600; color: var(--text-2); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+        .btn-status:hover { background: rgba(200,148,56,0.15); color: var(--gold); border-color: var(--gold); }
+        .btn-status-cancel { border-color: var(--d-bd); color: var(--d-tx); }
+        .btn-status-cancel:hover { background: var(--d-bg); border-color: var(--d-bd); color: var(--d-tx); }
+        .btn-status-served { border-color: rgba(42,114,72,0.5); color: #60C890; }
+        .btn-status-served:hover { background: rgba(42,114,72,0.15); }
+        .status-sep { width: 1px; background: var(--border); margin: 0 2px; align-self: stretch; display: inline-block; }
+
         .tbl-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: auto; transition: var(--transition-theme); }
         .tbl-wrap table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 13px; }
         .tbl-wrap thead th { text-align: left; padding: 11px 16px; background: var(--bg2); color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; border-bottom: 1px solid var(--border); font-weight: 600; }
@@ -576,24 +637,24 @@ export default function AdminPage() {
         .empty-tbl { text-align: center; padding: 28px; color: var(--muted); font-size: 13px; }
 
         /* QR Card Tent Frame */
-        .qr-modal { max-width: 460px; }
-        .qr-card-frame { position: relative; background: linear-gradient(160deg,#FBF6EA 0%,#F1E4C8 100%); border: 1.5px solid #C89438; border-radius: 22px; padding: 8px; box-shadow: 0 10px 30px rgba(60,36,8,0.28); }
-        .qr-card-inner { position: relative; border: 1px solid rgba(160,108,40,0.35); border-radius: 16px; padding: 24px 18px 20px; text-align: center; }
-        .qr-card-corner { position: absolute; width: 22px; height: 22px; border: 2px solid #C89438; z-index: 2; }
-        .qr-cc-tl { top: 8px; left: 8px; border-right: none; border-bottom: none; border-radius: 6px 0 0 0; }
-        .qr-cc-tr { top: 8px; right: 8px; border-left: none; border-bottom: none; border-radius: 0 6px 0 0; }
-        .qr-cc-bl { bottom: 8px; left: 8px; border-right: none; border-top: none; border-radius: 0 0 0 6px; }
-        .qr-cc-br { bottom: 8px; right: 8px; border-left: none; border-top: none; border-radius: 0 0 6px 0; }
-        .qr-card-logo { width: 54px; height: 54px; object-fit: contain; display: block; margin: 0 auto 8px; filter: drop-shadow(0 4px 10px rgba(200,148,56,0.45)); }
-        .qr-card-name { font-family: var(--font-playfair), 'Playfair Display', serif; font-size: 22px; color: #2A1A08; line-height: 1.15; }
-        .qr-card-name em { color: #A06C28; font-style: italic; }
+        .qr-modal { max-width: 440px; background: #1C1610 !important; border: 1px solid rgba(160,108,40,0.35) !important; border-radius: 24px !important; padding: 24px !important; box-shadow: 0 20px 50px rgba(0,0,0,0.6) !important; }
+        .qr-card-frame { position: relative; background: linear-gradient(160deg, #FAF4E8 0%, #EFE1C3 100%); border: 1.5px solid #C89438; border-radius: 20px; padding: 7px; box-shadow: 0 10px 25px rgba(0,0,0,0.35); }
+        .qr-card-inner { position: relative; border: 1px solid rgba(160,108,40,0.35); border-radius: 14px; padding: 22px 16px 18px; text-align: center; }
+        .qr-card-corner { position: absolute; width: 18px; height: 18px; border: 2px solid #C89438; z-index: 2; }
+        .qr-cc-tl { top: 6px; left: 6px; border-right: none; border-bottom: none; border-radius: 4px 0 0 0; }
+        .qr-cc-tr { top: 6px; right: 6px; border-left: none; border-bottom: none; border-radius: 0 4px 0 0; }
+        .qr-cc-bl { bottom: 6px; left: 6px; border-right: none; border-top: none; border-radius: 0 0 0 4px; }
+        .qr-cc-br { bottom: 6px; right: 6px; border-left: none; border-top: none; border-radius: 0 0 4px 0; }
+        .qr-card-logo { width: 56px; height: 56px; border-radius: 50%; border: 2px solid #C89438; object-fit: cover; display: block; margin: 0 auto 10px; padding: 2px; background: #fff; box-shadow: 0 4px 12px rgba(160,108,40,0.25); }
+        .qr-card-name { font-family: var(--font-playfair), 'Playfair Display', serif; font-size: 23px; color: #2E1C08; font-weight: 700; line-height: 1.2; margin-bottom: 2px; }
+        .qr-card-name em { color: #A06C28; font-style: italic; font-weight: 700; margin-right: 4px; }
         .qr-card-tagline { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: #9A7850; margin-top: 4px; font-weight: 600; }
-        .qr-card-divider { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px auto; width: 70%; }
-        .qr-card-divider span { flex: 1; height: 1px; background: rgba(160,108,40,0.4); }
-        .qr-card-divider i { font-style: normal; color: #C89438; font-size: 11px; }
-        .qr-card-table { display: inline-block; font-family: var(--font-playfair), 'Playfair Display', serif; font-size: 15px; letter-spacing: 1.5px; text-transform: uppercase; color: #fff; background: linear-gradient(135deg,#D4A445,#A06C28); padding: 6px 24px; border-radius: 100px; margin-bottom: 16px; box-shadow: 0 3px 10px rgba(140,90,20,0.35); }
-        .qr-card-qr-wrap { background: #fff; border-radius: 14px; padding: 14px; display: inline-block; box-shadow: 0 4px 16px rgba(80,50,10,0.16); border: 1px solid rgba(160,108,40,0.18); }
-        .qr-card-scan { margin-top: 12px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9A7850; font-weight: 700; }
+        .qr-card-divider { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px auto 14px; width: 65%; }
+        .qr-card-divider span { flex: 1; height: 1px; background: rgba(160,108,40,0.35); }
+        .qr-card-divider i { font-style: normal; color: #C89438; font-size: 10px; }
+        .qr-card-table { display: inline-block; font-family: var(--font-playfair), 'Playfair Display', serif; font-size: 15px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #ffffff; background: linear-gradient(135deg, #D4A445 0%, #A06C28 100%); padding: 7px 28px; border-radius: 100px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(160,108,40,0.35); }
+        .qr-card-qr-wrap { background: #ffffff; border-radius: 18px; padding: 14px; display: inline-block; box-shadow: 0 6px 20px rgba(0,0,0,0.12); border: 1px solid rgba(160,108,40,0.2); }
+        .qr-card-scan { margin-top: 14px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9A7850; font-weight: 700; }
 
         /* Mobile Responsive Navigation Drawer */
         .menu-toggle { display: none; background: none; border: 1px solid var(--border); border-radius: 8px; width: 34px; height: 34px; align-items: center; justify-content: center; cursor: pointer; color: var(--text); flex-shrink: 0; margin-right: 8px; }
@@ -655,7 +716,7 @@ export default function AdminPage() {
             <button className={`nav-item${currentTab === 'feedback' ? ' active' : ''}`} onClick={() => handleTabChange('feedback')}>⭐ Feedback</button>
             <hr className="nav-sep" />
             <button className="nav-item" onClick={() => window.open('/order', '_blank')}>🛒 Preview Menu</button>
-            <button className="nav-item" onClick={() => window.open('/qr-print', '_blank')}>🖨 QR Code Printer</button>
+            <button className="nav-item" onClick={() => window.open('/kitchen', '_blank')}>👨‍🍳 Kitchen View</button>
           </nav>
 
           <div className="content">
@@ -663,56 +724,174 @@ export default function AdminPage() {
               <div>
                 <div className="pg-title">Dashboard</div>
                 <div className="pg-sub">Live overview of Coffee-r Attokahon operations.</div>
-                <div className="stats-grid">
-                  <div className="stat-card"><div className="stat-lbl">Today&apos;s Orders</div><div className="stat-val">{todayOrders}</div></div>
-                  <div className="stat-card"><div className="stat-lbl">Today&apos;s Revenue</div><div className="stat-val">৳{todayRev.toLocaleString()}</div></div>
-                  <div className="stat-card"><div className="stat-lbl">Active Orders</div><div className="stat-val">{activeOrders}</div></div>
-                  <div className="stat-card"><div className="stat-lbl">Served Today</div><div className="stat-val">{servedOrders}</div></div>
-                  <div className="stat-card"><div className="stat-lbl">Total Revenue</div><div className="stat-val">৳{totalRevenue.toLocaleString()}</div></div>
-                  <div className="stat-card"><div className="stat-lbl">Menu Items</div><div className="stat-val">{products.length}</div></div>
+
+                {/* TODAY */}
+                <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--muted)', marginTop: '16px', marginBottom: '8px' }}>
+                  TODAY
+                </div>
+                <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(160px, 220px))', gap: '12px', marginBottom: '18px' }}>
+                  <div className="stat-card">
+                    <div className="stat-lbl">TODAY&apos;S ORDERS</div>
+                    <div className="stat-val">{todayOrders}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-lbl">TODAY&apos;S REVENUE</div>
+                    <div className="stat-val">৳{todayRev.toLocaleString()}</div>
+                  </div>
                 </div>
 
-                <div className="pg-title" style={{ fontSize: '20px', marginBottom: '12px', marginTop: '8px' }}>Recent Paid Orders</div>
-                <div className="tbl-wrap">
+                {/* ALL-TIME OVERVIEW */}
+                <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--muted)', marginTop: '18px', marginBottom: '8px' }}>
+                  ALL-TIME OVERVIEW
+                </div>
+                <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+                  <div className="stat-card">
+                    <div className="stat-lbl">TOTAL ORDERS</div>
+                    <div className="stat-val">{orders.length}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-lbl">TOTAL REVENUE</div>
+                    <div className="stat-val">৳{totalRevenue.toLocaleString()}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-lbl">SERVED ORDERS</div>
+                    <div className="stat-val" style={{ color: 'var(--success-tx)' }}>{servedOrders}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-lbl">CANCELLED ORDERS</div>
+                    <div className="stat-val" style={{ color: 'var(--d-tx)' }}>{cancelledOrders}</div>
+                  </div>
+                </div>
+
+                {/* RIGHT NOW */}
+                <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--muted)', marginTop: '18px', marginBottom: '8px' }}>
+                  RIGHT NOW
+                </div>
+                <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '12px', marginBottom: '26px' }}>
+                  <div className="stat-card">
+                    <div className="stat-lbl">ACTIVE ORDERS</div>
+                    <div className="stat-val" style={{ color: 'var(--gold)' }}>{activeOrders}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-lbl">OCCUPIED TABLES</div>
+                    <div className="stat-val">{occupiedTablesCount} <small style={{ fontSize: '16px', color: 'var(--muted)' }}>/ {totalTablesCount}</small></div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-lbl">MENU ITEMS</div>
+                    <div className="stat-val">{products.length}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-lbl">AVG. RATING</div>
+                    <div className="stat-val">{avgRatingText}</div>
+                  </div>
+                </div>
+
+                {/* Recent Paid Orders Table */}
+                <div className="pg-title" style={{ fontSize: '18px', marginBottom: '12px', marginTop: '12px' }}>Recent Paid Orders</div>
+                <div className="tbl-wrap" style={{ marginBottom: '28px' }}>
                   <table>
                     <thead>
-                      <tr><th>#</th><th>Table</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Time</th></tr>
+                      <tr>
+                        <th>#</th>
+                        <th>TABLE</th>
+                        <th>ITEMS</th>
+                        <th>TOTAL</th>
+                        <th>PAYMENT</th>
+                        <th>SENT FROM</th>
+                        <th>STATUS</th>
+                        <th>TIME</th>
+                        <th>ACTIONS</th>
+                      </tr>
                     </thead>
                     <tbody>
-                      {orders.slice(0, 8).map(o => (
-                        <tr key={o.id}>
-                          <td style={{ color: 'var(--gold)', fontWeight: 600 }}>{o.id}</td>
-                          <td>{o.table || '—'}</td>
-                          <td>{o.items.map(i => `${i.qty}× ${i.name}`).join(', ')}</td>
-                          <td style={{ fontWeight: 600 }}>৳{o.total}</td>
-                          <td style={{ fontSize: '11px' }}>{o.paymentMethod || '—'}</td>
-                          <td><span className={`badge b-${o.status}`}>{o.status}</span></td>
-                          <td style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(o.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                        </tr>
-                      ))}
-                      {orders.length === 0 && <tr><td colSpan="7" className="empty-tbl">No orders yet.</td></tr>}
+                      {orders.slice(0, 8).map(o => {
+                        const statusFlow = ['pending', 'paid', 'preparing', 'ready', 'served'];
+                        const curIdx = statusFlow.indexOf(o.status);
+                        const nextStatus = curIdx >= 0 && curIdx < statusFlow.length - 1 ? statusFlow[curIdx + 1] : null;
+                        const nextLabel = nextStatus ? `→ ${nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}` : null;
+                        const isCancelled = o.status === 'cancelled';
+                        return (
+                          <tr key={o.id}>
+                            <td style={{ color: 'var(--gold)', fontWeight: 600 }}>{o.id}</td>
+                            <td>{o.table || '—'}</td>
+                            <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={o.items.map(i => `${i.qty}× ${i.name}`).join(', ')}>
+                              {o.items.map(i => `${i.qty}× ${i.name}`).join(', ')}
+                            </td>
+                            <td style={{ fontWeight: 600 }}>৳{o.total}</td>
+                            <td style={{ fontSize: '11px' }}>{o.paymentMethod || '—'}</td>
+                            <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{o.senderPhone || '—'}</td>
+                            <td><span className={`badge b-${o.status}`}>{o.status}</span></td>
+                            <td style={{ fontSize: '11px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                              {new Date(o.time).toLocaleString('en-BD', { dateStyle: 'short', timeStyle: 'short' })}
+                            </td>
+                            <td>
+                              <div className="order-actions">
+                                {nextLabel && !isCancelled && (
+                                  <button
+                                    className={`btn-status${nextStatus === 'served' ? ' btn-status-served' : ''}`}
+                                    onClick={() => updateOrderStatus(o.id, nextStatus)}
+                                    title={`Mark as ${nextStatus}`}
+                                  >
+                                    {nextLabel}
+                                  </button>
+                                )}
+                                {!isCancelled && o.status !== 'served' && (
+                                  <button
+                                    className="btn-status btn-status-cancel"
+                                    onClick={() => confirmAction(`Cancel order #${o.id}?`, () => updateOrderStatus(o.id, 'cancelled'))}
+                                    title="Cancel order"
+                                  >
+                                    ✕ Cancel
+                                  </button>
+                                )}
+                                <button
+                                  className="btn-del"
+                                  style={{ fontSize: '11px', padding: '3px 8px' }}
+                                  onClick={() => confirmAction(`Delete order #${o.id} permanently?`, () => deleteOrder(o.id))}
+                                  title="Delete order"
+                                >
+                                  {(isCancelled || o.status === 'served') ? '🗑 Delete' : '🗑'}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {orders.length === 0 && <tr><td colSpan="9" className="empty-tbl">No orders yet.</td></tr>}
                     </tbody>
                   </table>
                 </div>
 
-                <div className="pg-title" style={{ fontSize: '20px', marginBottom: '12px', marginTop: '24px' }}>Recent Payments</div>
+                {/* Recent Payments Table */}
+                <div className="pg-title" style={{ fontSize: '18px', marginBottom: '12px' }}>Recent Payments</div>
                 <div className="tbl-wrap">
                   <table>
                     <thead>
-                      <tr><th>TXN ID</th><th>Invoice</th><th>Table</th><th>Method</th><th>Amount</th><th>Time</th></tr>
+                      <tr>
+                        <th>TXN ID</th>
+                        <th>PHONE</th>
+                        <th>INVOICE</th>
+                        <th>TABLE</th>
+                        <th>METHOD</th>
+                        <th>AMOUNT</th>
+                        <th>TIME</th>
+                      </tr>
                     </thead>
                     <tbody>
                       {payments.slice(0, 6).map(p => (
                         <tr key={p.id}>
                           <td style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--gold)' }}>{p.txn_id || p.txnId || '—'}</td>
+                          <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{p.sender_phone || p.senderPhone || p.phone || '—'}</td>
                           <td style={{ fontSize: '12px' }}>{p.invoice_num || p.invoiceNum || '—'}</td>
                           <td>{p.table_id || p.table || '—'}</td>
                           <td>{p.payment_method || p.method || '—'}</td>
                           <td style={{ fontWeight: 600, color: 'var(--success-tx)' }}>৳{p.amount}</td>
-                          <td style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(p.created_at || p.time).toLocaleString('en-BD', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                          <td style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                            {new Date(p.created_at || p.time).toLocaleString('en-BD', { dateStyle: 'short', timeStyle: 'short' })}
+                          </td>
                         </tr>
                       ))}
-                      {payments.length === 0 && <tr><td colSpan="6" className="empty-tbl">No payments yet.</td></tr>}
+                      {payments.length === 0 && <tr><td colSpan="7" className="empty-tbl">No payments yet.</td></tr>}
                     </tbody>
                   </table>
                 </div>
@@ -772,32 +951,123 @@ export default function AdminPage() {
               </div>
             )}
 
-            {currentTab === 'orders' && (
-              <div>
-                <div className="pg-title">Orders</div>
-                <div className="pg-sub">Full history — {orders.length} total orders.</div>
-                <div className="tbl-wrap">
-                  <table>
-                    <thead>
-                      <tr><th>#</th><th>Table</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Time</th></tr>
-                    </thead>
-                    <tbody>
-                      {orders.map(o => (
-                        <tr key={o.id}>
-                          <td style={{ color: 'var(--gold)', fontWeight: 600 }}>{o.id}</td>
-                          <td>{o.table || '—'}</td>
-                          <td>{o.items.map(i => `${i.qty}× ${i.name}`).join(', ')}</td>
-                          <td style={{ fontWeight: 600 }}>৳{o.total}</td>
-                          <td style={{ fontSize: '11px' }}>{o.paymentMethod || '—'}</td>
-                          <td><span className={`badge b-${o.status}`}>{o.status}</span></td>
-                          <td style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(o.time).toLocaleString('en-BD', { dateStyle: 'short', timeStyle: 'short' })}</td>
+            {currentTab === 'orders' && (() => {
+              const filteredOrders = orders.filter(o => {
+                const matchSearch = !orderSearch.trim() ||
+                  String(o.id).includes(orderSearch.trim()) ||
+                  String(o.table || '').toLowerCase().includes(orderSearch.trim().toLowerCase()) ||
+                  (o.senderPhone || '').includes(orderSearch.trim());
+                const matchStatus = orderStatusFilter === 'all' || o.status === orderStatusFilter;
+                return matchSearch && matchStatus;
+              });
+              return (
+                <div>
+                  <div className="toolbar">
+                    <div>
+                      <div className="pg-title">Orders</div>
+                      <div className="pg-sub">Full history — {orders.length} total orders.</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <input
+                        className="inp"
+                        style={{ padding: '6px 12px', fontSize: '12px', width: '160px' }}
+                        type="text"
+                        placeholder="Search order / table…"
+                        value={orderSearch}
+                        onChange={e => setOrderSearch(e.target.value)}
+                      />
+                      <select
+                        className="inp"
+                        style={{ padding: '6px 10px', fontSize: '12px', width: '130px' }}
+                        value={orderStatusFilter}
+                        onChange={e => setOrderStatusFilter(e.target.value)}
+                      >
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="paid">Paid</option>
+                        <option value="preparing">Preparing</option>
+                        <option value="ready">Ready</option>
+                        <option value="served">Served</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="tbl-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Table</th>
+                          <th>Items</th>
+                          <th>Total</th>
+                          <th>Payment</th>
+                          <th>Sent From</th>
+                          <th>Status</th>
+                          <th>Time</th>
+                          <th>Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {filteredOrders.length === 0 && (
+                          <tr><td colSpan="9" className="empty-tbl">No orders found.</td></tr>
+                        )}
+                        {filteredOrders.map(o => {
+                          const statusFlow = ['pending', 'paid', 'preparing', 'ready', 'served'];
+                          const curIdx = statusFlow.indexOf(o.status);
+                          const nextStatus = curIdx >= 0 && curIdx < statusFlow.length - 1 ? statusFlow[curIdx + 1] : null;
+                          const nextLabel = nextStatus ? `→ ${nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}` : null;
+                          const isCancelled = o.status === 'cancelled';
+                          return (
+                            <tr key={o.id}>
+                              <td style={{ color: 'var(--gold)', fontWeight: 600 }}>{o.id}</td>
+                              <td>{o.table || '—'}</td>
+                              <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={o.items.map(i => `${i.qty}× ${i.name}`).join(', ')}>
+                                {o.items.map(i => `${i.qty}× ${i.name}`).join(', ')}
+                              </td>
+                              <td style={{ fontWeight: 600 }}>৳{o.total}</td>
+                              <td style={{ fontSize: '11px' }}>{o.paymentMethod || '—'}</td>
+                              <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{o.senderPhone || '—'}</td>
+                              <td><span className={`badge b-${o.status}`}>{o.status}</span></td>
+                              <td style={{ fontSize: '11px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{new Date(o.time).toLocaleString('en-BD', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                              <td>
+                                <div className="order-actions">
+                                  {nextLabel && !isCancelled && (
+                                    <button
+                                      className={`btn-status${nextStatus === 'served' ? ' btn-status-served' : ''}`}
+                                      onClick={() => updateOrderStatus(o.id, nextStatus)}
+                                      title={`Mark as ${nextStatus}`}
+                                    >
+                                      {nextLabel}
+                                    </button>
+                                  )}
+                                  {!isCancelled && o.status !== 'served' && (
+                                    <button
+                                      className="btn-status btn-status-cancel"
+                                      onClick={() => confirmAction(`Cancel order #${o.id}?`, () => updateOrderStatus(o.id, 'cancelled'))}
+                                      title="Cancel order"
+                                    >
+                                      ✕ Cancel
+                                    </button>
+                                  )}
+                                  <button
+                                    className="btn-del"
+                                    style={{ fontSize: '11px', padding: '3px 8px' }}
+                                    onClick={() => confirmAction(`Delete order #${o.id} permanently?`, () => deleteOrder(o.id))}
+                                    title="Delete order"
+                                  >
+                                    {(isCancelled || o.status === 'served') ? '🗑 Delete' : '🗑'}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {currentTab === 'payments' && (
               <div>
@@ -876,28 +1146,39 @@ export default function AdminPage() {
             {currentTab === 'reports' && (() => {
               const from = reportFrom ? new Date(`${reportFrom}T00:00:00`) : null;
               const to = reportTo ? new Date(`${reportTo}T23:59:59`) : null;
+              
               const reportOrders = orders.filter(order => {
                 const time = new Date(order.time || order.createdAt);
                 return !Number.isNaN(time.getTime()) && (!from || time >= from) && (!to || time <= to) && !['cancelled', 'failed', 'refunded'].includes(order.status);
               });
-              const revenue = reportOrders.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
-              const byMethod = reportOrders.reduce((summary, order) => {
-                const method = order.paymentMethod || 'Cash';
-                summary[method] = (summary[method] || 0) + (Number(order.total) || 0);
-                return summary;
-              }, {});
 
-              // Product rankings summary
-              const prodSummary = {};
+              const revenue = reportOrders.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
+              const avgOrder = reportOrders.length ? Math.round(revenue / reportOrders.length) : 0;
+
+              // Daily revenue trend breakdown
+              const dailyDataMap = {};
               reportOrders.forEach(o => {
-                (o.items || []).forEach(i => {
-                  if (!prodSummary[i.name]) prodSummary[i.name] = { name: i.name, qty: 0, rev: 0 };
-                  prodSummary[i.name].qty += (i.qty || 1);
-                  prodSummary[i.name].rev += (i.qty || 1) * (i.price || 0);
-                });
+                const d = new Date(o.time || o.createdAt);
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                if (!dailyDataMap[key]) {
+                  dailyDataMap[key] = { label, total: 0, count: 0, dateObj: d };
+                }
+                dailyDataMap[key].total += Number(o.total) || 0;
+                dailyDataMap[key].count += 1;
               });
-              const topProducts = Object.values(prodSummary).sort((a, b) => b.qty - a.qty).slice(0, 5);
-              const maxQty = topProducts.length ? Math.max(...topProducts.map(p => p.qty)) : 1;
+
+              const sortedDaily = Object.values(dailyDataMap).sort((a, b) => a.dateObj - b.dateObj);
+              const maxDailyRev = sortedDaily.length ? Math.max(...sortedDaily.map(d => d.total), 1) : 1;
+
+              // Payment method breakdown
+              const byMethod = {};
+              const byMethodCount = {};
+              reportOrders.forEach(o => {
+                const method = o.paymentMethod || 'Cash';
+                byMethod[method] = (byMethod[method] || 0) + (Number(o.total) || 0);
+                byMethodCount[method] = (byMethodCount[method] || 0) + 1;
+              });
 
               const methodColors = {
                 bkash: '#DF146E',
@@ -908,82 +1189,259 @@ export default function AdminPage() {
                 other: '#A06C28'
               };
 
+              // Donut ring calculations
+              const totalMethodRev = Object.values(byMethod).reduce((a, b) => a + b, 0) || 1;
+              let accumulatedAngle = 0;
+              const donutSegments = Object.entries(byMethod).map(([method, amount]) => {
+                const mLower = method.toLowerCase();
+                const color = methodColors[mLower] || methodColors.other;
+                const ratio = amount / totalMethodRev;
+                const strokeDasharray = `${ratio * 314.16} ${314.16}`;
+                const strokeDashoffset = -accumulatedAngle * 314.16;
+                accumulatedAngle += ratio;
+                return { method, amount, count: byMethodCount[method] || 0, color, strokeDasharray, strokeDashoffset };
+              });
+
+              // Product rankings summary
+              const prodSummary = {};
+              reportOrders.forEach(o => {
+                (o.items || []).forEach(i => {
+                  if (!prodSummary[i.name]) {
+                    const foundProd = products.find(p => p.name.toLowerCase() === i.name.toLowerCase());
+                    prodSummary[i.name] = {
+                      name: i.name,
+                      qty: 0,
+                      rev: 0,
+                      emoji: i.emoji || foundProd?.emoji || '☕',
+                      image: foundProd?.image || null
+                    };
+                  }
+                  prodSummary[i.name].qty += (i.qty || 1);
+                  prodSummary[i.name].rev += (i.qty || 1) * (i.price || 0);
+                });
+              });
+
+              const topProducts = Object.values(prodSummary).sort((a, b) => b.qty - a.qty).slice(0, 5);
+              const maxQty = topProducts.length ? Math.max(...topProducts.map(p => p.qty)) : 1;
+
               return (
-                <div>
-                  <div className="pg-title">Reports & Analytics</div>
-                  <div className="pg-sub">Revenue, payment methods, and menu popularity breakdown.</div>
-                  
-                  <div className="toolbar" style={{ justifyContent: 'flex-start', alignItems: 'end', marginBottom: '22px' }}>
-                    <div className="field" style={{ margin: 0 }}>
-                      <label htmlFor="reportFrom">From</label>
-                      <input id="reportFrom" className="inp" type="date" value={reportFrom} onChange={event => setReportFrom(event.target.value)} />
-                    </div>
-                    <div className="field" style={{ margin: 0 }}>
-                      <label htmlFor="reportTo">To</label>
-                      <input id="reportTo" className="inp" type="date" value={reportTo} onChange={event => setReportTo(event.target.value)} />
-                    </div>
-                    <button className="btn-edit" onClick={() => { setReportFrom(''); setReportTo(''); }}>Clear range</button>
-                  </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                  {/* Header & Date Range Filter Bar */}
+                  <div>
+                    <div className="pg-title">Reports</div>
+                    <div className="pg-sub">Revenue trend, payment breakdown, and best-selling products by date range.</div>
 
-                  <div className="stats-grid">
-                    <div className="stat-card"><div className="stat-lbl">Orders</div><div className="stat-val">{reportOrders.length}</div></div>
-                    <div className="stat-card"><div className="stat-lbl">Revenue</div><div className="stat-val">৳{revenue.toLocaleString()}</div></div>
-                    <div className="stat-card"><div className="stat-lbl">Avg. Order</div><div className="stat-val">৳{reportOrders.length ? Math.round(revenue / reportOrders.length) : 0}</div></div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginTop: '20px' }}>
-                    {/* Payment Method Breakdown Card */}
-                    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px' }}>
-                      <div className="pg-title" style={{ fontSize: '18px', marginBottom: '14px' }}>Payment Methods</div>
-                      <div className="tbl-wrap" style={{ border: 'none', background: 'transparent' }}>
-                        <table>
-                          <thead>
-                            <tr><th>Method</th><th>Orders</th><th>Revenue</th><th>Share</th></tr>
-                          </thead>
-                          <tbody>
-                            {Object.entries(byMethod).length ? Object.entries(byMethod).sort((a, b) => b[1] - a[1]).map(([method, amount]) => {
-                              const mLower = method.toLowerCase();
-                              const color = methodColors[mLower] || methodColors.other;
-                              const mOrders = reportOrders.filter(o => (o.paymentMethod || 'Cash').toLowerCase() === mLower).length;
-                              return (
-                                <tr key={method}>
-                                  <td>
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: color }} />
-                                      <strong>{method}</strong>
-                                    </span>
-                                  </td>
-                                  <td>{mOrders}</td>
-                                  <td style={{ color: 'var(--gold)', fontWeight: 600 }}>৳{amount.toLocaleString()}</td>
-                                  <td>{revenue ? Math.round((amount / revenue) * 100) : 0}%</td>
-                                </tr>
-                              );
-                            }) : <tr><td colSpan="4" className="empty-tbl">No payment data.</td></tr>}
-                          </tbody>
-                        </table>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap', marginTop: '14px' }}>
+                      <div className="field" style={{ margin: 0 }}>
+                        <label htmlFor="reportFrom" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', marginBottom: '4px', display: 'block' }}>FROM</label>
+                        <input id="reportFrom" className="inp" type="date" value={reportFrom} onChange={e => setReportFrom(e.target.value)} style={{ padding: '8px 12px', fontSize: '13px', borderRadius: '8px' }} />
                       </div>
-                    </div>
-
-                    {/* Top Products Card */}
-                    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px' }}>
-                      <div className="pg-title" style={{ fontSize: '18px', marginBottom: '14px' }}>Top Selling Items</div>
-                      {topProducts.length ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                          {topProducts.map((p, idx) => (
-                            <div key={p.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                                <span style={{ fontWeight: 600 }}>#{idx + 1} {p.name}</span>
-                                <span style={{ color: 'var(--gold)', fontWeight: 700 }}>{p.qty} sold (৳{p.rev.toLocaleString()})</span>
-                              </div>
-                              <div style={{ height: '6px', width: '100%', background: 'var(--bg2)', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: `${Math.round((p.qty / maxQty) * 100)}%`, background: 'var(--gold)', borderRadius: '4px', transition: 'width 0.4s' }} />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="empty-tbl">No product sales recorded in range.</div>
+                      <div className="field" style={{ margin: 0 }}>
+                        <label htmlFor="reportTo" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', marginBottom: '4px', display: 'block' }}>TO</label>
+                        <input id="reportTo" className="inp" type="date" value={reportTo} onChange={e => setReportTo(e.target.value)} style={{ padding: '8px 12px', fontSize: '13px', borderRadius: '8px' }} />
+                      </div>
+                      <button
+                        type="button"
+                        style={{
+                          background: 'linear-gradient(135deg, #D4A445 0%, #A06C28 100%)',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '100px',
+                          padding: '9px 24px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 12px rgba(160,108,40,0.3)',
+                          height: '38px'
+                        }}
+                        onClick={() => {}}
+                      >
+                        Run Report
+                      </button>
+                      {(reportFrom || reportTo) && (
+                        <button className="btn-edit" style={{ height: '38px', borderRadius: '100px' }} onClick={() => { setReportFrom(''); setReportTo(''); }}>Clear range</button>
                       )}
+                    </div>
+                  </div>
+
+                  {/* 3 Stat Cards Row */}
+                  <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', margin: 0 }}>
+                    <div className="stat-card">
+                      <div className="stat-lbl">ORDERS</div>
+                      <div className="stat-val">{reportOrders.length}</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-lbl">REVENUE</div>
+                      <div className="stat-val">৳{revenue.toLocaleString()}</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-lbl">AVG. ORDER</div>
+                      <div className="stat-val">৳{avgOrder.toLocaleString()}</div>
+                    </div>
+                  </div>
+
+                  {/* Section 1: Revenue Trend Chart */}
+                  <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '18px', padding: '22px' }}>
+                    <div className="pg-title" style={{ fontSize: '18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>📈</span> Revenue Trend
+                    </div>
+                    {sortedDaily.length > 0 ? (
+                      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '28px', height: '180px', paddingTop: '20px', paddingBottom: '10px', overflowX: 'auto' }}>
+                        {sortedDaily.map((d, i) => {
+                          const barH = Math.max(20, Math.round((d.total / maxDailyRev) * 120));
+                          return (
+                            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--gold)' }}>৳{d.total}</span>
+                              <div style={{
+                                width: '42px',
+                                height: `${barH}px`,
+                                background: 'linear-gradient(180deg, #D4A445 0%, #A06C28 100%)',
+                                borderRadius: '8px 8px 0 0',
+                                boxShadow: '0 4px 12px rgba(160,108,40,0.3)',
+                                transition: 'height 0.3s ease'
+                              }} />
+                              <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{d.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="empty-tbl" style={{ padding: '40px' }}>No revenue data recorded for this date range.</div>
+                    )}
+                  </div>
+
+                  {/* Section 2: Payment Method Breakdown (Donut Chart) */}
+                  <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '18px', padding: '22px' }}>
+                    <div className="pg-title" style={{ fontSize: '18px', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>💳</span> Payment Method Breakdown
+                    </div>
+                    {Object.keys(byMethod).length > 0 ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '24px' }}>
+                        {/* Donut ring + legend */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
+                          <div style={{ position: 'relative', width: '130px', height: '130px', flexShrink: 0 }}>
+                            <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+                              <circle cx="60" cy="60" r="50" stroke="rgba(160,108,40,0.15)" strokeWidth="16" fill="none" />
+                              {donutSegments.map((seg, i) => (
+                                <circle
+                                  key={i}
+                                  cx="60"
+                                  cy="60"
+                                  r="50"
+                                  stroke={seg.color}
+                                  strokeWidth="16"
+                                  fill="none"
+                                  strokeDasharray={seg.strokeDasharray}
+                                  strokeDashoffset={seg.strokeDashoffset}
+                                  style={{ transition: 'stroke-dasharray 0.4s' }}
+                                />
+                              ))}
+                            </svg>
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                              <span style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '18px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>৳{revenue}</span>
+                              <span style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>total</span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {donutSegments.map((seg, i) => (
+                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px' }}>
+                                <span style={{ width: '12px', height: '12px', borderRadius: '3px', background: seg.color, display: 'inline-block' }} />
+                                <strong style={{ textTransform: 'capitalize' }}>{seg.method}</strong>
+                                <span style={{ color: 'var(--muted)', fontSize: '12px' }}>· {seg.count} orders</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '28px', fontWeight: 700, color: 'var(--gold)' }}>
+                          ৳{revenue.toLocaleString()}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="empty-tbl" style={{ padding: '30px' }}>No payment methods recorded.</div>
+                    )}
+                  </div>
+
+                  {/* Section 3: Most Ordered Products */}
+                  <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '18px', padding: '22px' }}>
+                    <div className="pg-title" style={{ fontSize: '18px', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>🏆</span> Most Ordered Products
+                    </div>
+                    {topProducts.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {topProducts.map((p, idx) => (
+                          <div key={p.name} style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                            <span style={{
+                              width: '26px',
+                              height: '26px',
+                              borderRadius: '50%',
+                              background: 'rgba(200,148,56,0.15)',
+                              border: '1px solid var(--gold)',
+                              color: 'var(--gold)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              marginRight: '12px',
+                              flexShrink: 0
+                            }}>
+                              {idx + 1}
+                            </span>
+                            
+                            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--bg2)', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', marginRight: '12px', flexShrink: 0, overflow: 'hidden' }}>
+                              {p.image ? <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : p.emoji}
+                            </div>
+
+                            <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text)', whiteSpace: 'nowrap', minWidth: '90px' }}>{p.name}</span>
+
+                            <div style={{ flex: 1, height: '8px', background: 'rgba(160,108,40,0.15)', borderRadius: '100px', overflow: 'hidden', margin: '0 16px' }}>
+                              <div style={{ width: `${Math.round((p.qty / maxQty) * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #D4A445, #A06C28)', borderRadius: '100px', transition: 'width 0.4s' }} />
+                            </div>
+
+                            <div style={{ textAlign: 'right', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text)' }}>{p.qty} sold</div>
+                              <div style={{ fontSize: '11px', color: 'var(--muted)' }}>৳{p.rev.toLocaleString()}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="empty-tbl" style={{ padding: '30px' }}>No products ordered in this date range.</div>
+                    )}
+                  </div>
+
+                  {/* Section 4: Payment Method Details Table */}
+                  <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '18px', padding: '22px' }}>
+                    <div className="pg-title" style={{ fontSize: '18px', marginBottom: '14px' }}>Payment Method Details</div>
+                    <div className="tbl-wrap" style={{ border: 'none', background: 'transparent' }}>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>METHOD</th>
+                            <th>ORDERS</th>
+                            <th>REVENUE</th>
+                            <th>SHARE</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(byMethod).length > 0 ? Object.entries(byMethod).sort((a, b) => b[1] - a[1]).map(([method, amount]) => {
+                            const count = byMethodCount[method] || 0;
+                            const share = revenue ? Math.round((amount / revenue) * 100) : 0;
+                            return (
+                              <tr key={method}>
+                                <td><strong style={{ textTransform: 'capitalize' }}>{method}</strong></td>
+                                <td>{count}</td>
+                                <td style={{ color: 'var(--gold)', fontWeight: 600 }}>৳{amount.toLocaleString()}</td>
+                                <td>{share}%</td>
+                              </tr>
+                            );
+                          }) : (
+                            <tr><td colSpan="4" className="empty-tbl">No payment method details available.</td></tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
@@ -1235,9 +1693,9 @@ export default function AdminPage() {
       {/* Table QR Modal Overlay */}
       <div className={`overlay${ovTableQR ? ' open' : ''}`} onClick={e => e.target === e.currentTarget && setOvTableQR(false)}>
         {qrTable && (
-          <div className="modal qr-modal">
-            <h3 style={{ textAlign: 'center', fontSize: '18px', color: 'var(--muted)', fontWeight: 400, marginBottom: '16px' }}>
-              Table QR Code
+          <div className="modal qr-modal" style={{ background: '#1C1610', border: '1px solid rgba(160,108,40,0.35)', borderRadius: '24px', padding: '24px' }}>
+            <h3 style={{ textAlign: 'center', fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '24px', color: '#9E8056', fontWeight: 400, marginBottom: '18px', letterSpacing: '0.5px' }}>
+              QR Code — {qrTable.name || (`Table ${qrTable.id}`)}
             </h3>
 
             <div className="qr-card-frame">
@@ -1248,9 +1706,9 @@ export default function AdminPage() {
               <div className="qr-card-inner">
                 <img src="/logo.png" alt="" className="qr-card-logo" />
                 <div className="qr-card-name"><em>Coffee-r</em> Attokahon</div>
-                <div className="qr-card-tagline">Artisan Coffee &amp; Cuisine</div>
+                <div className="qr-card-tagline">ARTISAN COFFEE &amp; CUISINE</div>
                 <div className="qr-card-divider"><span></span><i>❖</i><span></span></div>
-                <div className="qr-card-table">{qrTable.name || (`Table ${qrTable.id}`)}</div>
+                <div className="qr-card-table">{(qrTable.name || (`Table ${qrTable.id}`)).toUpperCase()}</div>
                 <div className="qr-card-qr-wrap" id={`qr-admin-preview-${qrTable.id}`}>
                   <QRCodeCanvas
                     value={`${qrSiteUrl.trim().replace(/\/$/, '')}/?table=${qrTable.id}`}
@@ -1262,12 +1720,14 @@ export default function AdminPage() {
                     style={{ width: '180px', height: '180px' }}
                   />
                 </div>
-                <div className="qr-card-scan">Scan to view menu &amp; order</div>
+                <div className="qr-card-scan">SCAN TO VIEW MENU &amp; ORDER</div>
               </div>
             </div>
 
-            <div className="field" style={{ marginTop: '16px' }}>
-              <label>Website URL</label>
+            <div className="field" style={{ marginTop: '20px' }}>
+              <label style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '11px', letterSpacing: '1px', textTransform: 'uppercase', color: '#8C7250', fontWeight: 600, marginBottom: '8px' }}>
+                WEBSITE URL <span style={{ color: '#4CAF50', fontWeight: 700 }}>(AUTO-DETECTED)</span>
+              </label>
               <input
                 className="inp"
                 type="text"
@@ -1277,12 +1737,19 @@ export default function AdminPage() {
                   localStorage.setItem('ca_site_url', e.target.value);
                 }}
                 placeholder="https://coffeer-attokahon.vercel.app"
+                style={{ background: '#140F0A', border: '1px solid #332617', borderRadius: '8px', color: '#F5EBE0', padding: '10px 12px', fontSize: '13px', fontFamily: 'monospace', width: '100%' }}
               />
+              <div style={{ fontSize: '11px', color: '#8A7255', marginTop: '8px', lineHeight: 1.45, textAlign: 'left' }}>
+                Detected automatically from this page — the QR is generated instantly above. Only edit this if your site is actually hosted somewhere else.
+              </div>
+              <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '12px', color: '#9E8056', fontFamily: 'monospace' }}>
+                {`${qrSiteUrl.trim().replace(/\/$/, '')}/?table=${qrTable.id}`}
+              </div>
             </div>
 
-            <div className="modal-btns">
-              <button className="btn-cancel" onClick={() => setOvTableQR(false)}>Close</button>
-              <button className="btn-save" onClick={downloadSingleTableQR}>⬇ Download PNG</button>
+            <div className="modal-btns" style={{ marginTop: '20px', display: 'flex', gap: '12px' }}>
+              <button className="btn-cancel" onClick={() => setOvTableQR(false)} style={{ flex: 1, padding: '11px', background: 'rgba(255,255,255,0.03)', border: '1px solid #332617', borderRadius: '10px', color: '#9E8056', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Close</button>
+              <button className="btn-save" onClick={downloadSingleTableQR} style={{ flex: 1.5, padding: '11px', background: 'linear-gradient(135deg, #D4A445 0%, #A06C28 100%)', color: '#ffffff', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(160,108,40,0.3)' }}>⬇ Download PNG</button>
             </div>
           </div>
         )}

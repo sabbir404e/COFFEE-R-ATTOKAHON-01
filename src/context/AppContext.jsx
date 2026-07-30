@@ -56,6 +56,7 @@ function mapOrder(o, orderItemsData) {
     status: o.status,
     paymentMethod: o.payment_method,
     paymentId: o.payment_id,
+    senderPhone: o.sender_phone,
     time: o.created_at,
   };
 }
@@ -65,7 +66,19 @@ function mapOrder(o, orderItemsData) {
 // ---------------------------------------------------------------------------
 export function AppProvider({ children }) {
   const [theme, setTheme] = useState('dark');
-  const [tableNum, setTableNum] = useState(null);
+  const [tableNum, setTableNumState] = useState(null);
+
+  const setTableNum = (num) => {
+    setTableNumState(num);
+    if (typeof window !== 'undefined') {
+      if (num) {
+        localStorage.setItem('ca_table_num', String(num));
+      } else {
+        localStorage.removeItem('ca_table_num');
+      }
+    }
+  };
+
   const [tables, setTables] = useState([]);
   const [cart, setCart] = useState({});
   const [products, setProducts] = useState([]);
@@ -119,7 +132,7 @@ export function AppProvider({ children }) {
   };
 
   // --------------------------------------------------------------------------
-  // Theme & cart from localStorage
+  // Theme, table & cart from localStorage
   // --------------------------------------------------------------------------
   useEffect(() => {
     const handle = requestAnimationFrame(() => {
@@ -127,6 +140,11 @@ export function AppProvider({ children }) {
         const savedTheme = localStorage.getItem('ca_theme') || 'dark';
         setTheme(savedTheme);
         document.documentElement.setAttribute('data-theme', savedTheme);
+
+        const savedTable = localStorage.getItem('ca_table_num');
+        if (savedTable) {
+          setTableNumState(parseInt(savedTable, 10));
+        }
 
         const savedCart = localStorage.getItem('ca_pending_cart');
         if (savedCart) {

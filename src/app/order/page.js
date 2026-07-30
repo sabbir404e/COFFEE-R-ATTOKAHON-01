@@ -58,7 +58,7 @@ function OrderPageContent() {
     if (!availableTables.some(table => table.id === val)) { alert(`Table ${val} is not available.`); return; }
     setLocalTable(val);
     setTableNum(val);
-    setStep('menu');
+    router.push(`/?table=${val}`);
   };
 
   const cartItems = Object.values(cart);

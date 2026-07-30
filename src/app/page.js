@@ -5,9 +5,19 @@ import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 
 export default function HomePage() {
-  const { theme, toggleTheme, tableNum } = useApp();
+  const { theme, toggleTheme, tableNum, setTableNum } = useApp();
   const [greeting, setGreeting] = useState({ text: 'Welcome', emoji: '☕' });
   const [hasActiveOrder, setHasActiveOrder] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const t = params.get('table');
+      if (t) {
+        setTableNum(parseInt(t, 10));
+      }
+    }
+  }, [setTableNum]);
 
   useEffect(() => {
     const updateGreeting = () => {
@@ -586,28 +596,28 @@ export default function HomePage() {
           <div className="best-grid">
             <Link className="best-card fade-target" href={tableNum ? `/order?table=${tableNum}` : '/order'}>
               <div className="best-badge">Best Seller</div>
-              <div className="best-emoji"><span style={{fontSize:'72px',lineHeight:'1'}}>☕</span></div>
+              <div className="best-emoji"><img src="/images/product-coffee.png" alt="Caramel Latte" /></div>
               <div className="best-name">Caramel Latte</div>
               <div className="best-desc">Smooth espresso with house caramel drizzle.</div>
               <div className="best-price">৳140</div>
             </Link>
             <Link className="best-card fade-target" href={tableNum ? `/order?table=${tableNum}` : '/order'}>
               <div className="best-badge">Popular</div>
-              <div className="best-emoji"><span style={{fontSize:'72px',lineHeight:'1'}}>🍵</span></div>
+              <div className="best-emoji"><img src="/images/product-tea.png" alt="Cappuccino" /></div>
               <div className="best-name">Cappuccino</div>
               <div className="best-desc">Espresso with velvety steamed milk foam.</div>
               <div className="best-price">৳120</div>
             </Link>
             <Link className="best-card fade-target" href={tableNum ? `/order?table=${tableNum}` : '/order'}>
               <div className="best-badge">Chef's Pick</div>
-              <div className="best-emoji"><span style={{fontSize:'72px',lineHeight:'1'}}>🍰</span></div>
+              <div className="best-emoji"><img src="/images/product-cheesecake.png" alt="Cheesecake" /></div>
               <div className="best-name">Cheesecake</div>
               <div className="best-desc">New York style with seasonal berry compote.</div>
               <div className="best-price">৳190</div>
             </Link>
             <Link className="best-card fade-target" href={tableNum ? `/order?table=${tableNum}` : '/order'}>
               <div className="best-badge">Hearty</div>
-              <div className="best-emoji"><span style={{fontSize:'72px',lineHeight:'1'}}>🥪</span></div>
+              <div className="best-emoji"><img src="/images/product-sandwich.png" alt="Club Sandwich" /></div>
               <div className="best-name">Club Sandwich</div>
               <div className="best-desc">Chicken, lettuce, tomato, toasted bread.</div>
               <div className="best-price">৳180</div>

@@ -96,13 +96,12 @@ export default function PaymentPage() {
       const activeMethod = METHODS[selectedMethod];
       const finalTxnId = txnId;
       const cleanPhone = phone;
+      const year = new Date().getFullYear();
 
-      const invoiceNum = 'INV-' + new Date().getFullYear() + '-' + Date.now().toString().slice(-4);
-
+      // Step 1: Insert the order without invoice_num first to get the real auto-increment ID
       const { data: orderData, error: orderErr } = await supabase
         .from('orders')
         .insert({
-          invoice_num: invoiceNum,
           table_id: cart.tableNum || null,
           subtotal: cart.subtotal || cart.total,
           service_charge: cart.serviceCharge || 0,
@@ -124,6 +123,16 @@ export default function PaymentPage() {
 
       const orderId = orderData.id;
 
+      // Step 2: Build serial invoice number from the real order ID — e.g. INV-2026-0001
+      const invoiceNum = 'INV-' + year + '-' + String(orderId).padStart(4, '0');
+
+      // Step 3: Update the order row with the serial invoice number
+      await supabase
+        .from('orders')
+        .update({ invoice_num: invoiceNum })
+        .eq('id', orderId);
+
+      // Step 4: Insert order items
       const itemsToInsert = cart.items.map((item) => ({
         order_id: orderId,
         product_id: parseInt(item.id) || null,
@@ -134,6 +143,7 @@ export default function PaymentPage() {
       }));
       await supabase.from('order_items').insert(itemsToInsert);
 
+      // Step 5: Insert payment record with serial invoice number
       await supabase.from('payments').insert({
         txn_id: finalTxnId,
         invoice_num: invoiceNum,

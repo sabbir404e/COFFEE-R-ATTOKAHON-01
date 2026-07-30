@@ -49,7 +49,7 @@ function getItemCustomSummary(custom) {
 }
 
 export default function KitchenPage() {
-  const { toggleTheme, orders: allOrders } = useApp();
+  const { toggleTheme, orders: allOrders, fetchData } = useApp();
 
   const [me, setMe] = useState(null);
   const [loginUser, setLoginUser] = useState('');
@@ -155,29 +155,78 @@ export default function KitchenPage() {
 
   // ── Advance order status ──────────────────────────────────────────────────
   const advOrder = async (id, currentStatus) => {
-    const nextStatus = STATUS_FLOW[currentStatus];
+    let nextStatus = STATUS_FLOW[currentStatus];
     if (!nextStatus) return;
     const order = allOrders.find(o => String(o.id) === String(id));
     if (!order || order.status !== currentStatus) return;
 
+    const targetId = order.id;
+
+    let { error } = await supabase
+      .from('orders')
+      .update({ status: nextStatus })
+      .eq('id', targetId);
+
+    // If check constraint rejects 'confirmed', fallback to 'preparing'
+    if (error && error.message && error.message.includes('check constraint')) {
+      const fallback = nextStatus === 'confirmed' ? 'preparing' : nextStatus;
+      console.warn(`Database check constraint error for '${nextStatus}'. Retrying with '${fallback}'...`);
+      const fallbackRes = await supabase
+        .from('orders')
+        .update({ status: fallback })
+        .eq('id', targetId);
+      if (!fallbackRes.error) {
+        error = null;
+        nextStatus = fallback;
+      } else {
+        error = fallbackRes.error;
+      }
+    }
+
+    if (error) {
+      console.warn('First update attempt error, retrying with raw id:', error);
+      const res = await supabase
+        .from('orders')
+        .update({ status: nextStatus })
+        .eq('id', id);
+      if (res.error && res.error.message && res.error.message.includes('check constraint')) {
+        const fallback = nextStatus === 'confirmed' ? 'preparing' : nextStatus;
+        const resFallback = await supabase
+          .from('orders')
+          .update({ status: fallback })
+          .eq('id', id);
+        if (!resFallback.error) {
+          error = null;
+          nextStatus = fallback;
+        } else {
+          error = resFallback.error;
+        }
+      } else {
+        error = res.error;
+      }
+    }
+
+    if (error) {
+      console.error('Failed to update order status:', error);
+      alert('Failed to update order status: ' + error.message);
+      return;
+    }
+
     try {
       await supabase
-        .from('orders')
-        .update({ status: nextStatus, status_updated_at: new Date().toISOString() })
-        .eq('id', id);
-    } catch (err) {
-      try {
-        await supabase
-          .from('orders')
-          .update({ status: nextStatus })
-          .eq('id', id);
-      } catch (e) {}
-    }
+        .from('payments')
+        .update({ status: nextStatus })
+        .eq('order_id', targetId);
+    } catch (e) {}
 
     if (nextStatus === 'served' && order.table) {
       try {
         await supabase.from('dining_tables').update({ status: 'cleaning' }).eq('id', order.table);
       } catch (e) {}
+    }
+
+    if (typeof fetchData === 'function') {
+      fetchData();
     }
   };
 
@@ -196,17 +245,17 @@ export default function KitchenPage() {
     const order = allOrders.find(o => String(o.id) === String(key));
 
     setPendingCancelKey(null);
+    const targetId = order ? order.id : (parseInt(key, 10) || key);
 
     // Update order status to cancelled
-    try {
-      await supabase
-        .from('orders')
-        .update({ status: 'cancelled', status_updated_at: new Date().toISOString() })
-        .eq('id', key);
-    } catch (e) {
-      try {
-        await supabase.from('orders').update({ status: 'cancelled' }).eq('id', key);
-      } catch (err) {}
+    let { error } = await supabase
+      .from('orders')
+      .update({ status: 'cancelled' })
+      .eq('id', targetId);
+
+    if (error) {
+      const res = await supabase.from('orders').update({ status: 'cancelled' }).eq('id', key);
+      error = res.error;
     }
 
     // Update payment status if exists
@@ -214,7 +263,7 @@ export default function KitchenPage() {
       await supabase
         .from('payments')
         .update({ status: 'cancelled' })
-        .eq('order_id', key);
+        .eq('order_id', targetId);
     } catch (e) {}
 
     // Free up table if assigned
@@ -222,6 +271,10 @@ export default function KitchenPage() {
       try {
         await supabase.from('dining_tables').update({ status: 'available' }).eq('id', order.table);
       } catch (e) {}
+    }
+
+    if (typeof fetchData === 'function') {
+      fetchData();
     }
 
     setCancelledKey(key);

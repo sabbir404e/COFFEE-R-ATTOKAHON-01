@@ -235,7 +235,7 @@ export default function BillingPage() {
         .inv-brand .logo{font-family:'Playfair Display',serif;font-size:22px;}
         .inv-brand .logo em{color:var(--gold);font-style:normal;}
         .inv-brand{display:flex;align-items:center;gap:10px;}
-        .inv-logo-img{width:38px;height:38px;object-fit:contain;flex-shrink:0;}
+        .inv-logo-img{width:52px;height:52px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 2px 10px rgba(200,148,56,0.35));}
         .inv-brand .tagline{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-top:4px;}
         .inv-meta{text-align:right;}
         .inv-meta .inv-num{font-family:'Playfair Display',serif;font-size:16px;color:var(--gold);}
