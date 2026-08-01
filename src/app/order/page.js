@@ -8,7 +8,7 @@ import Link from 'next/link';
 function OrderPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { toggleTheme, products, addToCart, removeFromCart, changeCartQty, cart, clearCart, tableNum, setTableNum, tables } = useApp();
+  const { toggleTheme, products, addToCart, updateCartItem, removeFromCart, changeCartQty, cart, clearCart, tableNum, setTableNum, tables } = useApp();
 
   const urlTable = parseInt(searchParams.get('table'));
   const [step, setStep] = useState('table'); // 'table' | 'menu' | 'success'
@@ -20,6 +20,7 @@ function OrderPageContent() {
   const [mounted, setMounted] = useState(false);
   const [lastOrderId, setLastOrderId] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [editingCartKey, setEditingCartKey] = useState(null);
   const [customization, setCustomization] = useState({ size: 'Regular', sugar: '100%', milk: 'Full Cream', extraShot: 'No', notes: '' });
   
   // DRINK_CATS from the user's logic
@@ -70,8 +71,29 @@ function OrderPageContent() {
 
   const openProductDetails = (product) => {
     if (product.avail === false) return;
+    setEditingCartKey(null);
     setSelectedProduct(product);
     setCustomization({ size: 'Regular', sugar: '100%', milk: 'Full Cream', extraShot: 'No', notes: '' });
+  };
+
+  const handleEditCartItem = (cartItem) => {
+    const { product } = cartItem;
+    const baseProduct = products.find(p => p.id === product.id) || product;
+    
+    setEditingCartKey(product.cartKey || product.id);
+    setSelectedProduct(baseProduct);
+    
+    if (product.customization) {
+      setCustomization({
+        size: product.customization.size || 'Regular',
+        sugar: product.customization.sugar || '100%',
+        milk: product.customization.milk || 'Full Cream',
+        extraShot: product.customization.extraShot || 'No',
+        notes: product.customization.notes || '',
+      });
+    } else {
+      setCustomization({ size: 'Regular', sugar: '100%', milk: 'Full Cream', extraShot: 'No', notes: '' });
+    }
   };
 
   const addConfiguredProduct = () => {
@@ -80,8 +102,15 @@ function OrderPageContent() {
     const finalCustomization = isDrink ? { ...customization } : { ...customization, sugar: null, milk: null, extraShot: 'No' };
     
     const surcharge = (finalCustomization.size === 'Large' ? 30 : 0) + (finalCustomization.extraShot === 'Yes' ? 20 : 0);
-    addToCart(selectedProduct.id, { ...finalCustomization, surcharge });
+    
+    if (editingCartKey) {
+      updateCartItem(editingCartKey, selectedProduct.id, { ...finalCustomization, surcharge });
+    } else {
+      addToCart(selectedProduct.id, { ...finalCustomization, surcharge });
+    }
+    
     setSelectedProduct(null);
+    setEditingCartKey(null);
   };
 
   const placeOrder = () => {
@@ -195,8 +224,8 @@ function OrderPageContent() {
 
         .topbar { background: var(--card); border-bottom: 1px solid var(--border); height: 66px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; position: sticky; top: 0; z-index: 100; transition: var(--transition-theme); box-shadow: var(--shadow); }
         .brand { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--text); display: flex; align-items: center; gap: 10px; text-decoration: none; }
-        .brand-logo { width: 52px; height: 52px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(0 2px 10px rgba(200,148,56,0.30)); transition: transform 0.3s ease; }
-        .brand:hover .brand-logo { transform: scale(1.08) rotate(-3deg); }
+        .brand-logo { width: 52px; height: 52px; object-fit: cover; border-radius: 50%; border: 2px solid var(--gold); background: var(--bg2); flex-shrink: 0; box-shadow: 0 2px 10px rgba(200,148,56,0.35); transition: transform 0.3s ease; }
+        .brand:hover .brand-logo { transform: scale(1.08) rotate(-3deg); border-color: var(--gold-h); }
         .brand em { color: var(--gold); font-style: normal; }
         .topbar-right { display: flex; align-items: center; gap: 10px; }
         
@@ -292,8 +321,8 @@ function OrderPageContent() {
         .cart-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
         .cart-item-card { display: flex; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); }
         .cart-item-card:last-of-type { border-bottom: none; }
-        .ci-thumb { width: 72px; height: 72px; border-radius: 16px; object-fit: cover; flex-shrink: 0; background: var(--bg2); border: 1px solid var(--border); box-shadow: 0 3px 10px rgba(0,0,0,0.12); }
-        .ci-thumb-emoji { width: 72px; height: 72px; border-radius: 16px; background: var(--bg2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 32px; flex-shrink: 0; }
+        .ci-thumb { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--bg2); border: 1px solid var(--border); box-shadow: 0 3px 10px rgba(0,0,0,0.12); }
+        .ci-thumb-emoji { width: 72px; height: 72px; border-radius: 50%; background: var(--bg2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 32px; flex-shrink: 0; }
         .ci-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
         .ci-top-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
         .ci-name { font-weight: 600; color: var(--text); font-size: 14.5px; line-height: 1.3; }
@@ -305,6 +334,8 @@ function OrderPageContent() {
         .ci-qty-stepper .qty-btn { width: 22px; height: 22px; border-radius: 6px; border: none; background: var(--card); color: var(--gold); font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .ci-qty-stepper .qty-btn:hover { background: var(--gold); color: #fff; }
         .ci-qty-num { font-size: 13px; font-weight: 600; min-width: 14px; text-align: center; color: var(--text); }
+        .ci-edit-btn { background: none; border: none; color: var(--gold); font-size: 13px; font-weight: 600; cursor: pointer; padding: 2px 4px; font-family: 'Outfit', sans-serif; transition: color 0.18s; }
+        .ci-edit-btn:hover { color: var(--gold-h); text-decoration: underline; }
         .ci-line-price { font-weight: 700; color: var(--gold); font-size: 15px; white-space: nowrap; }
         .cart-foot { padding: 16px 20px; border-top: 1px solid var(--border); }
         .cart-total { display: flex; justify-content: space-between; font-size: 16px; font-weight: 600; margin-bottom: 14px; }
@@ -505,8 +536,10 @@ function OrderPageContent() {
             </div>
 
             <div className="item-modal-actions">
-              <button className="im-btn-cancel" onClick={() => setSelectedProduct(null)}>Cancel</button>
-              <button className="im-btn-add" onClick={addConfiguredProduct}>Add to Cart · ৳{calcModalPrice()}</button>
+              <button className="im-btn-cancel" onClick={() => { setSelectedProduct(null); setEditingCartKey(null); }}>Cancel</button>
+              <button className="im-btn-add" onClick={addConfiguredProduct}>
+                {editingCartKey ? `Update Item - ৳${calcModalPrice()}` : `Add to Cart · ৳${calcModalPrice()}`}
+              </button>
             </div>
           </div>
         )}
@@ -548,6 +581,7 @@ function OrderPageContent() {
                           <span className="ci-qty-num">{qty}</span>
                           <button className="qty-btn" onClick={() => changeCartQty(product.cartKey || product.id, 1)}>+</button>
                         </div>
+                        <button className="ci-edit-btn" onClick={() => handleEditCartItem({ product, qty })}>Edit</button>
                       </div>
                       <span className="ci-line-price">৳{sub}</span>
                     </div>

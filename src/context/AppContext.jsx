@@ -376,6 +376,43 @@ export function AppProvider({ children }) {
     });
   };
 
+  const updateCartItem = (oldKey, productId, customization = null) => {
+    const prod = products.find((p) => p.id === productId);
+    if (!prod) return;
+    setCart((prev) => {
+      const existingEntry = prev[oldKey];
+      if (!existingEntry) return prev;
+      const currentQty = existingEntry.qty;
+
+      const surcharge = customization?.surcharge || 0;
+      const newKey = customization
+        ? `${prod.id}-${customization.size}-${customization.sugar}-${customization.milk}-${customization.extraShot}-${customization.notes}`
+        : prod.id;
+
+      const updated = { ...prev };
+      delete updated[oldKey];
+
+      const cartProduct = customization
+        ? { ...prod, cartKey: newKey, price: prod.price + surcharge, customization }
+        : { ...prod, cartKey: newKey };
+
+      if (updated[newKey]) {
+        updated[newKey] = {
+          product: cartProduct,
+          qty: updated[newKey].qty + currentQty,
+        };
+      } else {
+        updated[newKey] = {
+          product: cartProduct,
+          qty: currentQty,
+        };
+      }
+
+      savePendingCartToLocalStorage(updated, tableNum);
+      return updated;
+    });
+  };
+
   const clearCart = () => {
     setCart({});
     localStorage.removeItem('ca_pending_cart');
@@ -401,7 +438,7 @@ export function AppProvider({ children }) {
       value={{
         theme, toggleTheme, tableNum, setTableNum,
         tables, updateTables, addTable, removeLastTable, deleteTable, tableCount: tables.length,
-        cart, setCart, addToCart, removeFromCart, changeCartQty, clearCart,
+        cart, setCart, addToCart, updateCartItem, removeFromCart, changeCartQty, clearCart,
         products, updateProducts,
         orders, updateOrders,
         payments, updatePayments,

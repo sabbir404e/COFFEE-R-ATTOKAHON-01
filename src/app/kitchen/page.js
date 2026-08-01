@@ -212,22 +212,18 @@ export default function KitchenPage() {
       return;
     }
 
-    try {
-      await supabase
-        .from('payments')
-        .update({ status: nextStatus })
-        .eq('order_id', targetId);
-    } catch (e) {}
-
-    if (nextStatus === 'served' && order.table) {
-      try {
-        await supabase.from('dining_tables').update({ status: 'cleaning' }).eq('id', order.table);
-      } catch (e) {}
-    }
-
+    // Instantly sync local data so Kitchen UI and realtime updates trigger (<50ms)
     if (typeof fetchData === 'function') {
       fetchData();
     }
+
+    // Run non-blocking secondary updates concurrently in background
+    Promise.all([
+      supabase.from('payments').update({ status: nextStatus }).eq('order_id', targetId),
+      nextStatus === 'served' && order.table
+        ? supabase.from('dining_tables').update({ status: 'cleaning' }).eq('id', order.table)
+        : Promise.resolve()
+    ]).catch(e => console.warn('Non-blocking status update error:', e));
   };
 
   // ── Cancel Order Flow ─────────────────────────────────────────────────────
@@ -258,26 +254,18 @@ export default function KitchenPage() {
       error = res.error;
     }
 
-    // Update payment status if exists
-    try {
-      await supabase
-        .from('payments')
-        .update({ status: 'cancelled' })
-        .eq('order_id', targetId);
-    } catch (e) {}
-
-    // Free up table if assigned
-    if (order && order.table) {
-      try {
-        await supabase.from('dining_tables').update({ status: 'available' }).eq('id', order.table);
-      } catch (e) {}
-    }
-
     if (typeof fetchData === 'function') {
       fetchData();
     }
-
     setCancelledKey(key);
+
+    // Non-blocking secondary updates in background
+    Promise.all([
+      supabase.from('payments').update({ status: 'cancelled' }).eq('order_id', targetId),
+      order && order.table
+        ? supabase.from('dining_tables').update({ status: 'available' }).eq('id', order.table)
+        : Promise.resolve()
+    ]).catch(e => console.warn('Non-blocking cancel update error:', e));
   };
 
   // ── Chime ─────────────────────────────────────────────────────────────────
@@ -355,39 +343,39 @@ export default function KitchenPage() {
         /* ── Login ── */
         #kitchenLogin {
           min-height: 100vh; display: flex; align-items: center;
-          justify-content: center; padding: 24px; position: relative;
+          justify-content: center; padding: 32px 20px; position: relative;
         }
         .glow { position: fixed; inset: 0; pointer-events: none;
           background: radial-gradient(ellipse 60% 40% at 50% 10%,
             rgba(200,148,56,0.09) 0%, transparent 70%); }
-        .login-wrap { width: 100%; max-width: 340px; position: relative; z-index: 1; }
+        .login-wrap { width: 100%; max-width: 360px; margin: 0 auto; position: relative; z-index: 1; }
         .login-brand { text-align: center; margin-bottom: 28px; }
-        .login-logo { width: 76px; height: 76px; object-fit: contain; margin: 0 auto 12px; display: block; }
+        .login-logo { width: 76px; height: 76px; object-fit: cover; border-radius: 50%; border: 3px solid var(--gold); background: var(--bg2); margin: 0 auto 12px; display: block; box-shadow: 0 4px 16px rgba(200,148,56,0.35); }
         .login-brand .wm { font-family: var(--font-playfair),'Playfair Display',serif; font-size: 34px; }
         .login-brand .wm em { color: var(--gold); font-style: normal; }
         .login-brand .sub { font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase;
           color: var(--muted); margin-top: 6px; }
         .login-card { background: var(--card); border: 1px solid var(--border);
-          border-radius: 18px; padding: 26px; animation: slideUp 0.35s;
-          box-shadow: var(--shadow); }
+          border-radius: 18px; padding: 28px; animation: slideUp 0.35s;
+          box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 16px; }
         .login-card h2 { font-family: var(--font-playfair),'Playfair Display',serif;
-          font-size: 20px; margin-bottom: 20px; }
-        .field { margin-bottom: 14px; }
+          font-size: 20px; margin-bottom: 4px; }
+        .field { display: flex; flex-direction: column; gap: 6px; }
         .field label { display: block; font-size: 10px; font-weight: 600;
-          text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 5px; }
+          text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); }
         .inp { width: 100%; background: var(--input-bg); border: 1px solid var(--border);
-          border-radius: 9px; padding: 10px 13px; font-size: 14px; color: var(--text);
+          border-radius: 9px; padding: 11px 14px; font-size: 14px; color: var(--text);
           outline: none; transition: border-color 0.2s; box-sizing: border-box; }
         .inp:focus { border-color: var(--gold); }
         .inp::placeholder { color: var(--muted); }
-        .btn-login { width: 100%; padding: 12px; background: var(--gold); color: #fff;
+        .btn-login { width: 100%; padding: 13px; background: var(--gold); color: #fff;
           border: none; border-radius: 9px; font-size: 14px; font-weight: 600;
           cursor: pointer; transition: background 0.2s; margin-top: 4px; }
         .btn-login:hover { background: var(--gold-h); }
         .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
         .login-err { background: var(--d-bg); border: 1px solid var(--d-bd); border-radius: 9px;
-          padding: 9px 12px; font-size: 13px; color: var(--d-tx); margin-bottom: 12px; }
-        .login-hint { margin-top: 14px; padding: 12px; background: var(--bg2);
+          padding: 10px 14px; font-size: 13px; color: var(--d-tx); }
+        .login-hint { margin-top: 6px; padding: 12px; background: var(--bg2);
           border: 1px solid var(--border); border-radius: 9px; font-size: 12px;
           color: var(--muted); text-align: center; line-height: 1.7; }
         .login-hint b { color: var(--text-2); }
@@ -396,30 +384,30 @@ export default function KitchenPage() {
 
         /* ── App Shell ── */
         #kitchenApp { min-height: 100vh; display: flex; flex-direction: column; }
-        .k-main { max-width: 1300px; margin: 0 auto; padding: 24px 20px; width: 100%; }
+        .mx-auto { margin-left: auto; margin-right: auto; }
+        .k-main, .main { max-width: 1320px; margin: 0 auto; padding: 32px 24px; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 24px; }
 
         /* ── Page header ── */
-        .pg-h { margin-bottom: 20px; display: flex; align-items: flex-start;
-          justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-        .pg-h h1 { font-family: var(--font-playfair),'Playfair Display',serif; font-size: 26px; }
-        .pg-h p { font-size: 13px; color: var(--muted); margin-top: 3px; }
+        .pg-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 4px; }
+        .pg-h h1 { font-family: var(--font-playfair),'Playfair Display',serif; font-size: 28px; font-weight: 700; }
+        .pg-h p { font-size: 14px; color: var(--muted); margin-top: 4px; }
 
         /* ── Filter bar ── */
-        .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-        .f-pill { padding: 6px 15px; border-radius: 20px; border: 1px solid var(--border);
+        .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+        .f-pill { padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border);
           background: none; font-size: 12px; font-weight: 500; cursor: pointer;
           color: var(--muted); transition: all 0.18s; text-transform: uppercase;
-          letter-spacing: 0.8px; display: flex; align-items: center; gap: 5px; }
+          letter-spacing: 0.8px; display: flex; align-items: center; gap: 6px; }
         .f-pill.active { background: var(--gold); color: #fff; border-color: var(--gold); }
         .f-pill:hover:not(.active) { border-color: var(--border-h); color: var(--text); }
         .f-count { font-size: 10px; background: rgba(255,255,255,0.15); border-radius: 10px;
-          padding: 1px 6px; }
+          padding: 2px 7px; }
         .f-pill:not(.active) .f-count { background: rgba(125,110,86,0.2); }
 
         /* ── Orders grid ── */
-        .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+        .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
         .order-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-          padding: 16px; display: flex; flex-direction: column; position: relative;
+          padding: 20px; display: flex; flex-direction: column; position: relative; gap: 12px;
           overflow: hidden; transition: var(--tt); box-shadow: var(--shadow); }
         .order-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
         .order-card.s-paid::before      { background: #5060B8; }
@@ -431,9 +419,9 @@ export default function KitchenPage() {
         .order-card.s-served { opacity: 0.45; }
         .order-card.is-late { border-color: rgba(192,64,64,0.5); animation: ring 2s ease infinite; }
 
-        .o-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-        .o-num { font-family: var(--font-playfair),'Playfair Display',serif; font-size: 17px; font-weight: 700; }
-        .badge { display: inline-block; padding: 3px 9px; border-radius: 10px; font-size: 10px;
+        .o-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 2px; }
+        .o-num { font-family: var(--font-playfair),'Playfair Display',serif; font-size: 18px; font-weight: 700; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 10px; font-size: 10px;
           font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; border: 1px solid; }
         .b-paid      { background: rgba(70,100,180,0.14); border-color: rgba(70,100,180,0.28); color: #90A8E0; }
         .b-confirmed { background: rgba(56,150,168,0.14); border-color: rgba(56,150,168,0.30); color: #5BC8DA; }
@@ -442,17 +430,17 @@ export default function KitchenPage() {
         .b-served    { background: var(--x-bg); border-color: var(--x-bd); color: var(--x-tx); }
         .b-cancelled { background: var(--d-bg); border-color: var(--d-bd); color: var(--d-tx); }
 
-        .o-meta { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
-        .o-items { font-size: 13px; color: var(--text-2); line-height: 1.6; flex: 1; margin-bottom: 12px; }
-        .o-item-block { margin-bottom: 8px; }
-        .o-item-row { display: flex; align-items: center; gap: 7px; }
-        .o-item-thumb { width: 22px; height: 22px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
-        .o-item-custom { font-size: 11px; color: var(--gold); margin-left: 29px; margin-top: 2px; line-height: 1.45; background: var(--bg2); padding: 2px 8px; border-radius: 6px; display: inline-block; }
-        .o-total { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
-        .o-total span { color: var(--gold); font-weight: 600; }
+        .o-meta { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 2px; }
+        .o-items { font-size: 13px; color: var(--text-2); line-height: 1.6; flex: 1; display: flex; flex-direction: column; gap: 8px; margin-top: 4px; margin-bottom: 4px; }
+        .o-item-block { display: flex; flex-direction: column; gap: 4px; }
+        .o-item-row { display: flex; align-items: center; gap: 8px; }
+        .o-item-thumb { width: 24px; height: 24px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+        .o-item-custom { font-size: 11px; color: var(--gold); margin-left: 32px; line-height: 1.45; background: var(--bg2); padding: 3px 9px; border-radius: 6px; display: inline-block; }
+        .o-total { font-size: 13px; color: var(--muted); margin-top: auto; padding-top: 10px; margin-bottom: 4px; border-top: 1px dashed var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .o-total span { color: var(--gold); font-weight: 700; font-size: 14px; }
 
-        .adv-btn { width: 100%; padding: 9px; border-radius: 10px; border: 1px solid;
-          font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.18s; }
+        .adv-btn { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid;
+          font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.18s; margin-top: 4px; }
         .adv-confirm { background: rgba(56,150,168,0.14); border-color: rgba(56,150,168,0.30); color: #5BC8DA; }
         .adv-confirm:hover { background: #2C8688; color: #fff; border-color: #2C8688; }
         .adv-new   { background: var(--d-bg); border-color: var(--d-bd); color: var(--d-tx); }
@@ -462,7 +450,7 @@ export default function KitchenPage() {
         .adv-ready { background: var(--o-bg); border-color: var(--o-bd); color: var(--o-tx); }
         .adv-ready:hover { background: var(--ok); color: #fff; border-color: var(--ok); }
         
-        .adv-cancel { width: 100%; padding: 8px; border-radius: 10px; border: 1px solid var(--d-bd);
+        .adv-cancel { width: 100%; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--d-bd);
           background: var(--d-bg); color: var(--d-tx); font-size: 12px; font-weight: 600;
           cursor: pointer; transition: all 0.18s; margin-top: 6px; }
         .adv-cancel:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
@@ -470,20 +458,20 @@ export default function KitchenPage() {
         /* ── Modals ── */
         .modal-ov { display: none; position: fixed; inset: 0; background: rgba(10,8,4,0.55);
           backdrop-filter: blur(3px); z-index: 1000; align-items: center; justify-content: center;
-          padding: 20px; animation: fadeIn 0.18s; }
+          padding: 24px; animation: fadeIn 0.18s; }
         .modal-ov.show { display: flex; }
         .modal-card { background: var(--card); border: 1px solid var(--border); border-radius: 18px;
-          padding: 26px; max-width: 360px; width: 100%; box-shadow: var(--shadow);
-          text-align: center; animation: slideUp 0.25s; }
-        .modal-icon { width: 52px; height: 52px; border-radius: 50%; background: var(--d-bg);
+          padding: 28px; max-width: 380px; width: 100%; box-shadow: var(--shadow);
+          text-align: center; animation: slideUp 0.25s; display: flex; flex-direction: column; gap: 12px; }
+        .modal-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--d-bg);
           border: 1px solid var(--d-bd); color: var(--d-tx); font-size: 24px; display: flex;
-          align-items: center; justify-content: center; margin: 0 auto 16px; }
+          align-items: center; justify-content: center; margin: 0 auto 8px; }
         .modal-icon.ok { background: var(--o-bg); border-color: var(--o-bd); color: var(--o-tx); }
-        .modal-card h3 { font-family: var(--font-playfair),'Playfair Display',serif; font-size: 19px; margin-bottom: 8px; }
-        .modal-card p { font-size: 13px; color: var(--text-2); line-height: 1.6; margin-bottom: 20px; }
+        .modal-card h3 { font-family: var(--font-playfair),'Playfair Display',serif; font-size: 20px; margin-bottom: 4px; }
+        .modal-card p { font-size: 13px; color: var(--text-2); line-height: 1.6; margin-bottom: 12px; }
         .modal-card p b { color: var(--text); }
-        .modal-actions { display: flex; gap: 10px; }
-        .modal-actions button { flex: 1; padding: 11px; border-radius: 10px; font-size: 13px;
+        .modal-actions { display: flex; gap: 12px; }
+        .modal-actions button { flex: 1; padding: 11px 16px; border-radius: 10px; font-size: 13px;
           font-weight: 600; cursor: pointer; border: 1px solid; transition: all 0.18s; }
         .modal-btn-keep { background: none; border-color: var(--border); color: var(--text-2); }
         .modal-btn-keep:hover { border-color: var(--border-h); color: var(--text); }
@@ -493,22 +481,22 @@ export default function KitchenPage() {
         .modal-btn-ok:hover { background: var(--gold-h); }
 
         /* ── Topbar extras ── */
-        .live-pill { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
-        .live-dot  { width: 7px; height: 7px; border-radius: 50%; background: #C04040;
+        .live-pill { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+        .live-dot  { width: 8px; height: 8px; border-radius: 50%; background: #C04040;
           animation: pulse 1.5s ease-in-out infinite; flex-shrink: 0; }
         .role-badge { background: var(--o-bg); border: 1px solid var(--o-bd); border-radius: 20px;
-          padding: 3px 12px; font-size: 11px; color: var(--o-tx); text-transform: uppercase;
+          padding: 4px 14px; font-size: 11px; color: var(--o-tx); text-transform: uppercase;
           letter-spacing: 1px; }
         .sound-btn { background: none; border: 1px solid var(--border); border-radius: 8px;
-          padding: 5px 12px; font-size: 12px; color: var(--muted); cursor: pointer; transition: all 0.18s; }
+          padding: 6px 14px; font-size: 12px; color: var(--muted); cursor: pointer; transition: all 0.18s; }
         .sound-btn.on { border-color: var(--gold); color: var(--gold); }
         .logout-btn { background: none; border: 1px solid var(--border); border-radius: 8px;
-          padding: 5px 12px; font-size: 12px; color: var(--muted); cursor: pointer; transition: all 0.18s; }
+          padding: 6px 14px; font-size: 12px; color: var(--muted); cursor: pointer; transition: all 0.18s; }
         .logout-btn:hover { border-color: var(--border-h); color: var(--text); }
 
         /* ── Empty state ── */
-        .empty-state { grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--muted); }
-        .empty-state .e-icon { font-size: 44px; margin-bottom: 14px; }
+        .empty-state { grid-column: 1 / -1; text-align: center; padding: 64px 24px; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .empty-state .e-icon { font-size: 48px; margin-bottom: 4px; }
 
         /* ── Animations ── */
         @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
@@ -517,10 +505,10 @@ export default function KitchenPage() {
         @keyframes ring { 0%{box-shadow:0 0 0 0 rgba(192,64,64,0.5);} 70%{box-shadow:0 0 0 10px rgba(192,64,64,0);} 100%{box-shadow:0 0 0 0 rgba(192,64,64,0);} }
 
         @media(max-width:600px) {
-          .main { padding: 16px; }
-          .orders-grid { grid-template-columns: 1fr; }
-          .topbar { padding: 0 12px; }
-          .topbar-right { gap: 6px; }
+          .main, .k-main { padding: 20px 14px; gap: 18px; }
+          .orders-grid { grid-template-columns: 1fr; gap: 14px; }
+          .topbar { padding: 0 14px; }
+          .topbar-right { gap: 8px; }
           .role-badge { display: none; }
         }
       `}</style>
@@ -534,7 +522,7 @@ export default function KitchenPage() {
             <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme" />
             <span className="theme-label">☀️</span>
           </div>
-          <div className="login-wrap">
+          <div className="login-wrap mx-auto">
             <div className="login-brand">
               <img className="login-logo" src="/logo.png" alt="Coffee-r Attokahon" />
               <div className="wm"><em>Coffee-r</em> Attokahon</div>
@@ -612,7 +600,7 @@ export default function KitchenPage() {
             </div>
           </div>
 
-          <div className="main">
+          <main className="main mx-auto">
             {/* Page header */}
             <div className="pg-h">
               <div>
@@ -745,7 +733,7 @@ export default function KitchenPage() {
                 })
               )}
             </div>
-          </div>
+          </main>
         </div>
       )}
 

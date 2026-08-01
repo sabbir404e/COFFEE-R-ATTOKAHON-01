@@ -210,8 +210,8 @@ export default function PaymentPage() {
 
         .topbar{background:var(--card);border-bottom:1px solid var(--border);height:66px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);}
         .brand{font-family:'Playfair Display',serif;font-size:18px;display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);}
-        .brand-logo{width:52px;height:52px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 2px 10px rgba(200,148,56,0.35));transition:transform 0.3s ease;}
-        .brand:hover .brand-logo{transform:scale(1.08) rotate(-3deg);}
+        .brand-logo{width:52px;height:52px;object-fit:cover;border-radius:50%;border:2px solid var(--gold);background:var(--bg2);flex-shrink:0;box-shadow:0 2px 10px rgba(200,148,56,0.35);transition:transform 0.3s ease;}
+        .brand:hover .brand-logo{transform:scale(1.08) rotate(-3deg);border-color:var(--gold-h);}
         .brand em{color:var(--gold);font-style:normal;}
         .back-btn{background:none;border:1px solid var(--border);border-radius:9px;padding:6px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:all 0.2s;}
         .back-btn:hover{border-color:var(--border-h);color:var(--text);}
@@ -240,27 +240,38 @@ export default function PaymentPage() {
         .amount-sub{font-size:12px;color:var(--muted);margin-top:6px;letter-spacing:0.3px;}
 
         .method-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:12px;}
-        .method-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px;}
+        .method-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;}
         .method-tab{
-          position:relative;background:var(--card);border:1.5px solid var(--border);border-radius:16px;
-          padding:18px 10px 14px;text-align:center;cursor:pointer;
-          transition:border-color 0.2s ease,background 0.2s ease,box-shadow 0.2s ease,transform 0.15s ease;
+          position:relative;background:var(--card);border:2px solid var(--border);border-radius:22px;
+          padding:20px 10px 16px;text-align:center;cursor:pointer;
+          transition:all 0.2s ease;
         }
-        .method-tab:hover{border-color:var(--border-h);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.12);}
+        .method-tab:hover{border-color:var(--border-h);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.2);}
         .method-tab.active{
           border-color:var(--m-accent,var(--gold));
-          background:color-mix(in srgb, var(--m-accent,var(--gold)) 8%, var(--card));
-          box-shadow:0 4px 18px color-mix(in srgb, var(--m-accent,var(--gold)) 25%, transparent);
+          background:color-mix(in srgb, var(--m-accent,var(--gold)) 10%, var(--card));
+          box-shadow:0 4px 20px color-mix(in srgb, var(--m-accent,var(--gold)) 25%, transparent);
         }
         .method-tab[data-m="bkash"]{--m-accent:#e2136e;}
         .method-tab[data-m="nagad"]{--m-accent:#f6821f;}
         .method-tab[data-m="rocket"]{--m-accent:#8c3494;}
-        .method-check{position:absolute;top:8px;right:8px;width:16px;height:16px;border-radius:50%;background:var(--m-accent,var(--gold));color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.15s ease,transform 0.2s ease;transform:scale(0.5);}
+        .method-check{
+          position:absolute;top:10px;right:10px;width:20px;height:20px;
+          border-radius:50%;background:var(--m-accent,var(--gold));color:#fff;
+          font-size:11px;font-weight:700;display:flex;align-items:center;
+          justify-content:center;opacity:0;transition:all 0.2s ease;transform:scale(0.5);
+        }
         .method-tab.active .method-check{opacity:1;transform:scale(1);}
-        .method-badge{width:72px;height:44px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;}
-        .method-badge img{width:100%;height:100%;object-fit:contain;border-radius:8px;}
-        .method-name{font-size:13px;font-weight:700;color:var(--text2);letter-spacing:0.2px;}
-        .method-num{font-size:9.5px;color:var(--muted);margin-top:3px;letter-spacing:0.3px;}
+        .method-badge{
+          width:62px;height:62px;margin:0 auto 12px;display:flex;
+          align-items:center;justify-content:center;border-radius:16px;
+          background:#ffffff;padding:4px;overflow:hidden;
+          box-shadow:0 4px 14px rgba(0,0,0,0.22);transition:transform 0.2s ease;
+        }
+        .method-tab:hover .method-badge{transform:scale(1.05);}
+        .method-badge img{width:100%;height:100%;object-fit:contain;border-radius:12px;}
+        .method-name{font-size:15px;font-weight:700;color:var(--text);letter-spacing:0.2px;margin-top:2px;}
+        .method-num{font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:0.3px;}
         .method-tab.active .method-name{color:var(--m-accent,var(--gold));}
 
         .txnid-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px;text-align:center;box-shadow:var(--shadow);animation:fadeIn 0.4s ease;}

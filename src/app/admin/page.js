@@ -524,7 +524,7 @@ export default function AdminPage() {
         <div className="glow" />
         <div className="login-wrap">
           <div className="login-brand">
-            <img className="login-logo" src="/logo.png" alt="Coffee-r Attokahon" style={{ width: '76px', height: '76px', margin: '0 auto 12px', display: 'block', objectFit: 'contain' }} />
+            <img className="login-logo" src="/logo.png" alt="Coffee-r Attokahon" style={{ width: '76px', height: '76px', margin: '0 auto 12px', display: 'block', objectFit: 'cover', borderRadius: '50%', border: '3px solid var(--gold)', background: 'var(--bg2)', boxShadow: '0 4px 16px rgba(200,148,56,0.35)' }} />
             <div className="wm" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '36px' }}><em>Coffee-r</em> Attokahon</div>
             <div className="sub" style={{ fontSize: '11px', letterSpacing: '2.5px', textTransform: 'uppercase', color: 'var(--muted)', marginTop: '6px' }}>Admin Portal</div>
           </div>

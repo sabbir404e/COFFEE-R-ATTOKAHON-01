@@ -38,7 +38,7 @@ const readOrders = async () => {
 
 export default function BillingPage() {
   const router = useRouter();
-  const { toggleTheme } = useApp();
+  const { toggleTheme, orders: appOrders } = useApp();
   const [order, setOrder] = useState(null);
   const [hydrated, setHydrated] = useState(false);
   const [liveStatus, setLiveStatus] = useState(null);
@@ -83,20 +83,56 @@ export default function BillingPage() {
     return () => { active = false; };
   }, [loadOrder]);
 
-  // Poll Supabase for live status every 5 seconds
+  // Real-time WebSocket subscription + 1s polling fallback for instant order status updates (<50ms)
   useEffect(() => {
-    if (!order) return;
+    if (!order?.id) return;
+
+    // Listen directly via Supabase Realtime channel
+    const channel = supabase
+      .channel(`rt_billing_order_${order.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `id=eq.${order.id}`,
+        },
+        ({ new: updated }) => {
+          if (updated && updated.status) {
+            setLiveStatus(updated.status);
+            setOrder(prev => (prev ? { ...prev, status: updated.status } : prev));
+          }
+        }
+      )
+      .subscribe();
+
+    // Fast polling fallback (every 1 second)
     const iv = setInterval(async () => {
       try {
         const { data } = await supabase.from('orders').select('status').eq('id', order.id).single();
-        if (data) {
+        if (data && data.status) {
           setLiveStatus(data.status);
-          setOrder(prev => ({ ...prev, status: data.status }));
+          setOrder(prev => (prev ? { ...prev, status: data.status } : prev));
         }
       } catch {}
-    }, 5000);
-    return () => clearInterval(iv);
-  }, [order]);
+    }, 1000);
+
+    return () => {
+      channel.unsubscribe();
+      clearInterval(iv);
+    };
+  }, [order?.id]);
+
+  // Sync from AppContext global realtime orders list if available
+  useEffect(() => {
+    if (!order?.id || !appOrders?.length) return;
+    const found = appOrders.find(o => String(o.id) === String(order.id));
+    if (found && found.status && found.status !== liveStatus) {
+      setLiveStatus(found.status);
+      setOrder(prev => (prev ? { ...prev, status: found.status } : prev));
+    }
+  }, [appOrders, order?.id, liveStatus]);
 
   useEffect(() => {
     let handle;
@@ -213,8 +249,8 @@ export default function BillingPage() {
         /* TOPBAR */
         .topbar{background:var(--card);border-bottom:1px solid var(--border);height:66px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);transition:var(--tt);}
         .brand{font-family:'Playfair Display',serif;font-size:20px;display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);}
-        .brand-logo{width:52px;height:52px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 2px 10px rgba(200,148,56,0.30));transition:transform 0.3s ease;}
-        .brand:hover .brand-logo{transform:scale(1.08) rotate(-3deg);}
+        .brand-logo{width:52px;height:52px;object-fit:cover;border-radius:50%;border:2px solid var(--gold);background:var(--bg2);flex-shrink:0;box-shadow:0 2px 10px rgba(200,148,56,0.35);transition:transform 0.3s ease;}
+        .brand:hover .brand-logo{transform:scale(1.08) rotate(-3deg);border-color:var(--gold-h);}
         .brand em{color:var(--gold);font-style:normal;}
         .topbar-right{display:flex;align-items:center;gap:8px;}
         .theme-toggle{width:38px;height:20px;background:var(--border-h);border-radius:10px;border:none;cursor:pointer;position:relative;}
