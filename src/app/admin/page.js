@@ -1018,10 +1018,10 @@ export default function AdminPage() {
                       type="button"
                       className="btn-edit"
                       onClick={openRestoreProducts}
-                      disabled={isRestoringProducts}
-                      style={{ padding: '9px 14px', borderRadius: '8px', opacity: isRestoringProducts ? 0.65 : 1, cursor: isRestoringProducts ? 'wait' : 'pointer' }}
+                      disabled={restoringId !== null}
+                      style={{ padding: '9px 14px', borderRadius: '8px', opacity: restoringId !== null ? 0.65 : 1, cursor: restoringId !== null ? 'wait' : 'pointer' }}
                     >
-                      {isRestoringProducts ? 'Restoring…' : '↻ Restore Products'}
+                      {restoringId !== null ? 'Restoring…' : '↻ Restore Products'}
                     </button>
                     <button className="btn-add" onClick={() => openProductModal(null)}>+ Add Product</button>
                   </div>
