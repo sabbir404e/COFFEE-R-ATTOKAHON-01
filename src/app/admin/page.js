@@ -10,6 +10,14 @@ import TableQrCard from '@/components/TableQrCard.jsx';
 const CARD_W = 640;
 const CARD_H = 900;
 
+const DEFAULT_PRODUCTS = [
+  { name: 'Espresso', category: 'Coffee', price: 80, emoji: '☕', image_url: '/images/product-espresso.png', description: 'Rich, bold espresso shot brewed to perfection.', is_available: true },
+  { name: 'Café Latte', category: 'Coffee', price: 120, emoji: '☕', image_url: '/images/product-latte.png', description: 'Smooth espresso with velvety steamed milk.', is_available: true },
+  { name: 'Coffee Glass', category: 'Coffee', price: 110, emoji: '🥤', image_url: '/images/product-coffee-glass.png', description: 'Classic coffee served in a tall warm glass.', is_available: true },
+  { name: 'Green Tea', category: 'Tea', price: 90, emoji: '🍵', image_url: '/images/product-green-tea.png', description: 'Light, fragrant green tea brewed to perfection.', is_available: true },
+  { name: 'Hot Chocolate', category: 'Specialty', price: 110, emoji: '🍫', image_url: '/images/product-hot-drink.png', description: 'Rich, creamy hot chocolate made with real cocoa.', is_available: true },
+];
+
 let logoImgCache = null;
 function getLogoImg() {
   if (logoImgCache) return Promise.resolve(logoImgCache);
@@ -197,7 +205,7 @@ async function buildCardCanvas(tableId, tableName, qrCanvasElement) {
 
 
 export default function AdminPage() {
-  const { toggleTheme, products, tables, orders, payments, users, deleteTable, feedback } = useApp();
+  const { toggleTheme, products, tables, orders, payments, users, deleteTable, feedback, fetchData } = useApp();
 
   const [me, setMe] = useState(null);
   const [lUser, setLUser] = useState('');
@@ -216,6 +224,7 @@ export default function AdminPage() {
   const [ovTable, setOvTable] = useState(false);
   const [ovTableQR, setOvTableQR] = useState(false);
   const [ovConfirm, setOvConfirm] = useState(false);
+  const [ovRestoreProducts, setOvRestoreProducts] = useState(false);
 
   const [editPid, setEditPid] = useState(null);
   const [editAccIdx, setEditAccIdx] = useState(null);
@@ -244,6 +253,9 @@ export default function AdminPage() {
 
   const [confirmMsg, setConfirmMsg] = useState('');
   const [confirmCallback, setConfirmCallback] = useState(null);
+  const [confirmButtonLabel, setConfirmButtonLabel] = useState('Delete');
+  const [isRestoringProducts, setIsRestoringProducts] = useState(false);
+  const [restoringProductName, setRestoringProductName] = useState('');
 
   // Orders tab filters
   const [orderSearch, setOrderSearch] = useState('');
@@ -413,6 +425,58 @@ export default function AdminPage() {
     await supabase.from('products').delete().eq('id', id);
   };
 
+  const restoreProducts = async () => {
+    setIsRestoringProducts(true);
+    try {
+      const { data: existingProducts, error: fetchError } = await supabase.from('products').select('name');
+      if (fetchError) throw fetchError;
+
+      const existingNames = new Set((existingProducts || []).map((product) => product.name.trim().toLocaleLowerCase()));
+      const missingProducts = DEFAULT_PRODUCTS.filter((product) => !existingNames.has(product.name.toLocaleLowerCase()));
+
+      if (!missingProducts.length) {
+        alert('All standard menu products are already available.');
+        return;
+      }
+
+      const { error: insertError } = await supabase.from('products').insert(missingProducts);
+      if (insertError) throw insertError;
+
+      await fetchData();
+      alert(`${missingProducts.length} standard product${missingProducts.length === 1 ? '' : 's'} restored.`);
+    } catch (error) {
+      console.error('Could not restore products:', error);
+      alert(`Could not restore products: ${error.message || 'Please try again.'}`);
+    } finally {
+      setIsRestoringProducts(false);
+    }
+  };
+
+  const restoreSingleProduct = async (product) => {
+    setRestoringProductName(product.name);
+    try {
+      const { data: existingProducts, error: fetchError } = await supabase.from('products').select('name');
+      if (fetchError) throw fetchError;
+
+      const exists = (existingProducts || []).some((item) => item.name.trim().toLocaleLowerCase() === product.name.toLocaleLowerCase());
+      if (exists) {
+        alert(`${product.name} is already available.`);
+        return;
+      }
+
+      const { error: insertError } = await supabase.from('products').insert(product);
+      if (insertError) throw insertError;
+
+      await fetchData();
+      alert(`${product.name} restored.`);
+    } catch (error) {
+      console.error(`Could not restore ${product.name}:`, error);
+      alert(`Could not restore ${product.name}: ${error.message || 'Please try again.'}`);
+    } finally {
+      setRestoringProductName('');
+    }
+  };
+
   const openAccountModal = (idx) => {
     setEditAccIdx(idx);
     if (idx !== null) {
@@ -513,8 +577,9 @@ export default function AdminPage() {
     }, 'image/png');
   };
 
-  const confirmAction = (msg, cb) => {
+  const confirmAction = (msg, cb, buttonLabel = 'Delete') => {
     setConfirmMsg(msg);
+    setConfirmButtonLabel(buttonLabel);
     setConfirmCallback(() => () => { cb(); setOvConfirm(false); });
     setOvConfirm(true);
   };
@@ -561,6 +626,7 @@ export default function AdminPage() {
     const linkedOrder = orders.find((order) => String(order.id) === String(payment.order_id));
     return payment.sender_phone || payment.senderPhone || payment.phone || linkedOrder?.senderPhone || '—';
   };
+  const deletedDefaultProducts = DEFAULT_PRODUCTS.filter((product) => !products.some((item) => item.name.trim().toLocaleLowerCase() === product.name.toLocaleLowerCase()));
   const todayStr = new Date().toDateString();
   const todayRev = orders.filter(o => new Date(o.time).toDateString() === todayStr && o.status !== 'cancelled' && o.status !== 'failed').reduce((acc, curr) => acc + (curr.total || 0), 0);
   const todayOrders = orders.filter(o => new Date(o.time).toDateString() === todayStr && o.status !== 'cancelled' && o.status !== 'failed').length;
@@ -910,7 +976,18 @@ export default function AdminPage() {
                     <div className="pg-title">Products</div>
                     <div className="pg-sub">Add, edit or remove menu items. Changes appear instantly for customers.</div>
                   </div>
-                  <button className="btn-add" onClick={() => openProductModal(null)}>+ Add Product</button>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="btn-edit"
+                      onClick={() => setOvRestoreProducts(true)}
+                      disabled={isRestoringProducts}
+                      style={{ padding: '9px 14px', borderRadius: '8px', opacity: isRestoringProducts ? 0.65 : 1, cursor: isRestoringProducts ? 'wait' : 'pointer' }}
+                    >
+                      {isRestoringProducts ? 'Restoring…' : '↻ Restore Products'}
+                    </button>
+                    <button className="btn-add" onClick={() => openProductModal(null)}>+ Add Product</button>
+                  </div>
                 </div>
 
                 <div className="tbl-wrap">
@@ -1660,6 +1737,41 @@ export default function AdminPage() {
         </div>
       </div>
 
+      {/* Restore Products Overlay */}
+      <div className={`overlay${ovRestoreProducts ? ' open' : ''}`} onClick={e => e.target === e.currentTarget && setOvRestoreProducts(false)}>
+        <div className="modal" style={{ maxWidth: '470px' }}>
+          <h3>Restore Products</h3>
+          <p style={{ color: 'var(--muted)', fontSize: '13px', lineHeight: 1.5, marginBottom: '16px' }}>Only deleted standard menu products appear here. Existing and custom products are never shown or changed.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '310px', overflowY: 'auto', paddingRight: '2px' }}>
+            {deletedDefaultProducts.length ? deletedDefaultProducts.map((product) => {
+              const isRestoring = restoringProductName === product.name;
+              return (
+                <div key={product.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', border: '1px solid var(--border)', borderRadius: '10px', background: 'var(--bg2)' }}>
+                  <span style={{ fontSize: '20px' }}>{product.emoji}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <strong style={{ fontSize: '13px' }}>{product.name}</strong>
+                    <div style={{ color: 'var(--muted)', fontSize: '11px', marginTop: '2px' }}>{product.category} · ৳{product.price}</div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-save"
+                    disabled={Boolean(restoringProductName)}
+                    onClick={() => restoreSingleProduct(product)}
+                    style={{ padding: '6px 10px', fontSize: '11px', cursor: restoringProductName ? 'not-allowed' : 'pointer' }}
+                  >
+                    {isRestoring ? 'Restoring…' : 'Restore'}
+                  </button>
+                </div>
+              );
+            }) : <div className="empty-tbl" style={{ padding: '28px 16px' }}>No deleted standard products to restore.</div>}
+          </div>
+          <div className="modal-btns" style={{ marginTop: '18px' }}>
+            <button className="btn-cancel" onClick={() => setOvRestoreProducts(false)}>Close</button>
+            <button className="btn-save" disabled={isRestoringProducts || !deletedDefaultProducts.length} onClick={() => confirmAction('Restore every missing standard menu product? Existing and custom products will not be changed.', restoreProducts, 'Restore')}>{isRestoringProducts ? 'Restoring…' : 'Restore All Missing'}</button>
+          </div>
+        </div>
+      </div>
+
       {/* Table Modal Overlay */}
       <div className={`overlay${ovTable ? ' open' : ''}`} onClick={e => e.target === e.currentTarget && setOvTable(false)}>
         <div className="modal">
@@ -1775,7 +1887,7 @@ export default function AdminPage() {
           <p>{confirmMsg}</p>
           <div className="modal-btns">
             <button className="btn-cancel" onClick={() => setOvConfirm(false)}>Cancel</button>
-            <button className="btn-del-ok" onClick={confirmCallback}>Delete</button>
+            <button className="btn-del-ok" onClick={confirmCallback}>{confirmButtonLabel}</button>
           </div>
         </div>
       </div>
