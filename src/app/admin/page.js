@@ -246,8 +246,7 @@ export default function AdminPage() {
   const [confirmMsg, setConfirmMsg] = useState('');
   const [confirmCallback, setConfirmCallback] = useState(null);
   const [confirmButtonLabel, setConfirmButtonLabel] = useState('Delete');
-  const [isRestoringProducts, setIsRestoringProducts] = useState(false);
-  const [restoringProductName, setRestoringProductName] = useState('');
+  const [restoringId, setRestoringId] = useState(null);
   const [deletedProducts, setDeletedProducts] = useState([]);
 
   // Orders tab filters
@@ -467,32 +466,52 @@ export default function AdminPage() {
   };
 
   const restoreSingleProduct = async (archivedProduct) => {
-    const product = archivedProduct.product_data;
-    setRestoringProductName(product.name);
-    try {
-      const { data: existingProducts, error: fetchError } = await supabase.from('products').select('name');
-      if (fetchError) throw fetchError;
+    if (!archivedProduct || !archivedProduct.id) return;
+    const raw = archivedProduct.product_data || {};
+    const productName = raw.name || 'Product';
+    setRestoringId(archivedProduct.id);
 
-      const exists = (existingProducts || []).some((item) => item.name.trim().toLocaleLowerCase() === product.name.toLocaleLowerCase());
-      if (exists) {
-        alert(`${product.name} is already available.`);
-        return;
+    try {
+      const productPayload = {
+        name: productName.trim(),
+        category: raw.category || raw.cat || 'Coffee',
+        price: Number(raw.price) || 0,
+        emoji: raw.emoji || '☕',
+        image_url: raw.image_url || raw.image || null,
+        description: raw.description || raw.desc || '',
+        is_available: raw.is_available !== undefined ? Boolean(raw.is_available) : (raw.avail !== false)
+      };
+
+      const { data: existingProducts, error: fetchError } = await supabase.from('products').select('name');
+      if (fetchError) {
+        console.warn('Could not verify existing products:', fetchError);
+      } else if (existingProducts) {
+        const exists = existingProducts.some(
+          (item) => (item.name || '').trim().toLowerCase() === productPayload.name.toLowerCase()
+        );
+        if (exists) {
+          await supabase.from('deleted_products').delete().eq('id', archivedProduct.id);
+          await loadDeletedProducts();
+          await fetchData();
+          alert(`"${productPayload.name}" is already live in menu. Cleaned duplicate archive entry.`);
+          return;
+        }
       }
 
-      const { error: insertError } = await supabase.from('products').insert(product);
+      const { error: insertError } = await supabase.from('products').insert(productPayload);
       if (insertError) throw insertError;
 
       const { error: removeArchiveError } = await supabase.from('deleted_products').delete().eq('id', archivedProduct.id);
-      if (removeArchiveError) throw removeArchiveError;
+      if (removeArchiveError) console.warn('Could not remove archive row:', removeArchiveError);
 
       await fetchData();
       await loadDeletedProducts();
-      alert(`${product.name} restored.`);
+      alert(`"${productPayload.name}" restored successfully.`);
     } catch (error) {
-      console.error(`Could not restore ${product.name}:`, error);
-      alert(`Could not restore ${product.name}: ${error.message || 'Please try again.'}`);
+      console.error(`Could not restore product:`, error);
+      alert(`Could not restore product: ${error.message || 'Please try again.'}`);
     } finally {
-      setRestoringProductName('');
+      setRestoringId(null);
     }
   };
 
@@ -1762,21 +1781,25 @@ export default function AdminPage() {
           <p style={{ color: 'var(--muted)', fontSize: '13px', lineHeight: 1.5, marginBottom: '16px' }}>Only products deleted from this admin page appear here. Restoring returns the original product details to the live menu.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '310px', overflowY: 'auto', paddingRight: '2px' }}>
             {deletedProducts.length ? deletedProducts.map((archivedProduct) => {
-              const product = archivedProduct.product_data;
-              const isRestoring = restoringProductName === product.name;
+              const product = archivedProduct.product_data || {};
+              const isRestoring = restoringId === archivedProduct.id;
+              const name = product.name || 'Unnamed Product';
+              const category = product.category || product.cat || 'Coffee';
+              const price = product.price ?? 0;
+              const emoji = product.emoji || '☕';
               return (
                 <div key={archivedProduct.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', border: '1px solid var(--border)', borderRadius: '10px', background: 'var(--bg2)' }}>
-                  <span style={{ fontSize: '20px' }}>{product.emoji}</span>
+                  <span style={{ fontSize: '20px' }}>{emoji}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <strong style={{ fontSize: '13px' }}>{product.name}</strong>
-                    <div style={{ color: 'var(--muted)', fontSize: '11px', marginTop: '2px' }}>{product.category} · ৳{product.price}</div>
+                    <strong style={{ fontSize: '13px' }}>{name}</strong>
+                    <div style={{ color: 'var(--muted)', fontSize: '11px', marginTop: '2px' }}>{category} · ৳{price}</div>
                   </div>
                   <button
                     type="button"
                     className="btn-save"
-                    disabled={Boolean(restoringProductName)}
-                    onClick={() => restoreSingleProduct(product)}
-                    style={{ padding: '6px 10px', fontSize: '11px', cursor: restoringProductName ? 'not-allowed' : 'pointer' }}
+                    disabled={restoringId !== null}
+                    onClick={() => restoreSingleProduct(archivedProduct)}
+                    style={{ padding: '6px 10px', fontSize: '11px', cursor: restoringId !== null ? 'not-allowed' : 'pointer' }}
                   >
                     {isRestoring ? 'Restoring…' : 'Restore'}
                   </button>
