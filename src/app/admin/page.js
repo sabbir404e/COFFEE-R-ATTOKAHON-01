@@ -10,14 +10,6 @@ import TableQrCard from '@/components/TableQrCard.jsx';
 const CARD_W = 640;
 const CARD_H = 900;
 
-const DEFAULT_PRODUCTS = [
-  { name: 'Espresso', category: 'Coffee', price: 80, emoji: '☕', image_url: '/images/product-espresso.png', description: 'Rich, bold espresso shot brewed to perfection.', is_available: true },
-  { name: 'Café Latte', category: 'Coffee', price: 120, emoji: '☕', image_url: '/images/product-latte.png', description: 'Smooth espresso with velvety steamed milk.', is_available: true },
-  { name: 'Coffee Glass', category: 'Coffee', price: 110, emoji: '🥤', image_url: '/images/product-coffee-glass.png', description: 'Classic coffee served in a tall warm glass.', is_available: true },
-  { name: 'Green Tea', category: 'Tea', price: 90, emoji: '🍵', image_url: '/images/product-green-tea.png', description: 'Light, fragrant green tea brewed to perfection.', is_available: true },
-  { name: 'Hot Chocolate', category: 'Specialty', price: 110, emoji: '🍫', image_url: '/images/product-hot-drink.png', description: 'Rich, creamy hot chocolate made with real cocoa.', is_available: true },
-];
-
 let logoImgCache = null;
 function getLogoImg() {
   if (logoImgCache) return Promise.resolve(logoImgCache);
@@ -256,6 +248,7 @@ export default function AdminPage() {
   const [confirmButtonLabel, setConfirmButtonLabel] = useState('Delete');
   const [isRestoringProducts, setIsRestoringProducts] = useState(false);
   const [restoringProductName, setRestoringProductName] = useState('');
+  const [deletedProducts, setDeletedProducts] = useState([]);
 
   // Orders tab filters
   const [orderSearch, setOrderSearch] = useState('');
@@ -421,38 +414,60 @@ export default function AdminPage() {
     await supabase.from('products').update({ is_available: !(prod.avail !== false) }).eq('id', id);
   };
 
-  const deleteProduct = async (id) => {
-    await supabase.from('products').delete().eq('id', id);
+  const loadDeletedProducts = async () => {
+    const { data, error } = await supabase.from('deleted_products').select('*').order('deleted_at', { ascending: false });
+    if (error) throw error;
+    setDeletedProducts(data || []);
   };
 
-  const restoreProducts = async () => {
-    setIsRestoringProducts(true);
+  const deleteProduct = async (id) => {
+    const product = products.find((item) => item.id === id);
+    if (!product) return;
+
+    const productData = {
+      name: product.name,
+      category: product.cat,
+      price: product.price,
+      emoji: product.emoji || '☕',
+      image_url: product.image || null,
+      description: product.desc || '',
+      is_available: product.avail !== false,
+    };
+
     try {
-      const { data: existingProducts, error: fetchError } = await supabase.from('products').select('name');
-      if (fetchError) throw fetchError;
+      const { data: archivedProduct, error: archiveError } = await supabase
+        .from('deleted_products')
+        .insert({ original_product_id: product.id, product_data: productData })
+        .select('id')
+        .single();
+      if (archiveError) throw archiveError;
 
-      const existingNames = new Set((existingProducts || []).map((product) => product.name.trim().toLocaleLowerCase()));
-      const missingProducts = DEFAULT_PRODUCTS.filter((product) => !existingNames.has(product.name.toLocaleLowerCase()));
-
-      if (!missingProducts.length) {
-        alert('All standard menu products are already available.');
-        return;
+      const { error: deleteError } = await supabase.from('products').delete().eq('id', id);
+      if (deleteError) {
+        await supabase.from('deleted_products').delete().eq('id', archivedProduct.id);
+        throw deleteError;
       }
 
-      const { error: insertError } = await supabase.from('products').insert(missingProducts);
-      if (insertError) throw insertError;
-
       await fetchData();
-      alert(`${missingProducts.length} standard product${missingProducts.length === 1 ? '' : 's'} restored.`);
+      await loadDeletedProducts();
     } catch (error) {
-      console.error('Could not restore products:', error);
-      alert(`Could not restore products: ${error.message || 'Please try again.'}`);
-    } finally {
-      setIsRestoringProducts(false);
+      console.error('Could not archive product:', error);
+      alert(`Could not delete product safely: ${error.message || 'Run create_deleted_products_table.sql in Supabase first.'}`);
     }
   };
 
-  const restoreSingleProduct = async (product) => {
+  const openRestoreProducts = async () => {
+    setOvRestoreProducts(true);
+    try {
+      await loadDeletedProducts();
+    } catch (error) {
+      console.error('Could not load deleted products:', error);
+      alert(`Could not load deleted products: ${error.message || 'Run create_deleted_products_table.sql in Supabase first.'}`);
+    }
+  };
+
+  const restoreSingleProduct = async (archivedProduct) => {
+    const product = archivedProduct.product_data;
     setRestoringProductName(product.name);
     try {
       const { data: existingProducts, error: fetchError } = await supabase.from('products').select('name');
@@ -467,7 +482,11 @@ export default function AdminPage() {
       const { error: insertError } = await supabase.from('products').insert(product);
       if (insertError) throw insertError;
 
+      const { error: removeArchiveError } = await supabase.from('deleted_products').delete().eq('id', archivedProduct.id);
+      if (removeArchiveError) throw removeArchiveError;
+
       await fetchData();
+      await loadDeletedProducts();
       alert(`${product.name} restored.`);
     } catch (error) {
       console.error(`Could not restore ${product.name}:`, error);
@@ -626,7 +645,6 @@ export default function AdminPage() {
     const linkedOrder = orders.find((order) => String(order.id) === String(payment.order_id));
     return payment.sender_phone || payment.senderPhone || payment.phone || linkedOrder?.senderPhone || '—';
   };
-  const deletedDefaultProducts = DEFAULT_PRODUCTS.filter((product) => !products.some((item) => item.name.trim().toLocaleLowerCase() === product.name.toLocaleLowerCase()));
   const todayStr = new Date().toDateString();
   const todayRev = orders.filter(o => new Date(o.time).toDateString() === todayStr && o.status !== 'cancelled' && o.status !== 'failed').reduce((acc, curr) => acc + (curr.total || 0), 0);
   const todayOrders = orders.filter(o => new Date(o.time).toDateString() === todayStr && o.status !== 'cancelled' && o.status !== 'failed').length;
@@ -980,7 +998,7 @@ export default function AdminPage() {
                     <button
                       type="button"
                       className="btn-edit"
-                      onClick={() => setOvRestoreProducts(true)}
+                      onClick={openRestoreProducts}
                       disabled={isRestoringProducts}
                       style={{ padding: '9px 14px', borderRadius: '8px', opacity: isRestoringProducts ? 0.65 : 1, cursor: isRestoringProducts ? 'wait' : 'pointer' }}
                     >
@@ -1741,12 +1759,13 @@ export default function AdminPage() {
       <div className={`overlay${ovRestoreProducts ? ' open' : ''}`} onClick={e => e.target === e.currentTarget && setOvRestoreProducts(false)}>
         <div className="modal" style={{ maxWidth: '470px' }}>
           <h3>Restore Products</h3>
-          <p style={{ color: 'var(--muted)', fontSize: '13px', lineHeight: 1.5, marginBottom: '16px' }}>Only deleted standard menu products appear here. Existing and custom products are never shown or changed.</p>
+          <p style={{ color: 'var(--muted)', fontSize: '13px', lineHeight: 1.5, marginBottom: '16px' }}>Only products deleted from this admin page appear here. Restoring returns the original product details to the live menu.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '310px', overflowY: 'auto', paddingRight: '2px' }}>
-            {deletedDefaultProducts.length ? deletedDefaultProducts.map((product) => {
+            {deletedProducts.length ? deletedProducts.map((archivedProduct) => {
+              const product = archivedProduct.product_data;
               const isRestoring = restoringProductName === product.name;
               return (
-                <div key={product.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', border: '1px solid var(--border)', borderRadius: '10px', background: 'var(--bg2)' }}>
+                <div key={archivedProduct.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', border: '1px solid var(--border)', borderRadius: '10px', background: 'var(--bg2)' }}>
                   <span style={{ fontSize: '20px' }}>{product.emoji}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <strong style={{ fontSize: '13px' }}>{product.name}</strong>
@@ -1763,11 +1782,10 @@ export default function AdminPage() {
                   </button>
                 </div>
               );
-            }) : <div className="empty-tbl" style={{ padding: '28px 16px' }}>No deleted standard products to restore.</div>}
+            }) : <div className="empty-tbl" style={{ padding: '28px 16px' }}>No deleted products to restore.</div>}
           </div>
           <div className="modal-btns" style={{ marginTop: '18px' }}>
             <button className="btn-cancel" onClick={() => setOvRestoreProducts(false)}>Close</button>
-            <button className="btn-save" disabled={isRestoringProducts || !deletedDefaultProducts.length} onClick={() => confirmAction('Restore every missing standard menu product? Existing and custom products will not be changed.', restoreProducts, 'Restore')}>{isRestoringProducts ? 'Restoring…' : 'Restore All Missing'}</button>
           </div>
         </div>
       </div>
