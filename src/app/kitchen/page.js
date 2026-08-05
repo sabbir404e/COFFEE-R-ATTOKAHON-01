@@ -416,7 +416,8 @@ export default function KitchenPage() {
         .order-card.s-ready::before     { background: var(--ok); }
         .order-card.s-cancelled::before { background: var(--danger); }
         .order-card.s-cancelled { opacity: 0.5; }
-        .order-card.s-served { opacity: 0.45; }
+        /* Keep completed orders fully readable; their Served badge already indicates status. */
+        .order-card.s-served { opacity: 1; }
         .order-card.is-late { border-color: rgba(192,64,64,0.5); animation: ring 2s ease infinite; }
 
         .o-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 2px; }

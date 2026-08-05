@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { QRCodeCanvas } from 'qrcode.react';
 import JSZip from 'jszip';
 import { useApp } from '@/context/AppContext';
+import TableQrCard from '@/components/TableQrCard.jsx';
 
 const CARD_W = 640;
 const CARD_H = 900;
@@ -90,7 +90,7 @@ async function buildCardCanvas(tableId, tableName) {
 
   // Logo (circular)
   const logo = await getLogoImg();
-  const logoR = 66, logoCx = CARD_W / 2, logoCy = 100;
+  const logoR = 60, logoCx = CARD_W / 2, logoCy = 88;
   if (logo) {
     ctx.save();
     ctx.beginPath();
@@ -107,27 +107,51 @@ async function buildCardCanvas(tableId, tableName) {
     ctx.stroke();
   }
 
-  // Shop name
+  // Shop name and tagline match the single-table Admin QR card.
   ctx.textAlign = 'center';
   ctx.fillStyle = brandDark;
   ctx.font = '700 34px "Playfair Display", serif';
-  ctx.fillText('Coffee-r Attokahon', CARD_W / 2, 190);
+  ctx.fillText('Coffee-r Attokahon', CARD_W / 2, 178);
 
-  // Tagline
-  ctx.font = '500 15px "Outfit", sans-serif';
+  ctx.font = '600 12px "Outfit", sans-serif';
   ctx.fillStyle = brandLight;
-  ctx.fillText('S C A N   •   O R D E R   •   E N J O Y', CARD_W / 2, 218);
+  ctx.fillText('ARTISAN COFFEE & CUISINE', CARD_W / 2, 202);
 
-  // Divider
   ctx.strokeStyle = 'rgba(160,108,40,0.35)';
   ctx.lineWidth = 1.5;
+  ctx.lineCap = 'butt';
   ctx.beginPath();
-  ctx.moveTo(CARD_W / 2 - 90, 240);
-  ctx.lineTo(CARD_W / 2 + 90, 240);
+  ctx.moveTo(CARD_W / 2 - 100, 222);
+  ctx.lineTo(CARD_W / 2 - 12, 222);
+  ctx.stroke();
+  ctx.fillStyle = brandMid;
+  ctx.font = '700 14px serif';
+  ctx.fillText('\u2756', CARD_W / 2, 227);
+  ctx.beginPath();
+  ctx.moveTo(CARD_W / 2 + 12, 222);
+  ctx.lineTo(CARD_W / 2 + 100, 222);
   ctx.stroke();
 
+  // Table badge is always above the QR code, matching the Admin preview card.
+  const badgeLabel = (tableName || ('Table ' + tableId)).toUpperCase();
+  const badgeH = 46, badgeW = 240, badgeX = (CARD_W - badgeW) / 2, badgeTop = 244;
+  const badgeGrad = ctx.createLinearGradient(badgeX, badgeTop, badgeX + badgeW, badgeTop + badgeH);
+  badgeGrad.addColorStop(0, '#D4A445');
+  badgeGrad.addColorStop(1, '#A06C28');
+  ctx.save();
+  ctx.shadowColor = 'rgba(140,90,20,0.4)';
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetY = 4;
+  ctx.fillStyle = badgeGrad;
+  roundRect(ctx, badgeX, badgeTop, badgeW, badgeH, 23);
+  ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = '#fff';
+  ctx.font = '700 20px "Playfair Display", serif';
+  ctx.fillText(badgeLabel, CARD_W / 2, badgeTop + badgeH / 2 + 7);
+
   // White QR panel
-  const qrBoxSize = 400, qrBoxX = (CARD_W - qrBoxSize) / 2, qrBoxY = 268;
+  const qrBoxSize = 370, qrBoxX = (CARD_W - qrBoxSize) / 2, qrBoxY = 306;
   ctx.save();
   ctx.shadowColor = 'rgba(100,60,10,0.15)';
   ctx.shadowBlur = 18;
@@ -145,7 +169,7 @@ async function buildCardCanvas(tableId, tableName) {
   const qrHolder = document.getElementById(`qr${tableId}`);
   const qrSrcCanvas = qrHolder ? qrHolder.querySelector('canvas') : null;
   const qrSrcImg = qrHolder ? qrHolder.querySelector('img') : null;
-  const qrPad = 28;
+  const qrPad = 26;
   const qrDrawSize = qrBoxSize - qrPad * 2;
   if (qrSrcCanvas) {
     ctx.drawImage(qrSrcCanvas, qrBoxX + qrPad, qrBoxY + qrPad, qrDrawSize, qrDrawSize);
@@ -153,28 +177,15 @@ async function buildCardCanvas(tableId, tableName) {
     ctx.drawImage(qrSrcImg, qrBoxX + qrPad, qrBoxY + qrPad, qrDrawSize, qrDrawSize);
   }
 
-  // Table number badge
-  const badgeY = qrBoxY + qrBoxSize + 56;
-  ctx.font = '700 42px "Playfair Display", serif';
-  ctx.fillStyle = brandDark;
-  ctx.fillText((tableName || ('Table ' + tableId)).toUpperCase(), CARD_W / 2, badgeY);
-
-  // Small accent underline under table name
-  ctx.strokeStyle = brandMid;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(CARD_W / 2 - 34, badgeY + 14);
-  ctx.lineTo(CARD_W / 2 + 34, badgeY + 14);
-  ctx.stroke();
-
   // Instruction text
-  ctx.font = '400 17px "Outfit", sans-serif';
+  const scanY = qrBoxY + qrBoxSize + 36;
+  ctx.font = '700 12px "Outfit", sans-serif';
   ctx.fillStyle = brandLight;
-  ctx.fillText('Scan to view the menu & order from your table', CARD_W / 2, badgeY + 46);
+  ctx.fillText('SCAN TO VIEW MENU & ORDER', CARD_W / 2, scanY);
 
   // Footer
   ctx.font = '400 13px "Outfit", sans-serif';
-  ctx.fillStyle = 'rgba(154,120,80,0.8)';
+  ctx.fillStyle = 'rgba(154,120,80,0.75)';
   ctx.fillText('☕  Thank you for visiting  ☕', CARD_W / 2, CARD_H - 36);
 
   return canvas;
@@ -434,35 +445,39 @@ export default function QRPrintPage() {
 
         /* ── QR CARD ── */
         .qr-card {
-          background: #fff;
-          border: 1.5px solid rgba(160,108,40,0.20);
-          border-radius: 16px;
-          padding: 22px 16px 18px;
+          background: transparent;
+          border: none;
+          padding: 0;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 12px;
-          box-shadow: 0 2px 12px rgba(100,60,10,0.08);
+          gap: 14px;
         }
-        .qr-card .brand {
+        .qr-card-frame { position: relative; width: 100%; background: linear-gradient(160deg, #FAF4E8 0%, #EFE1C3 100%); border: 1.5px solid #C89438; border-radius: 20px; padding: 7px; box-shadow: 0 10px 25px rgba(0,0,0,0.20); }
+        .qr-card-inner { position: relative; border: 1px solid rgba(160,108,40,0.35); border-radius: 14px; padding: 22px 16px 18px; text-align: center; }
+        .qr-card-corner { position: absolute; width: 18px; height: 18px; border: 2px solid #C89438; z-index: 2; }
+        .qr-cc-tl { top: 6px; left: 6px; border-right: none; border-bottom: none; border-radius: 4px 0 0 0; }
+        .qr-cc-tr { top: 6px; right: 6px; border-left: none; border-bottom: none; border-radius: 0 4px 0 0; }
+        .qr-cc-bl { bottom: 6px; left: 6px; border-right: none; border-top: none; border-radius: 0 0 0 4px; }
+        .qr-cc-br { bottom: 6px; right: 6px; border-left: none; border-top: none; border-radius: 0 0 4px 0; }
+        .qr-card-logo { width: 56px; height: 56px; border-radius: 50%; border: 2px solid #C89438; object-fit: cover; display: block; margin: 0 auto 10px; padding: 2px; background: #fff; box-shadow: 0 4px 12px rgba(160,108,40,0.25); }
+        .qr-card-name {
           font-family: var(--font-playfair), 'Playfair Display', serif;
-          font-size: 14px;
-          color: #9A7850;
-        }
-        .qr-card .brand em { color: #A06C28; font-style: normal; }
-        .qr-canvas { width: 160px; height: 160px; display: flex; align-items: center; justify-content: center; }
-        .table-label {
-          font-family: var(--font-playfair), 'Playfair Display', serif;
-          font-size: 20px;
-          font-weight: 600;
+          font-size: 23px;
           color: #2E1C08;
+          font-weight: 700;
+          line-height: 1.2;
+          margin-bottom: 2px;
         }
-        .scan-text {
-          font-size: 11px;
-          color: #9A7850;
-          text-align: center;
-          line-height: 1.4;
-        }
+        .qr-card-name em { color: #A06C28; font-style: italic; font-weight: 700; margin-right: 4px; }
+        .qr-card-tagline { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: #9A7850; margin-top: 4px; font-weight: 600; }
+        .qr-card-divider { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px auto 14px; width: 65%; }
+        .qr-card-divider span { flex: 1; height: 1px; background: rgba(160,108,40,0.35); }
+        .qr-card-divider i { font-style: normal; color: #C89438; font-size: 10px; }
+        .qr-card-table { display: inline-block; font-family: var(--font-playfair), 'Playfair Display', serif; font-size: 15px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #ffffff; background: linear-gradient(135deg, #D4A445 0%, #A06C28 100%); padding: 7px 28px; border-radius: 100px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(160,108,40,0.35); }
+        .qr-card-qr-wrap { background: #ffffff; border-radius: 18px; padding: 14px; display: inline-block; box-shadow: 0 6px 20px rgba(0,0,0,0.12); border: 1px solid rgba(160,108,40,0.2); }
+        .qr-canvas { width: 160px; height: 160px; display: flex; align-items: center; justify-content: center; }
+        .qr-card-scan { margin-top: 14px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #9A7850; font-weight: 700; }
 
         /* ── PRINT STYLES ── */
         @media print {
@@ -475,7 +490,7 @@ export default function QRPrintPage() {
           }
           .qr-card {
             break-inside: avoid;
-            border: 1.5px solid #ccc;
+            border: none;
             box-shadow: none;
           }
           .btn-card-dl { display: none !important; }
@@ -521,20 +536,12 @@ export default function QRPrintPage() {
 
           return (
             <div className="qr-card" key={t.id}>
-              <div className="brand"><em>Coffee-r</em> Attokahon</div>
-              <div className="qr-canvas" id={`qr${t.id}`}>
-                <QRCodeCanvas
-                  value={targetUrl}
-                  size={160}
-                  level="H"
-                  includeMargin={true}
-                  bgColor="#ffffff"
-                  fgColor="#2E1C08"
-                  style={{ width: '160px', height: '160px' }}
-                />
-              </div>
-              <div className="table-label">{tableName}</div>
-              <div className="scan-text">Scan to order from your table</div>
+              <TableQrCard
+                tableName={tableName.toUpperCase()}
+                qrValue={targetUrl}
+                qrId={`qr${t.id}`}
+                qrSize={160}
+              />
               <button className="btn-card-dl" onClick={() => downloadCard(t.id, tableName)}>
                 ⬇️ Download PNG
               </button>

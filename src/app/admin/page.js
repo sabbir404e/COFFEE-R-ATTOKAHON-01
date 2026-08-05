@@ -5,6 +5,7 @@ import { useApp } from '@/context/AppContext';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { QRCodeCanvas } from 'qrcode.react';
+import TableQrCard from '@/components/TableQrCard.jsx';
 
 const CARD_W = 640;
 const CARD_H = 900;
@@ -556,6 +557,10 @@ export default function AdminPage() {
   const servedOrders = orders.filter(o => o.status === 'served').length;
   const cancelledOrders = orders.filter(o => o.status === 'cancelled').length;
   const totalRevenue = orders.filter(o => o.status !== 'cancelled' && o.status !== 'failed').reduce((acc, curr) => acc + (curr.total || 0), 0);
+  const getPaymentPhone = (payment) => {
+    const linkedOrder = orders.find((order) => String(order.id) === String(payment.order_id));
+    return payment.sender_phone || payment.senderPhone || payment.phone || linkedOrder?.senderPhone || '—';
+  };
   const todayStr = new Date().toDateString();
   const todayRev = orders.filter(o => new Date(o.time).toDateString() === todayStr && o.status !== 'cancelled' && o.status !== 'failed').reduce((acc, curr) => acc + (curr.total || 0), 0);
   const todayOrders = orders.filter(o => new Date(o.time).toDateString() === todayStr && o.status !== 'cancelled' && o.status !== 'failed').length;
@@ -881,7 +886,7 @@ export default function AdminPage() {
                       {payments.slice(0, 6).map(p => (
                         <tr key={p.id}>
                           <td style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--gold)' }}>{p.txn_id || p.txnId || '—'}</td>
-                          <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{p.sender_phone || p.senderPhone || p.phone || '—'}</td>
+                          <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{getPaymentPhone(p)}</td>
                           <td style={{ fontSize: '12px' }}>{p.invoice_num || p.invoiceNum || '—'}</td>
                           <td>{p.table_id || p.table || '—'}</td>
                           <td>{p.payment_method || p.method || '—'}</td>
@@ -1081,12 +1086,13 @@ export default function AdminPage() {
                 <div className="tbl-wrap">
                   <table>
                     <thead>
-                      <tr><th>TXN ID</th><th>Invoice</th><th>Table</th><th>Method</th><th>Amount</th><th>Status</th><th>Time</th></tr>
+                      <tr><th>TXN ID</th><th>Phone</th><th>Invoice</th><th>Table</th><th>Method</th><th>Amount</th><th>Status</th><th>Time</th></tr>
                     </thead>
                     <tbody>
                       {payments.map(p => (
                         <tr key={p.id}>
                           <td style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--gold)' }}>{p.txn_id || p.txnId || '—'}</td>
+                          <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{getPaymentPhone(p)}</td>
                           <td style={{ fontSize: '12px' }}>{p.invoice_num || p.invoiceNum || '—'}</td>
                           <td>{p.table_id || p.table || '—'}</td>
                           <td>{p.payment_method || p.method || '—'}</td>
@@ -1508,8 +1514,8 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <button
-                      className="btn-save"
-                      style={{ minWidth: '118px', height: '40px', padding: '0 14px', marginBottom: 0, alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      className="btn-add"
+                      style={{ width: '118px', height: '40px', padding: '0 14px', marginLeft: 'auto', alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                       onClick={() => openTableModal(null)}
                       disabled={tables.length >= 100}
                     >
@@ -1698,31 +1704,11 @@ export default function AdminPage() {
               QR Code — {qrTable.name || (`Table ${qrTable.id}`)}
             </h3>
 
-            <div className="qr-card-frame">
-              <div className="qr-card-corner qr-cc-tl" />
-              <div className="qr-card-corner qr-cc-tr" />
-              <div className="qr-card-corner qr-cc-bl" />
-              <div className="qr-card-corner qr-cc-br" />
-              <div className="qr-card-inner">
-                <img src="/logo.png" alt="" className="qr-card-logo" />
-                <div className="qr-card-name"><em>Coffee-r</em> Attokahon</div>
-                <div className="qr-card-tagline">ARTISAN COFFEE &amp; CUISINE</div>
-                <div className="qr-card-divider"><span></span><i>❖</i><span></span></div>
-                <div className="qr-card-table">{(qrTable.name || (`Table ${qrTable.id}`)).toUpperCase()}</div>
-                <div className="qr-card-qr-wrap" id={`qr-admin-preview-${qrTable.id}`}>
-                  <QRCodeCanvas
-                    value={`${qrSiteUrl.trim().replace(/\/$/, '')}/?table=${qrTable.id}`}
-                    size={180}
-                    level="H"
-                    includeMargin={true}
-                    bgColor="#ffffff"
-                    fgColor="#2E1C08"
-                    style={{ width: '180px', height: '180px' }}
-                  />
-                </div>
-                <div className="qr-card-scan">SCAN TO VIEW MENU &amp; ORDER</div>
-              </div>
-            </div>
+            <TableQrCard
+              tableName={(qrTable.name || (`Table ${qrTable.id}`)).toUpperCase()}
+              qrValue={`${qrSiteUrl.trim().replace(/\/$/, '')}/?table=${qrTable.id}`}
+              qrId={`qr-admin-preview-${qrTable.id}`}
+            />
 
             <div className="field" style={{ marginTop: '20px' }}>
               <label style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '11px', letterSpacing: '1px', textTransform: 'uppercase', color: '#8C7250', fontWeight: 600, marginBottom: '8px' }}>

@@ -92,7 +92,10 @@ export default function PaymentPage() {
       if (p >= 100) clearInterval(progressInterval);
     }, 30);
 
-    setTimeout(async () => {
+    try {
+      // Keep the progress feedback visible briefly while the payment is saved.
+      await new Promise((resolve) => setTimeout(resolve, 900));
+
       const activeMethod = METHODS[selectedMethod];
       const finalTxnId = txnId;
       const cleanPhone = phone;
@@ -115,11 +118,7 @@ export default function PaymentPage() {
         .select()
         .single();
 
-      if (orderErr) {
-        alert('Error placing order: ' + orderErr.message);
-        setProcessing(false);
-        return;
-      }
+      if (orderErr) throw orderErr;
 
       const orderId = orderData.id;
 
@@ -127,10 +126,11 @@ export default function PaymentPage() {
       const invoiceNum = 'INV-' + year + '-' + String(orderId).padStart(4, '0');
 
       // Step 3: Update the order row with the serial invoice number
-      await supabase
+      const { error: invoiceErr } = await supabase
         .from('orders')
         .update({ invoice_num: invoiceNum })
         .eq('id', orderId);
+      if (invoiceErr) throw invoiceErr;
 
       // Step 4: Insert order items
       const itemsToInsert = cart.items.map((item) => ({
@@ -141,10 +141,11 @@ export default function PaymentPage() {
         quantity: item.qty,
         customization: item.customization || null,
       }));
-      await supabase.from('order_items').insert(itemsToInsert);
+      const { error: itemsErr } = await supabase.from('order_items').insert(itemsToInsert);
+      if (itemsErr) throw itemsErr;
 
       // Step 5: Insert payment record with serial invoice number
-      await supabase.from('payments').insert({
+      const { error: paymentErr } = await supabase.from('payments').insert({
         txn_id: finalTxnId,
         invoice_num: invoiceNum,
         order_id: orderId,
@@ -154,9 +155,14 @@ export default function PaymentPage() {
         sender_phone: cleanPhone,
         status: 'paid',
       });
+      if (paymentErr) throw paymentErr;
 
       if (cart.tableNum) {
-        await supabase.from('dining_tables').update({ status: 'occupied' }).eq('id', cart.tableNum);
+        const { error: tableErr } = await supabase
+          .from('dining_tables')
+          .update({ status: 'occupied' })
+          .eq('id', cart.tableNum);
+        if (tableErr) throw tableErr;
       }
 
       localStorage.removeItem('ca_pending_cart');
@@ -172,8 +178,13 @@ export default function PaymentPage() {
         senderPhone: cleanPhone,
         time: orderData.created_at,
       });
+    } catch (error) {
+      console.error('Failed to create payment:', error);
+      alert(`Payment could not be saved: ${error.message}. Please try again or contact staff.`);
+    } finally {
+      clearInterval(progressInterval);
       setProcessing(false);
-    }, 900);
+    }
   };
 
   if (!mounted || !cart) return null;
