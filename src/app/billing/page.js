@@ -723,7 +723,20 @@ export default function BillingPage() {
 
               <div className="action-row">
                 <button className="btn-print" onClick={() => window.print()}>🖨&nbsp; Print Invoice</button>
-                <button className="btn-order-more" onClick={() => router.push('/order' + (order.table ? '?table=' + order.table : ''))}>Order More Items</button>
+                <button className="btn-order-more" onClick={() => {
+                  // Clear the last order ID so active order block resets for new browsing
+                  try { localStorage.removeItem('ca_last_order_id'); } catch(e) {}
+                  // Preserve table number
+                  if (order && order.table) {
+                    try { localStorage.setItem('ca_table_num', String(order.table)); } catch(e) {}
+                  }
+                  const activeTable = order?.table || localStorage.getItem('ca_table_num');
+                  if (activeTable) {
+                    router.push(`/?table=${activeTable}`);
+                  } else {
+                    router.push('/');
+                  }
+                }}>Order More Items</button>
               </div>
             </>
           );

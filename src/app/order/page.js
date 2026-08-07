@@ -23,23 +23,30 @@ function OrderPageContent() {
   const [editingCartKey, setEditingCartKey] = useState(null);
   const [customization, setCustomization] = useState({ size: 'Regular', sugar: '100%', milk: 'Full Cream', extraShot: 'No', notes: '' });
   
-  // DRINK_CATS from the user's logic
   const DRINK_CATS = ['Coffee', 'Specialty', 'Tea'];
 
-  const availableTables = tables.filter(table => table.status === 'available');
-  const maxTable = availableTables.length > 0 ? Math.max(...availableTables.map(t => t.id)) : 20;
+  // Keep all tables selectable so guests at the same table can order multiple times
+  const allTables = tables && tables.length > 0
+    ? tables
+    : Array.from({ length: 20 }, (_, i) => ({ id: i + 1, name: `Table ${i + 1}`, status: 'available' }));
+  const maxTable = allTables.length > 0 ? Math.max(...allTables.map(t => t.id)) : 20;
 
+  // Auto-skip to menu if a table number is set via URL, AppContext, or localStorage
   useEffect(() => {
     const handle = requestAnimationFrame(() => {
       setMounted(true);
-      if (urlTable && availableTables.some(table => table.id === urlTable)) {
-        setLocalTable(urlTable);
-        setTableNum(urlTable);
+      const savedTable = typeof window !== 'undefined' ? parseInt(localStorage.getItem('ca_table_num'), 10) : null;
+      const targetTable = (!isNaN(urlTable) && urlTable > 0) ? urlTable : (tableNum || savedTable);
+
+      if (targetTable && targetTable >= 1) {
+        setLocalTable(targetTable);
+        setTableNum(targetTable);
         setStep('menu');
       }
     });
     return () => cancelAnimationFrame(handle);
-  }, [urlTable, setTableNum, availableTables]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlTable, tableNum, tables.length]);
 
   useEffect(() => {
     let handle;
@@ -54,12 +61,12 @@ function OrderPageContent() {
   }, [lastOrderId]);
 
   const confirmTable = () => {
-    const val = parseInt(customTableInput);
-    if (!val || val < 1) { alert('Please select a table number.'); return; }
-    if (!availableTables.some(table => table.id === val)) { alert(`Table ${val} is not available.`); return; }
+    const val = parseInt(customTableInput, 10);
+    if (!val || val < 1) { alert('Please select or enter a table number.'); return; }
     setLocalTable(val);
     setTableNum(val);
-    router.push(`/?table=${val}`);
+    // Stay on order page and go directly to menu — do NOT redirect to homepage
+    setStep('menu');
   };
 
   const cartItems = Object.values(cart);
@@ -376,8 +383,8 @@ function OrderPageContent() {
             <h2>Select Your Table</h2>
             <p>Choose your table number to start ordering</p>
             <div className="table-grid">
-              {availableTables.map(table => (
-                <button key={table.id} className={`t-btn${selectedBtn === table.id ? ' sel' : ''}`}
+              {allTables.map(table => (
+                <button key={table.id} className={`t-btn${(selectedBtn === table.id || localTable === table.id) ? ' sel' : ''}`}
                   onClick={() => { setSelectedBtn(table.id); setCustomTableInput(String(table.id)); }}>{table.id}</button>
               ))}
             </div>
@@ -415,7 +422,24 @@ function OrderPageContent() {
               <h1>Our Menu</h1>
               <p>Fresh, made to order — just for you.</p>
             </div>
-            <div className="table-chip">📍 Table {localTable}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
+              <div className="table-chip" style={{ marginBottom: 0 }}>📍 Table {localTable}</div>
+              <button
+                onClick={() => setStep('table')}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border-h)',
+                  borderRadius: '20px',
+                  padding: '3px 10px',
+                  fontSize: '11px',
+                  color: 'var(--muted)',
+                  cursor: 'pointer',
+                  transition: 'all 0.18s',
+                }}
+              >
+                Change Table ⚙️
+              </button>
+            </div>
             <div className="cat-bar">
               {cats.map(c => (
                 <button key={c} className={`cat-pill${c === menuCat ? ' active' : ''}`}

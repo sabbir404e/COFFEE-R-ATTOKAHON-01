@@ -401,6 +401,13 @@ export default function AdminPage() {
 
   const updateOrderStatus = async (id, newStatus) => {
     await supabase.from('orders').update({ status: newStatus }).eq('id', id);
+    // When the order is served or cancelled, free the table back to 'available'
+    if (newStatus === 'served' || newStatus === 'cancelled') {
+      const order = orders.find(o => o.id === id);
+      if (order && order.table) {
+        await supabase.from('dining_tables').update({ status: 'available' }).eq('id', order.table);
+      }
+    }
   };
 
   const deleteOrder = async (id) => {
