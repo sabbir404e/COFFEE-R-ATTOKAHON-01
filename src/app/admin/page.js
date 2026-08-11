@@ -565,7 +565,7 @@ export default function AdminPage() {
       setTName(table.name);
       setTNumber(String(table.id));
       setTSeats(String(table.seats));
-      setTStatus(table.status);
+      setTStatus(table.status || 'available');
       setTNote(table.note || '');
     } else {
       const nextId = tables.length ? Math.max(...tables.map(tableItem => tableItem.id)) + 1 : 1;
@@ -590,12 +590,19 @@ export default function AdminPage() {
       return;
     }
     const tableData = { id, name: tName.trim(), seats, status: tStatus, note: tNote.trim() };
+    let error;
     if (editTableId === null) {
-      await supabase.from('dining_tables').insert(tableData);
+      const res = await supabase.from('dining_tables').insert(tableData);
+      error = res.error;
     } else {
-      await supabase.from('dining_tables').update({ name: tName.trim(), seats, status: tStatus, note: tNote.trim() }).eq('id', editTableId);
+      const res = await supabase.from('dining_tables').update({ name: tName.trim(), seats, status: tStatus, note: tNote.trim() }).eq('id', editTableId);
+      error = res.error;
     }
-    setOvTable(false);
+    if (error) {
+      alert(`Could not save table: ${error.message}`);
+    } else {
+      setOvTable(false);
+    }
   };
 
   const openTableQRModal = (t) => {
@@ -1613,6 +1620,18 @@ export default function AdminPage() {
                   activeByTable[o.table].push(o);
                 }
               });
+              const availableCount = tables.filter(t => t.status === 'available' || !t.status).length;
+              const occupiedCount = tables.filter(t => t.status === 'occupied').length;
+              const reservedCount = tables.filter(t => t.status === 'reserved').length;
+              const cleaningCount = tables.filter(t => t.status === 'cleaning').length;
+
+              const tableStatusStyles = {
+                available: { bg: 'rgba(42,114,72,0.10)', border: 'rgba(42,114,72,0.30)', dot: '#60C890', label: 'Available', emoji: '🟢' },
+                occupied:  { bg: 'rgba(192,64,64,0.10)', border: 'rgba(192,64,64,0.30)', dot: '#E08080', label: 'Occupied', emoji: '🔴' },
+                reserved:  { bg: 'rgba(168,112,32,0.10)', border: 'rgba(168,112,32,0.30)', dot: '#D4A040', label: 'Reserved', emoji: '🟡' },
+                cleaning:  { bg: 'rgba(70,100,180,0.10)', border: 'rgba(70,100,180,0.30)', dot: '#90A8E0', label: 'Cleaning', emoji: '🔵' },
+              };
+
               return (
                 <div>
                   <div className="toolbar">
@@ -1626,12 +1645,22 @@ export default function AdminPage() {
                         </span>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
-                        <span style={{ padding: '3px 12px', borderRadius: '20px', background: 'rgba(192,64,64,0.12)', border: '1px solid rgba(192,64,64,0.30)', fontSize: '11px', color: '#E08080', fontWeight: 600 }}>
-                          🔴 {Object.keys(activeByTable).length} occupied
+                        <span style={{ padding: '3px 12px', borderRadius: '20px', background: tableStatusStyles.available.bg, border: `1px solid ${tableStatusStyles.available.border}`, fontSize: '11px', color: tableStatusStyles.available.dot, fontWeight: 600 }}>
+                          🟢 {availableCount} available
                         </span>
-                        <span style={{ padding: '3px 12px', borderRadius: '20px', background: 'rgba(42,114,72,0.12)', border: '1px solid rgba(42,114,72,0.30)', fontSize: '11px', color: '#60C890', fontWeight: 600 }}>
-                          🟢 {tables.filter(t => !activeByTable[t.id]).length} vacant
+                        <span style={{ padding: '3px 12px', borderRadius: '20px', background: tableStatusStyles.occupied.bg, border: `1px solid ${tableStatusStyles.occupied.border}`, fontSize: '11px', color: tableStatusStyles.occupied.dot, fontWeight: 600 }}>
+                          🔴 {occupiedCount} occupied
                         </span>
+                        {reservedCount > 0 && (
+                          <span style={{ padding: '3px 12px', borderRadius: '20px', background: tableStatusStyles.reserved.bg, border: `1px solid ${tableStatusStyles.reserved.border}`, fontSize: '11px', color: tableStatusStyles.reserved.dot, fontWeight: 600 }}>
+                            🟡 {reservedCount} reserved
+                          </span>
+                        )}
+                        {cleaningCount > 0 && (
+                          <span style={{ padding: '3px 12px', borderRadius: '20px', background: tableStatusStyles.cleaning.bg, border: `1px solid ${tableStatusStyles.cleaning.border}`, fontSize: '11px', color: tableStatusStyles.cleaning.dot, fontWeight: 600 }}>
+                            🔵 {cleaningCount} cleaning
+                          </span>
+                        )}
                       </div>
                     </div>
                     <button
@@ -1650,57 +1679,135 @@ export default function AdminPage() {
                       const active = activeByTable[t.id] || [];
                       const hasOrders = active.length > 0;
                       const latestStatus = hasOrders ? active[active.length - 1].status : null;
-                      const statusColors = {
+                      const orderStatusColors = {
                         paid:      { bg: 'rgba(200,148,56,0.10)', border: 'rgba(200,148,56,0.35)', dot: 'var(--gold)' },
+                        confirmed: { bg: 'rgba(200,148,56,0.10)', border: 'rgba(200,148,56,0.35)', dot: 'var(--gold)' },
                         preparing: { bg: 'rgba(58,120,200,0.10)', border: 'rgba(58,120,200,0.35)', dot: '#6AABFF' },
                         ready:     { bg: 'rgba(42,114,72,0.12)',  border: 'rgba(42,114,72,0.35)',  dot: '#60C890' },
                       };
-                      const sc = latestStatus ? (statusColors[latestStatus] || statusColors.paid) : null;
+                      const tblStatus = t.status || 'available';
+                      const tblStyle = tableStatusStyles[tblStatus] || tableStatusStyles.available;
+
+                      // If there are active orders, use order-based coloring; otherwise use table status coloring
+                      let badgeColor, badgeLabel;
+                      if (hasOrders) {
+                        const sc = orderStatusColors[latestStatus] || orderStatusColors.paid;
+                        badgeColor = sc.dot;
+                        badgeLabel = (latestStatus || 'paid').toUpperCase();
+                      } else {
+                        badgeColor = tblStyle.dot;
+                        badgeLabel = tblStyle.label.toUpperCase();
+                      }
+
+                      const cardBg = 'var(--card)';
+                      const cardBorder = 'var(--border)';
+
                       const tableLabel = t.name || `Table ${t.id}`;
                       return (
                         <div key={t.id} style={{
-                          background: hasOrders ? sc.bg : 'var(--card)',
-                          border: `1px solid ${hasOrders ? sc.border : 'var(--border)'}`,
-                          borderRadius: '14px',
-                          padding: '14px',
+                          background: cardBg,
+                          border: `1.5px solid ${cardBorder}`,
+                          borderRadius: '20px',
+                          padding: '18px 16px 16px 16px',
                           display: 'flex',
                           flexDirection: 'column',
                           gap: '6px',
                           transition: 'all 0.2s',
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '16px', fontWeight: 700 }}>{tableLabel}</span>
-                            {hasOrders && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: sc.dot, display: 'inline-block', boxShadow: `0 0 6px ${sc.dot}` }} />}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '18px' }}>🪑</span>
+                            <span style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '18px', fontWeight: 700, color: 'var(--text)' }}>
+                              {tableLabel}
+                            </span>
                           </div>
-                          <div style={{ fontSize: '11px', color: hasOrders ? 'var(--text-2)' : 'var(--muted)' }}>
-                            {t.seats ? `${t.seats} seats · ` : ''}{hasOrders ? `${active.length} active order${active.length > 1 ? 's' : ''}` : 'Vacant'}
+                          <div style={{ fontSize: '13px', color: 'rgba(245, 235, 224, 0.6)', marginTop: '2px' }}>
+                            {t.seats ? `${t.seats} seats` : 'No seats'}
                           </div>
                           
-                          <div style={{ marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                            <button
-                              type="button"
-                              className="btn-qr"
-                              onClick={() => openTableQRModal(t)}
-                              style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px' }}
-                            >
-                              📱 QR Code
-                            </button>
+                          <div style={{ marginTop: '6px', marginBottom: '8px' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '4px 14px',
+                              borderRadius: '100px',
+                              border: `1.5px solid ${badgeColor}`,
+                              color: badgeColor,
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              letterSpacing: '1px',
+                              background: 'transparent',
+                            }}>
+                              {badgeLabel}
+                            </span>
+                          </div>
+
+                          <div style={{ marginTop: 'auto', display: 'flex', gap: '6px' }}>
                             <button
                               type="button"
                               className="btn-edit"
                               onClick={() => openTableModal(t.id)}
-                              style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px' }}
+                              style={{
+                                flex: 1,
+                                fontSize: '12px',
+                                padding: '6px 0',
+                                borderRadius: '10px',
+                                border: '1px solid rgba(200, 148, 56, 0.4)',
+                                background: 'none',
+                                color: 'var(--gold)',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
                             >
                               Edit
                             </button>
                             <button
                               type="button"
+                              className="btn-qr"
+                              onClick={() => openTableQRModal(t)}
+                              style={{
+                                flex: 1,
+                                fontSize: '12px',
+                                padding: '6px 0',
+                                borderRadius: '10px',
+                                border: '1px solid rgba(58, 120, 200, 0.4)',
+                                background: 'none',
+                                color: '#6AABFF',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px',
+                              }}
+                            >
+                              📱 QR
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-del"
                               onClick={() => confirmAction(
                                 hasOrders ? `${tableLabel} has active orders. Delete it anyway?` : `Delete ${tableLabel}?`,
                                 () => deleteTable(t.id)
                               )}
                               disabled={tables.length <= 1}
-                              style={{ border: '1px solid rgba(192,64,64,0.35)', borderRadius: '6px', background: 'rgba(192,64,64,0.10)', color: 'var(--d-tx)', padding: '3px 8px', fontSize: '11px', cursor: tables.length <= 1 ? 'not-allowed' : 'pointer', opacity: tables.length <= 1 ? 0.5 : 1 }}
+                              style={{
+                                flex: 1,
+                                fontSize: '12px',
+                                padding: '6px 0',
+                                borderRadius: '10px',
+                                border: '1px solid rgba(192, 64, 64, 0.4)',
+                                background: 'none',
+                                color: '#E08080',
+                                cursor: tables.length <= 1 ? 'not-allowed' : 'pointer',
+                                opacity: tables.length <= 1 ? 0.5 : 1,
+                                transition: 'all 0.15s',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
                             >
                               Delete
                             </button>

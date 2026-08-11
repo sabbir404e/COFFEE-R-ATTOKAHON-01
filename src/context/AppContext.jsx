@@ -429,7 +429,10 @@ export function AppProvider({ children }) {
   const addTable = () => {};
   const removeLastTable = () => {};
   const deleteTable = async (id) => {
-    await supabase.from('dining_tables').delete().eq('id', id);
+    const { error } = await supabase.from('dining_tables').delete().eq('id', id);
+    if (error) {
+      alert(`Could not delete table: ${error.message}`);
+    }
     // Realtime DELETE event will update state automatically
   };
 

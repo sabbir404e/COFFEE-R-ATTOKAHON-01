@@ -469,15 +469,37 @@ export default function BillingPage() {
           .inv-footer-thanks    { font-size: 14px !important; }
           .inv-footer-sub       { font-size: 10px !important; }
         }
+        .brand-text{white-space:nowrap;}
         @media(max-width:600px){
           .main{padding:14px 12px 32px;}
           .invoice-info{grid-template-columns:repeat(2,1fr);}
+          .inv-info-cell:nth-child(2){border-right:none;}
           .inv-info-cell:last-child{grid-column:1/-1;border-top:1px solid var(--border);border-right:none;}
-          .inv-items-head,.inv-item-row{grid-template-columns:1fr auto auto;}
-          .inv-items-head > :nth-child(3),.inv-item-row > :nth-child(3){display:none;}
+          .inv-items-head,.inv-item-row{grid-template-columns:1fr auto auto auto;gap:8px;padding:12px 14px;}
+          .inv-item-name{font-size:12px;}
+          .inv-item-col{font-size:12px;}
           .action-row{flex-direction:column;}
           .invoice-head{flex-direction:column;gap:14px;}
           .inv-meta{text-align:left;}
+        }
+        @media(max-width:500px){
+          .tracker-card{padding:20px 14px 20px;}
+          .tracker-steps::before{top:16px;left:18px;right:18px;}
+          .tracker-progress{
+            top:16px !important;
+            left:18px !important;
+            width:calc(var(--progress-pct) - 36px) !important;
+          }
+          .t-step{gap:6px;}
+          .t-dot{width:32px;height:32px;font-size:13px;}
+          .t-label{font-size:8.5px;letter-spacing:0;font-weight:600;}
+        }
+        @media(max-width:480px){
+          .topbar{padding:0 12px;height:56px;}
+          .brand{font-size:16px;gap:8px;}
+          .brand-logo{width:38px;height:38px;}
+          .print-text{display:none;}
+          .topbar .icon-btn{padding:6px 10px;font-size:14px;}
         }
       `}</style>
 
@@ -523,10 +545,10 @@ export default function BillingPage() {
       <div className="topbar">
         <Link href="/" className="brand">
           <img className="brand-logo" src="/logo.png" alt="" />
-          <em>Coffee-r</em> Attokahon
+          <span className="brand-text"><em>Coffee-r</em> Attokahon</span>
         </Link>
         <div className="topbar-right">
-          <button className="icon-btn" onClick={() => window.print()}>🖨 Print</button>
+          <button className="icon-btn" onClick={() => window.print()}>🖨 <span className="print-text">Print</span></button>
           <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme" />
         </div>
       </div>
@@ -619,7 +641,7 @@ export default function BillingPage() {
                     </div>
                     <div>
                       <div className="tracker-steps">
-                        <div className="tracker-progress" style={{width:`calc(${progressPct}% - 46px)`}}></div>
+                        <div className="tracker-progress" style={{width:`calc(${progressPct}% - 46px)`, '--progress-pct': `${progressPct}%`}}></div>
                         {STATUS_FLOW.map((s, i) => {
                           const sm = STATUS_META[s];
                           let cls = 'pending';
