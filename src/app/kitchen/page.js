@@ -49,7 +49,7 @@ function getItemCustomSummary(custom) {
 }
 
 export default function KitchenPage() {
-  const { toggleTheme, orders: allOrders, fetchData } = useApp();
+  const { toggleTheme, orders: allOrders, fetchData, products } = useApp();
 
   const [me, setMe] = useState(null);
   const [loginUser, setLoginUser] = useState('');
@@ -682,13 +682,20 @@ export default function KitchenPage() {
                       <div className="o-items">
                         {items.map((item, idx) => {
                           const customSummary = getItemCustomSummary(item.customization);
+                          const foundProd = (products || []).find(
+                            p => p.id === item.id || 
+                            (p.name && item.name && item.name.toLowerCase().startsWith(p.name.toLowerCase()))
+                          );
+                          const itemImage = foundProd?.image || foundProd?.image_url || item.image || item.img;
+                          const itemEmoji = foundProd?.emoji || item.emoji || '☕';
+
                           return (
                             <div key={idx} className="o-item-block">
                               <div className="o-item-row">
-                                {item.image || item.img ? (
-                                  <img className="o-item-thumb" src={item.image || item.img} alt="" />
+                                {itemImage ? (
+                                  <img className="o-item-thumb" src={itemImage} alt="" />
                                 ) : (
-                                  <span>{item.emoji || '☕'}</span>
+                                  <span>{itemEmoji}</span>
                                 )}
                                 <strong>{item.name}</strong> × {item.qty}
                               </div>

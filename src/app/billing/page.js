@@ -26,7 +26,7 @@ const readOrders = async () => {
     return ordersData.map(o => ({
       id: o.id, invoiceNum: o.invoice_num, table: o.table_id,
       items: (itemsData || []).filter(i => i.order_id === o.id).map(i => ({
-        name: i.product_name, price: Number(i.unit_price), qty: i.quantity, emoji: '☕'
+        id: i.product_id, name: i.product_name, price: Number(i.unit_price), qty: i.quantity, emoji: '☕'
       })),
       subtotal: Number(o.subtotal), serviceCharge: Number(o.service_charge),
       total: Number(o.total), note: o.note, status: o.status,
@@ -38,7 +38,7 @@ const readOrders = async () => {
 
 export default function BillingPage() {
   const router = useRouter();
-  const { toggleTheme, orders: appOrders } = useApp();
+  const { toggleTheme, orders: appOrders, products } = useApp();
   const [order, setOrder] = useState(null);
   const [hydrated, setHydrated] = useState(false);
   const [liveStatus, setLiveStatus] = useState(null);
@@ -701,21 +701,29 @@ export default function BillingPage() {
                   <div className="inv-items-head">
                     <span>Item</span><span>Unit Price</span><span>Qty</span><span>Total</span>
                   </div>
-                  {order.items.map((item, i) => (
-                    <div className="inv-item-row" key={i}>
-                      <div className="inv-item-name">
-                        {item.image ? (
-                          <img className="inv-item-emoji" src={item.image} alt={item.name} style={{width:'20px',height:'20px',borderRadius:'5px',objectFit:'cover'}} />
-                        ) : (
-                          <span className="inv-item-emoji">{esc(item.emoji||'☕')}</span>
-                        )}
-                        <span>{esc(item.name)}</span>
+                  {order.items.map((item, i) => {
+                    const foundProd = (products || []).find(
+                      p => p.id === item.id || 
+                      (p.name && item.name && item.name.toLowerCase().startsWith(p.name.toLowerCase()))
+                    );
+                    const itemImage = foundProd?.image || foundProd?.image_url || item.image;
+                    const itemEmoji = foundProd?.emoji || item.emoji || '☕';
+                    return (
+                      <div className="inv-item-row" key={i}>
+                        <div className="inv-item-name">
+                          {itemImage ? (
+                            <img className="inv-item-emoji" src={itemImage} alt={item.name} style={{width:'20px',height:'20px',borderRadius:'5px',objectFit:'cover'}} />
+                          ) : (
+                            <span className="inv-item-emoji">{esc(itemEmoji)}</span>
+                          )}
+                          <span>{esc(item.name)}</span>
+                        </div>
+                        <div className="inv-item-col price">৳{item.price}</div>
+                        <div className="inv-item-col">×{item.qty}</div>
+                        <div className="inv-item-col subtotal">৳{item.price * item.qty}</div>
                       </div>
-                      <div className="inv-item-col price">৳{item.price}</div>
-                      <div className="inv-item-col">×{item.qty}</div>
-                      <div className="inv-item-col subtotal">৳{item.price * item.qty}</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="invoice-totals">

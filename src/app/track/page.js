@@ -54,7 +54,7 @@ function esc(s) { return String(s); }
 function TrackPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { toggleTheme } = useApp();
+  const { toggleTheme, products } = useApp();
 
   const tableNum = parseInt(searchParams.get('table')) || null;
   const [orders, setOrders] = useState([]);
@@ -77,7 +77,7 @@ function TrackPageContent() {
       if (data) {
         setOrders(data.map(o => ({
           id: o.id, invoiceNum: o.invoice_num, table: o.table_id,
-          items: (o.order_items || []).map(i => ({ name: i.product_name, qty: i.quantity, emoji: '☕' })),
+          items: (o.order_items || []).map(i => ({ id: i.product_id, name: i.product_name, qty: i.quantity, emoji: '☕' })),
           total: Number(o.total), status: o.status, time: o.created_at
         })));
         
@@ -395,15 +395,23 @@ function TrackPageContent() {
                     <div className={`oc-msg ${o.status}`}>{meta.msg}</div>
 
                     <div className="oc-items">
-                      {o.items.map((item, j) => (
-                        <div className="oc-item-tag" key={j}>
-                          {item.image ? (
-                            <img className="oc-item-thumb" src={item.image} alt="" />
-                          ) : (
-                            esc(item.emoji || '☕')
-                          )} {esc(item.name)} ×{item.qty}
-                        </div>
-                      ))}
+                      {o.items.map((item, j) => {
+                        const foundProd = (products || []).find(
+                          p => p.id === item.id || 
+                          (p.name && item.name && item.name.toLowerCase().startsWith(p.name.toLowerCase()))
+                        );
+                        const itemImage = foundProd?.image || foundProd?.image_url || item.image;
+                        const itemEmoji = foundProd?.emoji || item.emoji || '☕';
+                        return (
+                          <div className="oc-item-tag" key={j}>
+                            {itemImage ? (
+                              <img className="oc-item-thumb" src={itemImage} alt="" />
+                            ) : (
+                              esc(itemEmoji)
+                            )} {esc(item.name)} ×{item.qty}
+                          </div>
+                        );
+                      })}
                     </div>
 
                     <div className="oc-foot">
