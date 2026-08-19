@@ -14,7 +14,7 @@ const METHODS = {
 
 export default function PaymentPage() {
   const router = useRouter();
-  const { toggleTheme } = useApp();
+  const { toggleTheme, clearCart } = useApp();
 
   const [cart, setCart] = useState(null);
   const [mounted, setMounted] = useState(false);
@@ -165,6 +165,7 @@ export default function PaymentPage() {
         if (tableErr) throw tableErr;
       }
 
+      if (clearCart) clearCart();
       localStorage.removeItem('ca_pending_cart');
       localStorage.setItem('ca_last_order_id', String(orderId));
 

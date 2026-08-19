@@ -27,7 +27,8 @@ function mapProduct(p) {
     cat: p.category,
     price: Number(p.price),
     emoji: p.emoji,
-    image: p.image_url,
+    image: p.image_url || p.image || null,
+    image_url: p.image_url || p.image || null,
     desc: p.description,
     avail: p.is_available,
   };
@@ -38,10 +39,12 @@ function mapOrder(o, orderItemsData) {
     .filter((i) => i.order_id === o.id)
     .map((i) => ({
       id: i.product_id,
-      name: i.product_name,
-      price: Number(i.unit_price),
-      qty: i.quantity,
+      productId: i.product_id,
+      name: i.product_name || i.name,
+      price: Number(i.unit_price || i.price || 0),
+      qty: Number(i.quantity || i.qty || 1),
       emoji: i.emoji,
+      image: i.image_url || i.image || null,
       customization: i.customization,
     }));
   return {
@@ -213,6 +216,15 @@ export function AppProvider({ children }) {
         setOrders((prev) =>
           prev.map((o) => (o.id === row.id ? mapOrder(row, orderItemsRef.current) : o))
         );
+        if (row && row.status === 'served') {
+          try {
+            const lastId = typeof window !== 'undefined' ? localStorage.getItem('ca_last_order_id') : null;
+            if (String(row.id) === String(lastId)) {
+              setCart({});
+              localStorage.removeItem('ca_pending_cart');
+            }
+          } catch (e) {}
+        }
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders' }, ({ old: row }) => {
         setOrders((prev) => prev.filter((o) => o.id !== row.id));
@@ -240,7 +252,7 @@ export function AppProvider({ children }) {
           setOrders((prev) =>
             prev.map((o) =>
               o.id === affectedOrderId
-                ? { ...o, items: freshItems.map((i) => ({ id: i.product_id, name: i.product_name, price: Number(i.unit_price), qty: i.quantity, emoji: i.emoji, customization: i.customization })) }
+                ? { ...o, items: freshItems.map((i) => ({ id: i.product_id, productId: i.product_id, name: i.product_name || i.name, price: Number(i.unit_price || i.price || 0), qty: Number(i.quantity || i.qty || 1), emoji: i.emoji, image: i.image_url || i.image || null, customization: i.customization })) }
                 : o
             )
           );
@@ -252,10 +264,10 @@ export function AppProvider({ children }) {
     const paymentsSub = supabase
       .channel('rt_payments')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'payments' }, ({ new: row }) => {
-        setPayments((prev) => [row, ...prev]);
+        setPayments((prev) => [row, ...prev.filter((p) => p.id !== row.id)]);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'payments' }, ({ new: row }) => {
-        setPayments((prev) => prev.map((p) => (p.id === row.id ? row : p)));
+        setPayments((prev) => [row, ...prev.filter((p) => p.id !== row.id)]);
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'payments' }, ({ old: row }) => {
         setPayments((prev) => prev.filter((p) => p.id !== row.id));

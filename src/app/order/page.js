@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { resolveProductImage } from '@/lib/products';
 import Link from 'next/link';
 
 function OrderPageContent() {
@@ -11,10 +12,11 @@ function OrderPageContent() {
   const { toggleTheme, products, addToCart, updateCartItem, removeFromCart, changeCartQty, cart, clearCart, tableNum, setTableNum, tables } = useApp();
 
   const urlTable = parseInt(searchParams.get('table'));
+  const isPreview = searchParams.get('preview') === 'true';
   const [step, setStep] = useState('table'); // 'table' | 'menu' | 'success'
-  const [localTable, setLocalTable] = useState(null);
-  const [customTableInput, setCustomTableInput] = useState('');
-  const [selectedBtn, setSelectedBtn] = useState(null);
+  const [localTable, setLocalTable] = useState(1);
+  const [customTableInput, setCustomTableInput] = useState('1');
+  const [selectedBtn, setSelectedBtn] = useState(1);
   const [menuCat, setMenuCat] = useState('all');
   const [cartOpen, setCartOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -27,26 +29,26 @@ function OrderPageContent() {
 
   // Keep all tables selectable so guests at the same table can order multiple times
   const allTables = tables && tables.length > 0
-    ? tables
+    ? [...tables].sort((a, b) => a.id - b.id)
     : Array.from({ length: 20 }, (_, i) => ({ id: i + 1, name: `Table ${i + 1}`, status: 'available' }));
   const maxTable = allTables.length > 0 ? Math.max(...allTables.map(t => t.id)) : 20;
 
-  // Auto-skip to menu if a table number is set via URL, AppContext, or localStorage
+  // Only auto-skip to menu if a specific table number is provided in the URL query param (e.g. from QR scan: /order?table=5)
   useEffect(() => {
     const handle = requestAnimationFrame(() => {
       setMounted(true);
-      const savedTable = typeof window !== 'undefined' ? parseInt(localStorage.getItem('ca_table_num'), 10) : null;
-      const targetTable = (!isNaN(urlTable) && urlTable > 0) ? urlTable : (tableNum || savedTable);
-
-      if (targetTable && targetTable >= 1) {
-        setLocalTable(targetTable);
-        setTableNum(targetTable);
+      if (!isNaN(urlTable) && urlTable >= 1) {
+        setLocalTable(urlTable);
+        setTableNum(urlTable);
+        setCustomTableInput(String(urlTable));
+        setSelectedBtn(urlTable);
         setStep('menu');
+      } else {
+        setStep('table');
       }
     });
     return () => cancelAnimationFrame(handle);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlTable, tableNum, tables.length]);
+  }, [urlTable, setTableNum]);
 
   useEffect(() => {
     let handle;
@@ -61,10 +63,13 @@ function OrderPageContent() {
   }, [lastOrderId]);
 
   const confirmTable = () => {
-    const val = parseInt(customTableInput, 10);
-    if (!val || val < 1) { alert('Please select or enter a table number.'); return; }
+    const val = parseInt(customTableInput, 10) || localTable || selectedBtn || 1;
     setLocalTable(val);
     setTableNum(val);
+    if (typeof window !== 'undefined') {
+      try { localStorage.setItem('ca_table_num', String(val)); } catch (e) {}
+    }
+    if (clearCart) clearCart();
     // Stay on order page and go directly to menu — do NOT redirect to homepage
     setStep('menu');
   };
@@ -139,7 +144,7 @@ function OrderPageContent() {
       return {
         name: p.name + (summary ? ` (${summary})` : ''),
         emoji: p.emoji,
-        image: p.image || null,
+        image: resolveProductImage(p, products) || p.image || null,
         qty: cart[k].qty,
         price: p.price,
         id: p.id,
@@ -384,8 +389,17 @@ function OrderPageContent() {
             <p>Choose your table number to start ordering</p>
             <div className="table-grid">
               {allTables.map(table => (
-                <button key={table.id} className={`t-btn${(selectedBtn === table.id || localTable === table.id) ? ' sel' : ''}`}
-                  onClick={() => { setSelectedBtn(table.id); setCustomTableInput(String(table.id)); }}>{table.id}</button>
+                <button
+                  key={table.id}
+                  className={`t-btn${(selectedBtn === table.id || localTable === table.id || customTableInput === String(table.id)) ? ' sel' : ''}`}
+                  onClick={() => {
+                    setSelectedBtn(table.id);
+                    setLocalTable(table.id);
+                    setCustomTableInput(String(table.id));
+                  }}
+                >
+                  {table.id}
+                </button>
               ))}
             </div>
             <div className="or-line">or enter manually</div>
@@ -457,11 +471,24 @@ function OrderPageContent() {
                 return (
                   <div className={`menu-card${avail ? '' : ' sold-out'}`} key={p.id}>
                     {inC > 0 && <div className="item-count-badge">{inC}</div>}
-                    {p.image ? (
-                      <img className="menu-img" src={p.image} alt={p.name} loading="lazy" />
-                    ) : (
-                      <div className="emoji">{p.emoji || '☕'}</div>
-                    )}
+                    {(() => {
+                      const itemImg = resolveProductImage(p, products);
+                      return itemImg ? (
+                        <img
+                          className="menu-img"
+                          src={itemImg}
+                          alt={p.name}
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            if (e.currentTarget.nextSibling) {
+                              e.currentTarget.nextSibling.style.display = 'flex';
+                            }
+                          }}
+                        />
+                      ) : null;
+                    })()}
+                    <div className="emoji" style={{ display: resolveProductImage(p, products) ? 'none' : 'flex' }}>{p.emoji || '☕'}</div>
                     {!avail && <div className="sold-out-badge">Sold Out</div>}
                     <div className="name">{p.name}</div>
                     <div className="cat">{p.cat}</div>
@@ -505,11 +532,27 @@ function OrderPageContent() {
           <div className="item-modal">
             <div className="item-modal-handle" />
             <div className="item-modal-head">
-              {selectedProduct.image ? (
-                <img className="item-modal-img" src={selectedProduct.image} alt="" />
-              ) : (
-                <div className="item-modal-emoji">{selectedProduct.emoji || '☕'}</div>
-              )}
+              {(() => {
+                const modalImg = resolveProductImage(selectedProduct, products);
+                return (
+                  <>
+                    {modalImg ? (
+                      <img
+                        className="item-modal-img"
+                        src={modalImg}
+                        alt=""
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          if (e.currentTarget.nextSibling) {
+                            e.currentTarget.nextSibling.style.display = 'flex';
+                          }
+                        }}
+                      />
+                    ) : null}
+                    <div className="item-modal-emoji" style={{ display: modalImg ? 'none' : 'flex' }}>{selectedProduct.emoji || '☕'}</div>
+                  </>
+                );
+              })()}
               <div>
                 <div className="item-modal-name">{selectedProduct.name}</div>
                 <div className="item-modal-price">৳{calcModalPrice()}</div>
@@ -585,11 +628,27 @@ function OrderPageContent() {
               const summary = getCustomSummary(product.customization);
               return (
                 <div className="cart-item-card" key={product.cartKey || product.id}>
-                  {product.image ? (
-                    <img className="ci-thumb" src={product.image} alt={product.name} />
-                  ) : (
-                    <div className="ci-thumb-emoji">{product.emoji || '☕'}</div>
-                  )}
+                  {(() => {
+                    const cartImg = resolveProductImage(product, products);
+                    return (
+                      <>
+                        {cartImg ? (
+                          <img
+                            className="ci-thumb"
+                            src={cartImg}
+                            alt={product.name}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              if (e.currentTarget.nextSibling) {
+                                e.currentTarget.nextSibling.style.display = 'flex';
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <div className="ci-thumb-emoji" style={{ display: cartImg ? 'none' : 'flex' }}>{product.emoji || '☕'}</div>
+                      </>
+                    );
+                  })()}
                   <div className="ci-info">
                     <div className="ci-top-row">
                       <div>

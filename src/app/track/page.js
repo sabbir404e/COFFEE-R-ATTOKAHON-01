@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { resolveProductImage } from '@/lib/products';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
@@ -396,19 +397,24 @@ function TrackPageContent() {
 
                     <div className="oc-items">
                       {o.items.map((item, j) => {
-                        const foundProd = (products || []).find(
-                          p => p.id === item.id || 
-                          (p.name && item.name && item.name.toLowerCase().startsWith(p.name.toLowerCase()))
-                        );
-                        const itemImage = foundProd?.image || foundProd?.image_url || item.image;
-                        const itemEmoji = foundProd?.emoji || item.emoji || '☕';
+                        const itemImage = resolveProductImage(item, products);
+                        const itemEmoji = item.emoji || '☕';
                         return (
                           <div className="oc-item-tag" key={j}>
                             {itemImage ? (
-                              <img className="oc-item-thumb" src={itemImage} alt="" />
-                            ) : (
-                              esc(itemEmoji)
-                            )} {esc(item.name)} ×{item.qty}
+                              <img
+                                className="oc-item-thumb"
+                                src={itemImage}
+                                alt=""
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  if (e.currentTarget.nextSibling) {
+                                    e.currentTarget.nextSibling.style.display = 'inline';
+                                  }
+                                }}
+                              />
+                            ) : null}
+                            <span style={{ display: itemImage ? 'none' : 'inline' }}>{esc(itemEmoji)}</span> {esc(item.name)} ×{item.qty}
                           </div>
                         );
                       })}

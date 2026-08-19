@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
+import { resolveProductImage } from '@/lib/products';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -9,6 +10,25 @@ import TableQrCard from '@/components/TableQrCard.jsx';
 
 const CARD_W = 640;
 const CARD_H = 900;
+
+function esc(s) {
+  return s != null ? String(s) : '';
+}
+
+function formatAdminDateTime(dateVal) {
+  if (!dateVal) return '—';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return '—';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = String(d.getFullYear()).slice(-2);
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const formattedHours = String(hours).padStart(2, '0');
+  return `${day}/${month}/${year}, ${formattedHours}:${minutes} ${ampm}`;
+}
 
 let logoImgCache = null;
 function getLogoImg() {
@@ -223,6 +243,8 @@ export default function AdminPage() {
   const [editTableId, setEditTableId] = useState(null);
   const [qrTable, setQrTable] = useState(null);
   const [qrSiteUrl, setQrSiteUrl] = useState('');
+  const [viewOrderDetails, setViewOrderDetails] = useState(null);
+  const [ovOrderDetails, setOvOrderDetails] = useState(false);
 
   // Form Fields
   const [pName, setPName] = useState('');
@@ -605,6 +627,19 @@ export default function AdminPage() {
     }
   };
 
+  const updateTableStatus = async (tableId, newStatus) => {
+    try {
+      const { error } = await supabase
+        .from('dining_tables')
+        .update({ status: newStatus })
+        .eq('id', tableId);
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error updating table status:', err);
+      alert(`Could not update table status: ${err.message || 'Please try again'}`);
+    }
+  };
+
   const openTableQRModal = (t) => {
     setQrTable(t);
     setOvTableQR(true);
@@ -783,6 +818,56 @@ export default function AdminPage() {
         .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 150; opacity: 0; transition: opacity 0.25s ease; }
         .sidebar-backdrop.open { display: block; opacity: 1; }
 
+        /* Invoice Modal */
+        .invoice-modal { max-width: 560px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 0 !important; background: var(--card) !important; border: 1px solid var(--border) !important; border-radius: 18px !important; }
+        .invoice { background: var(--card); border-radius: 18px; overflow: hidden; }
+        .invoice-head { padding: 22px 24px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; }
+        .inv-brand .logo { font-family: var(--font-playfair), 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--text); }
+        .inv-brand .logo em { color: var(--gold); font-style: normal; }
+        .inv-brand { display: flex; align-items: center; gap: 10px; }
+        .inv-logo-img { width: 48px; height: 48px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(0 2px 10px rgba(200,148,56,0.35)); }
+        .inv-brand .tagline { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+        .inv-meta { text-align: right; }
+        .inv-meta .inv-num { font-family: var(--font-playfair), 'Playfair Display', serif; font-size: 15px; color: var(--gold); font-weight: 700; }
+        .inv-meta .inv-date { font-size: 11px; color: var(--muted); margin-top: 3px; }
+        .inv-meta .inv-status { display: inline-block; background: rgba(46,204,113,0.12); border: 1px solid rgba(46,204,113,0.3); border-radius: 6px; padding: 2px 10px; font-size: 10px; font-weight: 700; color: #2ECC71; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; }
+
+        .invoice-info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border-bottom: 1px solid var(--border); }
+        .inv-info-cell { padding: 12px 18px; border-right: 1px solid var(--border); }
+        .inv-info-cell:last-child { border-right: none; }
+        .inv-info-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 3px; }
+        .inv-info-value { font-size: 13px; font-weight: 600; color: var(--text); }
+
+        .inv-items { padding: 0; }
+        .inv-items-head { display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px; padding: 10px 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); border-bottom: 1px solid var(--border); }
+        .inv-item-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px; padding: 10px 20px; border-bottom: 1px solid rgba(200,148,56,0.07); align-items: center; }
+        .inv-item-row:last-child { border-bottom: none; }
+        .inv-item-name { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
+        .inv-item-emoji { font-size: 16px; width: 20px; height: 20px; border-radius: 5px; object-fit: cover; }
+        .inv-item-col { font-size: 13px; text-align: right; color: var(--text-2); }
+        .inv-item-col.price { color: var(--muted); }
+        .inv-item-col.subtotal { color: var(--text); font-weight: 600; }
+
+        .invoice-totals { padding: 14px 20px; border-top: 1px solid var(--border); background: var(--bg2); }
+        .tot-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted); padding: 4px 0; }
+        .tot-row span:last-child { color: var(--text); font-weight: 500; }
+        .tot-row.grand { font-size: 16px; font-weight: 700; border-top: 1px solid var(--border); margin-top: 6px; padding-top: 10px; }
+        .tot-row.grand span:first-child { color: var(--text); }
+        .tot-row.grand span:last-child { color: var(--gold); font-size: 18px; }
+
+        .invoice-payment { padding: 14px 20px; border-top: 1px solid var(--border); }
+        .pay-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 3px 0; color: var(--muted); }
+        .pay-row span:last-child { color: var(--text); font-weight: 500; }
+        .pay-row.txn span:last-child { color: var(--gold); font-family: monospace; font-size: 12px; font-weight: 600; }
+
+        .invoice-note { padding: 12px 20px; border-top: 1px solid var(--border); background: rgba(200,148,56,0.04); }
+        .note-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 3px; }
+        .note-text { font-size: 12px; color: var(--text); font-style: italic; }
+
+        .invoice-footer { padding: 16px 20px; border-top: 1px solid var(--border); text-align: center; }
+        .inv-footer-thanks { font-family: var(--font-playfair), 'Playfair Display', serif; font-style: italic; font-size: 16px; color: var(--gold); margin-bottom: 2px; }
+        .inv-footer-sub { font-size: 11px; color: var(--muted); }
+
         @media(max-width:768px){
           .menu-toggle { display: flex; }
           .app-body { height: auto; min-height: calc(100vh - 58px); flex-direction: column; }
@@ -817,9 +902,6 @@ export default function AdminPage() {
           </div>
           <div className="topbar-right">
             <div className="role-badge">Admin</div>
-            <span className="theme-label">🌙</span>
-            <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle Theme" />
-            <span className="theme-label">☀️</span>
             <button className="logout-btn" onClick={doLogout}>Sign out</button>
           </div>
         </div>
@@ -1138,11 +1220,12 @@ export default function AdminPage() {
                           <th>Status</th>
                           <th>Time</th>
                           <th>Actions</th>
+                          <th>Item Details</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredOrders.length === 0 && (
-                          <tr><td colSpan="9" className="empty-tbl">No orders found.</td></tr>
+                          <tr><td colSpan="10" className="empty-tbl">No orders found.</td></tr>
                         )}
                         {filteredOrders.map(o => {
                           const statusFlow = ['pending', 'paid', 'preparing', 'ready', 'served'];
@@ -1192,6 +1275,32 @@ export default function AdminPage() {
                                   </button>
                                 </div>
                               </td>
+                              <td>
+                                <button
+                                  className="btn-status"
+                                  style={{
+                                    background: 'rgba(200, 148, 56, 0.12)',
+                                    border: '1px solid rgba(200, 148, 56, 0.35)',
+                                    color: 'var(--gold)',
+                                    fontSize: '11px',
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontWeight: 600,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                  onClick={() => {
+                                    setViewOrderDetails(o);
+                                    setOvOrderDetails(true);
+                                  }}
+                                  title={`View invoice details for Order #${o.id}`}
+                                >
+                                  Details
+                                </button>
+                              </td>
                             </tr>
                           );
                         })}
@@ -1202,42 +1311,51 @@ export default function AdminPage() {
               );
             })()}
 
-            {currentTab === 'payments' && (
-              <div>
-                <div className="pg-title">Payments</div>
-                <div className="pg-sub">All completed transactions.</div>
-                <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: '20px' }}>
-                  <div className="stat-card"><div className="stat-lbl">Total Payments</div><div className="stat-val">{payments.length}</div></div>
-                  <div className="stat-card"><div className="stat-lbl">Total Revenue</div><div className="stat-val">৳{totalRevenue.toLocaleString()}</div></div>
-                  <div className="stat-card"><div className="stat-lbl">Avg. Transaction</div><div className="stat-val">৳{payments.length ? Math.round(totalRevenue / payments.length) : 0}</div></div>
+            {currentTab === 'payments' && (() => {
+              const sortedPayments = [...payments].sort((a, b) => {
+                const timeA = new Date(a.updated_at || a.created_at || a.time || 0).getTime() || 0;
+                const timeB = new Date(b.updated_at || b.created_at || b.time || 0).getTime() || 0;
+                if (timeB !== timeA) return timeB - timeA;
+                return (Number(b.id) || 0) - (Number(a.id) || 0);
+              });
+
+              return (
+                <div>
+                  <div className="pg-title">Payments</div>
+                  <div className="pg-sub">All completed transactions.</div>
+                  <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: '20px' }}>
+                    <div className="stat-card"><div className="stat-lbl">Total Payments</div><div className="stat-val">{sortedPayments.length}</div></div>
+                    <div className="stat-card"><div className="stat-lbl">Total Revenue</div><div className="stat-val">৳{totalRevenue.toLocaleString()}</div></div>
+                    <div className="stat-card"><div className="stat-lbl">Avg. Transaction</div><div className="stat-val">৳{sortedPayments.length ? Math.round(totalRevenue / sortedPayments.length) : 0}</div></div>
+                  </div>
+                  <div className="tbl-wrap">
+                    <table>
+                      <thead>
+                        <tr><th>TXN ID</th><th>Phone</th><th>Invoice</th><th>Table</th><th>Method</th><th>Amount</th><th>Status</th><th>Time</th></tr>
+                      </thead>
+                      <tbody>
+                        {sortedPayments.map(p => (
+                          <tr key={p.id}>
+                            <td style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--gold)' }}>{p.txn_id || p.txnId || '—'}</td>
+                            <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{getPaymentPhone(p)}</td>
+                            <td style={{ fontSize: '12px' }}>{p.invoice_num || p.invoiceNum || '—'}</td>
+                            <td>{p.table_id || p.table || '—'}</td>
+                            <td>{p.payment_method || p.method || '—'}</td>
+                            <td style={{ fontWeight: 600, color: 'var(--success-tx)' }}>৳{p.amount}</td>
+                            <td>
+                              <span className={`badge b-${p.status || 'paid'}`}>
+                                {p.status || 'paid'}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: '11px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{formatAdminDateTime(p.created_at || p.time || p.updated_at)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                <div className="tbl-wrap">
-                  <table>
-                    <thead>
-                      <tr><th>TXN ID</th><th>Phone</th><th>Invoice</th><th>Table</th><th>Method</th><th>Amount</th><th>Status</th><th>Time</th></tr>
-                    </thead>
-                    <tbody>
-                      {payments.map(p => (
-                        <tr key={p.id}>
-                          <td style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--gold)' }}>{p.txn_id || p.txnId || '—'}</td>
-                          <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{getPaymentPhone(p)}</td>
-                          <td style={{ fontSize: '12px' }}>{p.invoice_num || p.invoiceNum || '—'}</td>
-                          <td>{p.table_id || p.table || '—'}</td>
-                          <td>{p.payment_method || p.method || '—'}</td>
-                          <td style={{ fontWeight: 600, color: 'var(--success-tx)' }}>৳{p.amount}</td>
-                          <td>
-                            <span className={`badge b-${p.status || 'paid'}`}>
-                              {p.status || 'paid'}
-                            </span>
-                          </td>
-                          <td style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(p.created_at || p.time).toLocaleString('en-BD', { dateStyle: 'short', timeStyle: 'short' })}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {currentTab === 'accounts' && (
               <div>
@@ -1340,18 +1458,32 @@ export default function AdminPage() {
               const prodSummary = {};
               reportOrders.forEach(o => {
                 (o.items || []).forEach(i => {
-                  if (!prodSummary[i.name]) {
-                    const foundProd = products.find(p => p.name.toLowerCase() === i.name.toLowerCase());
-                    prodSummary[i.name] = {
-                      name: i.name,
+                  const prodName = i.name || 'Unnamed Product';
+                  const foundProd = products.find(p =>
+                    (i.id && (p.id === i.id || p.id === Number(i.id) || String(p.id) === String(i.id))) ||
+                    (i.productId && (p.id === i.productId || p.id === Number(i.productId) || String(p.id) === String(i.productId))) ||
+                    (p.name && prodName && p.name.trim().toLowerCase() === prodName.trim().toLowerCase())
+                  );
+
+                  const displayName = foundProd?.name || prodName;
+                  const key = foundProd?.id ? `id_${foundProd.id}` : displayName.toLowerCase();
+                  const itemImg = resolveProductImage({ ...foundProd, ...i, name: displayName }, products);
+
+                  if (!prodSummary[key]) {
+                    prodSummary[key] = {
+                      id: foundProd?.id || i.id || i.productId,
+                      name: displayName,
                       qty: 0,
                       rev: 0,
-                      emoji: i.emoji || foundProd?.emoji || '☕',
-                      image: foundProd?.image || null
+                      emoji: foundProd?.emoji || i.emoji || '☕',
+                      image: itemImg
                     };
+                  } else if (!prodSummary[key].image && itemImg) {
+                    prodSummary[key].image = itemImg;
                   }
-                  prodSummary[i.name].qty += (i.qty || 1);
-                  prodSummary[i.name].rev += (i.qty || 1) * (i.price || 0);
+
+                  prodSummary[key].qty += (Number(i.qty) || 1);
+                  prodSummary[key].rev += (Number(i.qty) || 1) * (Number(i.price) || 0);
                 });
               });
 
@@ -1524,9 +1656,27 @@ export default function AdminPage() {
                               {idx + 1}
                             </span>
                             
-                            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--bg2)', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', marginRight: '12px', flexShrink: 0, overflow: 'hidden' }}>
-                              {p.image ? <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : p.emoji}
-                            </div>
+                            {(() => {
+                              const finalImg = resolveProductImage(p, products) || p.image;
+                              return (
+                                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'var(--bg2)', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', marginRight: '12px', flexShrink: 0, overflow: 'hidden' }}>
+                                  {finalImg ? (
+                                    <img
+                                      src={finalImg}
+                                      alt={p.name}
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                        if (e.currentTarget.nextSibling) {
+                                          e.currentTarget.nextSibling.style.display = 'inline';
+                                        }
+                                      }}
+                                    />
+                                  ) : null}
+                                  <span style={{ display: finalImg ? 'none' : 'inline' }}>{p.emoji || '☕'}</span>
+                                </div>
+                              );
+                            })()}
 
                             <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text)', whiteSpace: 'nowrap', minWidth: '90px' }}>{p.name}</span>
 
@@ -1597,13 +1747,15 @@ export default function AdminPage() {
                       <tr><th>Table</th><th>Order</th><th>Rating</th><th>Comment</th><th>Time</th></tr>
                     </thead>
                     <tbody>
-                      {feedback.length ? [...feedback].reverse().map((item, index) => (
-                        <tr key={`${item.orderId || 'feedback'}-${index}`}>
+                      {feedback.length ? [...feedback]
+                        .sort((a, b) => new Date(b.time || b.created_at || 0) - new Date(a.time || a.created_at || 0))
+                        .map((item, index) => (
+                        <tr key={`${item.id || item.orderId || 'feedback'}-${index}`}>
                           <td>{item.table || '—'}</td>
                           <td style={{ color: 'var(--gold)' }}>{item.orderId || '—'}</td>
-                          <td style={{ color: 'var(--gold)' }}>{'★'.repeat(Number(item.rating) || 0)}{'☆'.repeat(5 - (Number(item.rating) || 0))}</td>
+                          <td style={{ color: 'var(--gold)' }}>{'★'.repeat(Number(item.rating) || 0)}{'☆'.repeat(Math.max(0, 5 - (Number(item.rating) || 0)))}</td>
                           <td>{item.comment || '—'}</td>
-                          <td style={{ fontSize: '11px', color: 'var(--muted)' }}>{new Date(item.time).toLocaleString('en-BD', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                          <td style={{ fontSize: '11px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{formatAdminDateTime(item.time || item.created_at)}</td>
                         </tr>
                       )) : <tr><td colSpan="5" className="empty-tbl">No feedback submitted yet.</td></tr>}
                     </tbody>
@@ -1613,59 +1765,41 @@ export default function AdminPage() {
             )}
 
             {currentTab === 'tables' && (() => {
-              const activeByTable = {};
-              orders.forEach(o => {
-                if (o.table && o.status !== 'served' && o.status !== 'cancelled' && o.status !== 'failed') {
-                  if (!activeByTable[o.table]) activeByTable[o.table] = [];
-                  activeByTable[o.table].push(o);
-                }
-              });
               const availableCount = tables.filter(t => t.status === 'available' || !t.status).length;
               const occupiedCount = tables.filter(t => t.status === 'occupied').length;
               const reservedCount = tables.filter(t => t.status === 'reserved').length;
               const cleaningCount = tables.filter(t => t.status === 'cleaning').length;
 
               const tableStatusStyles = {
-                available: { bg: 'rgba(42,114,72,0.10)', border: 'rgba(42,114,72,0.30)', dot: '#60C890', label: 'Available', emoji: '🟢' },
-                occupied:  { bg: 'rgba(192,64,64,0.10)', border: 'rgba(192,64,64,0.30)', dot: '#E08080', label: 'Occupied', emoji: '🔴' },
-                reserved:  { bg: 'rgba(168,112,32,0.10)', border: 'rgba(168,112,32,0.30)', dot: '#D4A040', label: 'Reserved', emoji: '🟡' },
-                cleaning:  { bg: 'rgba(70,100,180,0.10)', border: 'rgba(70,100,180,0.30)', dot: '#90A8E0', label: 'Cleaning', emoji: '🔵' },
+                available: { border: '#2ECC71', dot: '#2ECC71', label: 'AVAILABLE' },
+                occupied:  { border: '#E74C3C', dot: '#E74C3C', label: 'OCCUPIED' },
+                reserved:  { border: '#3498DB', dot: '#3498DB', label: 'RESERVED' },
+                cleaning:  { border: '#F39C12', dot: '#F39C12', label: 'CLEANING' },
               };
 
               return (
                 <div>
-                  <div className="toolbar">
+                  {/* Header */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '22px', flexWrap: 'wrap', gap: '12px' }}>
                     <div>
-                      <div className="pg-title">Tables</div>
-                      <div className="pg-sub" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                        <span>Manage dining tables · <strong style={{ color: 'var(--gold)' }}>{tables.length} total</strong></span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: 'var(--muted)' }}>
-                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--gold)', display: 'inline-block' }} />
-                          Live updates
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
-                        <span style={{ padding: '3px 12px', borderRadius: '20px', background: tableStatusStyles.available.bg, border: `1px solid ${tableStatusStyles.available.border}`, fontSize: '11px', color: tableStatusStyles.available.dot, fontWeight: 600 }}>
-                          🟢 {availableCount} available
-                        </span>
-                        <span style={{ padding: '3px 12px', borderRadius: '20px', background: tableStatusStyles.occupied.bg, border: `1px solid ${tableStatusStyles.occupied.border}`, fontSize: '11px', color: tableStatusStyles.occupied.dot, fontWeight: 600 }}>
-                          🔴 {occupiedCount} occupied
-                        </span>
-                        {reservedCount > 0 && (
-                          <span style={{ padding: '3px 12px', borderRadius: '20px', background: tableStatusStyles.reserved.bg, border: `1px solid ${tableStatusStyles.reserved.border}`, fontSize: '11px', color: tableStatusStyles.reserved.dot, fontWeight: 600 }}>
-                            🟡 {reservedCount} reserved
-                          </span>
-                        )}
-                        {cleaningCount > 0 && (
-                          <span style={{ padding: '3px 12px', borderRadius: '20px', background: tableStatusStyles.cleaning.bg, border: `1px solid ${tableStatusStyles.cleaning.border}`, fontSize: '11px', color: tableStatusStyles.cleaning.dot, fontWeight: 600 }}>
-                            🔵 {cleaningCount} cleaning
-                          </span>
-                        )}
-                      </div>
+                      <div className="pg-title" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '28px', color: '#F5EBE0', marginBottom: '4px', fontWeight: 700 }}>Tables</div>
+                      <div className="pg-sub" style={{ fontSize: '13px', color: 'rgba(245, 235, 224, 0.5)' }}>Floor map & seating status — {tables.length} tables.</div>
                     </div>
                     <button
                       className="btn-add"
-                      style={{ width: '118px', height: '40px', padding: '0 14px', marginLeft: 'auto', alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      style={{
+                        background: '#D4A445',
+                        color: '#17110B',
+                        fontWeight: 700,
+                        fontSize: '13px',
+                        padding: '10px 20px',
+                        borderRadius: '12px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
                       onClick={() => openTableModal(null)}
                       disabled={tables.length >= 100}
                     >
@@ -1673,87 +1807,106 @@ export default function AdminPage() {
                     </button>
                   </div>
 
-                  {/* Live Table Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '14px' }}>
+                  {/* Top 4 Status Metric Cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                    <div style={{ background: '#17120B', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '18px 22px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(245, 235, 224, 0.5)' }}>AVAILABLE</div>
+                      <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '32px', fontWeight: 700, color: '#2ECC71', marginTop: '6px' }}>{availableCount}</div>
+                    </div>
+                    <div style={{ background: '#17120B', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '18px 22px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(245, 235, 224, 0.5)' }}>OCCUPIED</div>
+                      <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '32px', fontWeight: 700, color: '#E74C3C', marginTop: '6px' }}>{occupiedCount}</div>
+                    </div>
+                    <div style={{ background: '#17120B', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '18px 22px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(245, 235, 224, 0.5)' }}>RESERVED</div>
+                      <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '32px', fontWeight: 700, color: '#3498DB', marginTop: '6px' }}>{reservedCount}</div>
+                    </div>
+                    <div style={{ background: '#17120B', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '18px 22px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(245, 235, 224, 0.5)' }}>CLEANING</div>
+                      <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '32px', fontWeight: 700, color: '#F39C12', marginTop: '6px' }}>{cleaningCount}</div>
+                    </div>
+                  </div>
+
+                  {/* Table Cards Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '12px' }}>
                     {tables.map(t => {
-                      const active = activeByTable[t.id] || [];
-                      const hasOrders = active.length > 0;
-                      const latestStatus = hasOrders ? active[active.length - 1].status : null;
-                      const orderStatusColors = {
-                        paid:      { bg: 'rgba(200,148,56,0.10)', border: 'rgba(200,148,56,0.35)', dot: 'var(--gold)' },
-                        confirmed: { bg: 'rgba(200,148,56,0.10)', border: 'rgba(200,148,56,0.35)', dot: 'var(--gold)' },
-                        preparing: { bg: 'rgba(58,120,200,0.10)', border: 'rgba(58,120,200,0.35)', dot: '#6AABFF' },
-                        ready:     { bg: 'rgba(42,114,72,0.12)',  border: 'rgba(42,114,72,0.35)',  dot: '#60C890' },
-                      };
                       const tblStatus = t.status || 'available';
                       const tblStyle = tableStatusStyles[tblStatus] || tableStatusStyles.available;
-
-                      // If there are active orders, use order-based coloring; otherwise use table status coloring
-                      let badgeColor, badgeLabel;
-                      if (hasOrders) {
-                        const sc = orderStatusColors[latestStatus] || orderStatusColors.paid;
-                        badgeColor = sc.dot;
-                        badgeLabel = (latestStatus || 'paid').toUpperCase();
-                      } else {
-                        badgeColor = tblStyle.dot;
-                        badgeLabel = tblStyle.label.toUpperCase();
-                      }
-
-                      const cardBg = 'var(--card)';
-                      const cardBorder = 'var(--border)';
-
                       const tableLabel = t.name || `Table ${t.id}`;
+
+                      const cycleOrder = ['available', 'occupied', 'reserved', 'cleaning'];
+                      const curIdx = cycleOrder.indexOf(tblStatus);
+                      const nextStatus = cycleOrder[curIdx >= 0 ? (curIdx + 1) % cycleOrder.length : 1];
+                      const nextLabel = tableStatusStyles[nextStatus]?.label || 'OCCUPIED';
+
                       return (
                         <div key={t.id} style={{
-                          background: cardBg,
-                          border: `1.5px solid ${cardBorder}`,
-                          borderRadius: '20px',
-                          padding: '18px 16px 16px 16px',
+                          background: '#17120B',
+                          border: '1px solid rgba(255, 255, 255, 0.06)',
+                          borderRadius: '16px',
+                          padding: '16px 12px 12px 12px',
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: '6px',
+                          gap: '4px',
                           transition: 'all 0.2s',
                         }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '18px' }}>🪑</span>
-                            <span style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '18px', fontWeight: 700, color: 'var(--text)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '15px' }}>🪑</span>
+                            <span style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '16px', fontWeight: 700, color: '#F5EBE0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {tableLabel}
                             </span>
                           </div>
-                          <div style={{ fontSize: '13px', color: 'rgba(245, 235, 224, 0.6)', marginTop: '2px' }}>
+                          <div style={{ fontSize: '11px', color: 'rgba(245, 235, 224, 0.5)', marginBottom: '8px' }}>
                             {t.seats ? `${t.seats} seats` : 'No seats'}
                           </div>
                           
-                          <div style={{ marginTop: '6px', marginBottom: '8px' }}>
-                            <span style={{
-                              display: 'inline-block',
-                              padding: '4px 14px',
-                              borderRadius: '100px',
-                              border: `1.5px solid ${badgeColor}`,
-                              color: badgeColor,
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              textTransform: 'uppercase',
-                              letterSpacing: '1px',
-                              background: 'transparent',
-                            }}>
-                              {badgeLabel}
-                            </span>
+                          <div style={{ marginBottom: '8px' }}>
+                            <button
+                              type="button"
+                              onClick={() => updateTableStatus(t.id, nextStatus)}
+                              title={`Status: ${tblStyle.label} — Click to switch to ${nextLabel}`}
+                              style={{
+                                width: '100%',
+                                display: 'block',
+                                padding: '5px 6px',
+                                borderRadius: '100px',
+                                border: `1.5px solid ${tblStyle.border}`,
+                                color: tblStyle.dot,
+                                background: 'transparent',
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.8px',
+                                textAlign: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                outline: 'none',
+                                userSelect: 'none',
+                              }}
+                              onMouseEnter={e => {
+                                e.currentTarget.style.transform = 'scale(1.02)';
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.transform = 'scale(1)';
+                              }}
+                            >
+                              {tblStyle.label}
+                            </button>
                           </div>
 
-                          <div style={{ marginTop: 'auto', display: 'flex', gap: '6px' }}>
+                          <div style={{ marginTop: 'auto', display: 'flex', gap: '4px', paddingTop: '4px' }}>
                             <button
                               type="button"
                               className="btn-edit"
                               onClick={() => openTableModal(t.id)}
                               style={{
                                 flex: 1,
-                                fontSize: '12px',
-                                padding: '6px 0',
-                                borderRadius: '10px',
+                                fontSize: '11px',
+                                padding: '4px 0',
+                                borderRadius: '6px',
                                 border: '1px solid rgba(200, 148, 56, 0.4)',
                                 background: 'none',
-                                color: 'var(--gold)',
+                                color: '#D4A445',
                                 cursor: 'pointer',
                                 transition: 'all 0.15s',
                                 display: 'inline-flex',
@@ -1769,9 +1922,9 @@ export default function AdminPage() {
                               onClick={() => openTableQRModal(t)}
                               style={{
                                 flex: 1,
-                                fontSize: '12px',
-                                padding: '6px 0',
-                                borderRadius: '10px',
+                                fontSize: '11px',
+                                padding: '4px 0',
+                                borderRadius: '6px',
                                 border: '1px solid rgba(58, 120, 200, 0.4)',
                                 background: 'none',
                                 color: '#6AABFF',
@@ -1780,18 +1933,15 @@ export default function AdminPage() {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: '4px',
+                                gap: '2px',
                               }}
                             >
-                              📱 QR
+                              <span style={{ fontSize: '10px' }}>📱</span> QR
                             </button>
                             <button
                               type="button"
                               className="btn-del"
-                              onClick={() => confirmAction(
-                                hasOrders ? `${tableLabel} has active orders. Delete it anyway?` : `Delete ${tableLabel}?`,
-                                () => deleteTable(t.id)
-                              )}
+                              onClick={() => confirmAction(`Delete ${tableLabel}?`, () => deleteTable(t.id))}
                               disabled={tables.length <= 1}
                               style={{
                                 flex: 1,
@@ -2045,6 +2195,170 @@ export default function AdminPage() {
             <button className="btn-del-ok" onClick={confirmCallback}>{confirmButtonLabel}</button>
           </div>
         </div>
+      </div>
+
+      {/* Order Details Invoice Modal Overlay */}
+      <div className={`overlay${ovOrderDetails ? ' open' : ''}`} onClick={e => e.target === e.currentTarget && setOvOrderDetails(false)}>
+        {viewOrderDetails && (() => {
+          const order = viewOrderDetails;
+          const date = new Date(order.time || order.created_at);
+          const dateStr = !isNaN(date.getTime()) ? date.toLocaleDateString('en-BD', { year: 'numeric', month: 'long', day: 'numeric' }) : '—';
+          const timeStr = !isNaN(date.getTime()) ? date.toLocaleTimeString('en-BD', { hour: '2-digit', minute: '2-digit' }) : '—';
+          const subtotal = order.subtotal || (order.items || []).reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.qty) || 1), 0);
+          const service = order.serviceCharge || order.service_charge || 0;
+          const isCancelled = order.status === 'cancelled' || order.status === 'failed' || order.status === 'refunded';
+          const isVerified = !isCancelled && ['confirmed', 'preparing', 'ready', 'served', 'paid'].includes(order.status);
+
+          return (
+            <div className="modal invoice-modal" style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setOvOrderDetails(false)}
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text)',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  zIndex: 10,
+                }}
+              >
+                ✕
+              </button>
+
+              <div className="invoice">
+                <div className="invoice-head">
+                  <div className="inv-brand">
+                    <img className="inv-logo-img" src="/logo.png" alt="" />
+                    <div>
+                      <div className="logo"><em>Coffee-r</em> Attokahon</div>
+                      <div className="tagline">Artisan Coffee &amp; Cuisine</div>
+                    </div>
+                  </div>
+                  <div className="inv-meta">
+                    <div className="inv-num">{esc(order.invoiceNum || order.invoice_num || 'INV-' + order.id)}</div>
+                    <div className="inv-date">{dateStr} · {timeStr}</div>
+                    <div className={`inv-status ${isCancelled ? 'failed' : ''}`} style={isCancelled ? { background: 'rgba(192,64,64,0.12)', border: '1px solid rgba(192,64,64,0.28)', color: '#E08080' } : {}}>
+                      {isCancelled ? '✗ Cancelled' : '✓ Paid'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="invoice-info">
+                  <div className="inv-info-cell">
+                    <div className="inv-info-label">Order No.</div>
+                    <div className="inv-info-value">#{order.id}</div>
+                  </div>
+                  <div className="inv-info-cell">
+                    <div className="inv-info-label">Table</div>
+                    <div className="inv-info-value">{order.table ? 'Table ' + order.table : (order.table_id ? 'Table ' + order.table_id : 'Walk-in')}</div>
+                  </div>
+                  <div className="inv-info-cell">
+                    <div className="inv-info-label">Payment</div>
+                    <div className="inv-info-value">{esc(order.paymentMethod || order.payment_method || '—')}</div>
+                  </div>
+                </div>
+
+                <div className="inv-items">
+                  <div className="inv-items-head">
+                    <span>Item</span><span>Unit Price</span><span>Qty</span><span>Total</span>
+                  </div>
+                  {(order.items || []).map((item, i) => {
+                    const itemImage = resolveProductImage(item, products);
+                    const itemEmoji = item.emoji || '☕';
+                    const itemName = item.name || item.product_name;
+                    const itemPrice = Number(item.price || item.unit_price || 0);
+                    const itemQty = Number(item.qty || item.quantity || 1);
+                    return (
+                      <div className="inv-item-row" key={i}>
+                        <div className="inv-item-name">
+                          {itemImage ? (
+                            <img
+                              className="inv-item-emoji"
+                              src={itemImage}
+                              alt={itemName}
+                              style={{ width: '20px', height: '20px', borderRadius: '5px', objectFit: 'cover' }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                if (e.currentTarget.nextSibling) {
+                                  e.currentTarget.nextSibling.style.display = 'inline';
+                                }
+                              }}
+                            />
+                          ) : null}
+                          <span className="inv-item-emoji" style={{ display: itemImage ? 'none' : 'inline' }}>{esc(itemEmoji)}</span>
+                          <span>{esc(itemName)}</span>
+                        </div>
+                        <div className="inv-item-col price">৳{itemPrice}</div>
+                        <div className="inv-item-col">×{itemQty}</div>
+                        <div className="inv-item-col subtotal">৳{itemPrice * itemQty}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="invoice-totals">
+                  <div className="tot-row"><span>Subtotal</span><span>৳{subtotal}</span></div>
+                  {service > 0 && <div className="tot-row"><span>Service Charge (5%)</span><span>৳{service}</span></div>}
+                  <div className="tot-row grand"><span>Total Paid</span><span>৳{order.total}</span></div>
+                </div>
+
+                <div className="invoice-payment">
+                  <div className="pay-row txn"><span>Transaction ID</span><span>{esc(order.paymentId || order.payment_id || '—')}</span></div>
+                  {(order.senderPhone || order.sender_phone) && (
+                    <div className="pay-row"><span>Sent From</span><span>{esc(order.senderPhone || order.sender_phone)}</span></div>
+                  )}
+                  <div className="pay-row">
+                    <span>Payment Status</span>
+                    <span style={{ color: isCancelled ? '#E08080' : isVerified ? 'var(--success-tx)' : '#D4A040', fontWeight: 600 }}>
+                      {isCancelled ? '✗ Invalid / Cancelled' : isVerified ? '✓ Verified' : 'Pending'}
+                    </span>
+                  </div>
+                </div>
+
+                {order.note && (
+                  <div className="invoice-note">
+                    <div className="note-label">Special Instructions</div>
+                    <div className="note-text">{esc(order.note)}</div>
+                  </div>
+                )}
+
+                <div className="invoice-footer">
+                  <div className="inv-footer-thanks">Thank you for visiting.</div>
+                  <div className="inv-footer-sub">We hope to see you again soon · Coffee-r Attokahon</div>
+                </div>
+              </div>
+
+              <div style={{ padding: '14px 20px', background: 'var(--bg2)', display: 'flex', gap: '10px', borderTop: '1px solid var(--border)' }}>
+                <button
+                  type="button"
+                  className="btn-cancel"
+                  onClick={() => setOvOrderDetails(false)}
+                  style={{ flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="btn-save"
+                  onClick={() => window.print()}
+                  style={{ flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  🖨 Print Invoice
+                </button>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </>
   );

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { resolveProductImage } from '@/lib/products';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
@@ -38,7 +39,7 @@ const readOrders = async () => {
 
 export default function BillingPage() {
   const router = useRouter();
-  const { toggleTheme, orders: appOrders, products } = useApp();
+  const { toggleTheme, orders: appOrders, products, clearCart } = useApp();
   const [order, setOrder] = useState(null);
   const [hydrated, setHydrated] = useState(false);
   const [liveStatus, setLiveStatus] = useState(null);
@@ -559,7 +560,7 @@ export default function BillingPage() {
             <div style={{fontSize:'48px',marginBottom:'14px'}}>📄</div>
             <h3>No invoice found</h3>
             <p style={{marginTop:'8px',fontSize:'14px',marginBottom:'24px'}}>Complete a payment first to see your invoice.</p>
-            <button onClick={() => router.push('/order')} style={{padding:'12px 28px',background:'var(--gold)',color:'#fff',border:'none',borderRadius:'12px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Go to Menu</button>
+            <button onClick={() => { if (clearCart) clearCart(); router.push('/order'); }} style={{padding:'12px 28px',background:'var(--gold)',color:'#fff',border:'none',borderRadius:'12px',fontSize:'14px',fontWeight:'600',cursor:'pointer'}}>Go to Menu</button>
           </div>
         ) : (() => {
           const date = new Date(order.time);
@@ -568,6 +569,7 @@ export default function BillingPage() {
           const subtotal = order.subtotal || order.items.reduce((s,i)=>s+i.price*i.qty,0);
           const service = order.serviceCharge || 0;
           const placedMs = order.time ? new Date(order.time).getTime() : null;
+          const isVerified = !isCancelled && currentIdx >= 1 && ['confirmed', 'preparing', 'ready', 'served'].includes(currentStatus);
 
           return (
             <>
@@ -602,9 +604,9 @@ export default function BillingPage() {
                     </div>
                     <div className="fix-field">
                       <div className="fix-field-label">Your Phone Number</div>
-                      <input className={`fix-input ${fixPhoneError ? 'error' : ''}`} type="tel" placeholder="e.g. 01712345678" autoComplete="off" 
+                      <input className={`fix-input ${fixPhoneError ? 'error' : ''}`} type="tel" placeholder="01XXXXXXXXX" maxLength={11} 
                         value={fixPhone} onChange={e => { setFixPhone(e.target.value); setFixPhoneError(false); }} disabled={isFixing} />
-                      {fixPhoneError && <div className="fix-error-msg">Enter the 11-digit number you sent the payment from.</div>}
+                      {fixPhoneError && <div className="fix-error-msg">Enter a valid 11-digit Bangladeshi phone number.</div>}
                     </div>
                     <div className="fix-field">
                       <div className="fix-field-label">Transaction ID</div>
@@ -621,10 +623,10 @@ export default function BillingPage() {
               ) : (
                 <>
                   <div className="paid-banner">
-                    <div className="paid-check">✓</div>
+                    <div className="paid-check">{isVerified ? '✓' : '⏳'}</div>
                     <div className="paid-banner-text">
-                      <h4>Payment Confirmed — Order #{order.id}</h4>
-                      <p>Your order has been sent to the kitchen.</p>
+                      <h4>{isVerified ? 'Payment Confirmed' : 'Payment Received'} — Order #{order.id}</h4>
+                      <p>{isVerified ? 'Payment verified! Your order has been sent to the kitchen.' : 'Your order has been received. Our staff is verifying your payment.'}</p>
                     </div>
                   </div>
 
@@ -702,20 +704,26 @@ export default function BillingPage() {
                     <span>Item</span><span>Unit Price</span><span>Qty</span><span>Total</span>
                   </div>
                   {order.items.map((item, i) => {
-                    const foundProd = (products || []).find(
-                      p => p.id === item.id || 
-                      (p.name && item.name && item.name.toLowerCase().startsWith(p.name.toLowerCase()))
-                    );
-                    const itemImage = foundProd?.image || foundProd?.image_url || item.image;
-                    const itemEmoji = foundProd?.emoji || item.emoji || '☕';
+                    const itemImage = resolveProductImage(item, products);
+                    const itemEmoji = item.emoji || '☕';
                     return (
                       <div className="inv-item-row" key={i}>
                         <div className="inv-item-name">
                           {itemImage ? (
-                            <img className="inv-item-emoji" src={itemImage} alt={item.name} style={{width:'20px',height:'20px',borderRadius:'5px',objectFit:'cover'}} />
-                          ) : (
-                            <span className="inv-item-emoji">{esc(itemEmoji)}</span>
-                          )}
+                            <img
+                              className="inv-item-emoji"
+                              src={itemImage}
+                              alt={item.name}
+                              style={{ width: '20px', height: '20px', borderRadius: '5px', objectFit: 'cover' }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                if (e.currentTarget.nextSibling) {
+                                  e.currentTarget.nextSibling.style.display = 'inline';
+                                }
+                              }}
+                            />
+                          ) : null}
+                          <span className="inv-item-emoji" style={{ display: itemImage ? 'none' : 'inline' }}>{esc(itemEmoji)}</span>
                           <span>{esc(item.name)}</span>
                         </div>
                         <div className="inv-item-col price">৳{item.price}</div>
@@ -735,7 +743,7 @@ export default function BillingPage() {
                 <div className="invoice-payment">
                   <div className="pay-row txn"><span>Transaction ID</span><span>{esc(order.paymentId || '—')}</span></div>
                   {order.senderPhone && <div className="pay-row"><span>Sent From</span><span>{esc(order.senderPhone)}</span></div>}
-                  <div className="pay-row"><span>Payment Status</span><span style={{color: isCancelled ? '#E08080' : 'var(--success-tx)'}}>{isCancelled ? '✗ Invalid / Cancelled' : '✓ Verified'}</span></div>
+                  <div className="pay-row"><span>Payment Status</span><span style={{color: isCancelled ? '#E08080' : isVerified ? 'var(--success-tx)' : '#D4A040', fontWeight: 600}}>{isCancelled ? '✗ Invalid / Cancelled' : isVerified ? '✓ Verified' : 'Pending'}</span></div>
                 </div>
 
                 {order.note && (
@@ -754,6 +762,7 @@ export default function BillingPage() {
               <div className="action-row">
                 <button className="btn-print" onClick={() => window.print()}>🖨&nbsp; Print Invoice</button>
                 <button className="btn-order-more" onClick={() => {
+                  if (clearCart) clearCart();
                   // Clear the last order ID so active order block resets for new browsing
                   try { localStorage.removeItem('ca_last_order_id'); } catch(e) {}
                   // Preserve table number

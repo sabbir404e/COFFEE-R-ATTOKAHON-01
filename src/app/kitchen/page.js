@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import { resolveProductImage } from '@/lib/products';
 import { supabase } from '@/lib/supabase';
 
 const STATUS_FLOW = {
@@ -682,21 +683,26 @@ export default function KitchenPage() {
                       <div className="o-items">
                         {items.map((item, idx) => {
                           const customSummary = getItemCustomSummary(item.customization);
-                          const foundProd = (products || []).find(
-                            p => p.id === item.id || 
-                            (p.name && item.name && item.name.toLowerCase().startsWith(p.name.toLowerCase()))
-                          );
-                          const itemImage = foundProd?.image || foundProd?.image_url || item.image || item.img;
-                          const itemEmoji = foundProd?.emoji || item.emoji || '☕';
+                          const itemImage = resolveProductImage(item, products);
+                          const itemEmoji = item.emoji || '☕';
 
                           return (
                             <div key={idx} className="o-item-block">
                               <div className="o-item-row">
                                 {itemImage ? (
-                                  <img className="o-item-thumb" src={itemImage} alt="" />
-                                ) : (
-                                  <span>{itemEmoji}</span>
-                                )}
+                                  <img
+                                    className="o-item-thumb"
+                                    src={itemImage}
+                                    alt=""
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                      if (e.currentTarget.nextSibling) {
+                                        e.currentTarget.nextSibling.style.display = 'inline';
+                                      }
+                                    }}
+                                  />
+                                ) : null}
+                                <span style={{ display: itemImage ? 'none' : 'inline' }}>{itemEmoji}</span>
                                 <strong>{item.name}</strong> × {item.qty}
                               </div>
                               {customSummary && (

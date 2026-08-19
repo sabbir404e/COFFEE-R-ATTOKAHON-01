@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
+import { resolveProductImage } from '@/lib/products';
 import Link from 'next/link';
 
 const readPendingCart = () => {
@@ -16,7 +17,7 @@ const readPendingCart = () => {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { toggleTheme, orders, tableNum } = useApp();
+  const { toggleTheme, orders, tableNum, products } = useApp();
   const [pendingCart, setPendingCart] = useState(null);
   const [hydrated, setHydrated] = useState(false);
 
@@ -256,25 +257,39 @@ export default function CheckoutPage() {
                   {pendingCart.items.reduce((s, i) => s + i.qty, 0)} item{pendingCart.items.reduce((s, i) => s + i.qty, 0) > 1 ? 's' : ''}
                 </span>
               </div>
-              {pendingCart.items.map((item, idx) => (
-                <div className="order-item" key={idx}>
-                  {item.image ? (
-                    <img className="oi-img" src={item.image} alt={item.name} />
-                  ) : (
-                    <div className="oi-emoji">{item.emoji || '☕'}</div>
-                  )}
-                  <div className="oi-info">
-                    <div className="oi-name">{item.name}</div>
-                    <div className="oi-meta">৳{item.price} each</div>
+              {pendingCart.items.map((item, idx) => {
+                const itemImg = resolveProductImage(item, products);
+                return (
+                  <div className="order-item" key={idx}>
+                    {itemImg ? (
+                      <img
+                        className="oi-img"
+                        src={itemImg}
+                        alt={item.name}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          if (e.currentTarget.nextSibling) {
+                            e.currentTarget.nextSibling.style.display = 'flex';
+                          }
+                        }}
+                      />
+                    ) : null}
+                    <div className="oi-emoji" style={{ display: itemImg ? 'none' : 'flex' }}>
+                      {item.emoji || '☕'}
+                    </div>
+                    <div className="oi-info">
+                      <div className="oi-name">{item.name}</div>
+                      <div className="oi-meta">৳{item.price} each</div>
+                    </div>
+                    <div className="oi-qty">
+                      <button className="qty-ctrl" onClick={() => changeQty(idx, -1)}>−</button>
+                      <span className="qty-num">{item.qty}</span>
+                      <button className="qty-ctrl" onClick={() => changeQty(idx, +1)}>+</button>
+                    </div>
+                    <div className="oi-price">৳{item.price * item.qty}</div>
                   </div>
-                  <div className="oi-qty">
-                    <button className="qty-ctrl" onClick={() => changeQty(idx, -1)}>−</button>
-                    <span className="qty-num">{item.qty}</span>
-                    <button className="qty-ctrl" onClick={() => changeQty(idx, +1)}>+</button>
-                  </div>
-                  <div className="oi-price">৳{item.price * item.qty}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="note-wrap">
