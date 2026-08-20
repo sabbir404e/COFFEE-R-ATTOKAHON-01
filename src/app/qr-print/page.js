@@ -44,8 +44,8 @@ function roundRect(ctx, x, y, w, h, r) {
 async function buildCardCanvas(tableId, tableName) {
   await Promise.all([
     document.fonts.load('700 40px "Playfair Display"'),
-    document.fonts.load('italic 400 20px "Playfair Display"'),
     document.fonts.load('600 20px "Outfit"'),
+    document.fonts.load('700 20px "Outfit"'),
     document.fonts.load('400 20px "Outfit"')
   ]).catch(() => {});
 
@@ -54,26 +54,26 @@ async function buildCardCanvas(tableId, tableName) {
   canvas.height = CARD_H;
   const ctx = canvas.getContext('2d');
 
-  const brandDark = '#2E1C08';
-  const brandMid = '#A06C28';
-  const brandLight = '#9A7850';
-  const cream = '#FBF6EC';
+  const brandDark = '#261608';
+  const brandGold = '#C49246';
+  const brandSub = '#9E7642';
+  const cream = '#ECE1CE';
 
   // Background
   ctx.fillStyle = cream;
   ctx.fillRect(0, 0, CARD_W, CARD_H);
 
   // Outer rounded border
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = brandMid;
-  roundRect(ctx, 14, 14, CARD_W - 28, CARD_H - 28, 28);
+  ctx.lineWidth = 3.5;
+  ctx.strokeStyle = brandGold;
+  roundRect(ctx, 16, 16, CARD_W - 32, CARD_H - 32, 34);
   ctx.stroke();
 
   // Decorative corner brackets
-  const cLen = 26, cInset = 34;
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = brandMid;
-  ctx.lineCap = 'round';
+  const cLen = 28, cInset = 36;
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = brandGold;
+  ctx.lineCap = 'square';
   const corners = [
     [[cInset, cInset + cLen], [cInset, cInset], [cInset + cLen, cInset]],
     [[CARD_W - cInset - cLen, cInset], [CARD_W - cInset, cInset], [CARD_W - cInset, cInset + cLen]],
@@ -90,7 +90,7 @@ async function buildCardCanvas(tableId, tableName) {
 
   // Logo (circular)
   const logo = await getLogoImg();
-  const logoR = 60, logoCx = CARD_W / 2, logoCy = 88;
+  const logoR = 56, logoCx = CARD_W / 2, logoCy = 115;
   if (logo) {
     ctx.save();
     ctx.beginPath();
@@ -100,46 +100,48 @@ async function buildCardCanvas(tableId, tableName) {
     ctx.fillRect(logoCx - logoR, logoCy - logoR, logoR * 2, logoR * 2);
     ctx.drawImage(logo, logoCx - logoR, logoCy - logoR, logoR * 2, logoR * 2);
     ctx.restore();
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = brandMid;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = brandGold;
     ctx.beginPath();
     ctx.arc(logoCx, logoCy, logoR, 0, Math.PI * 2);
     ctx.stroke();
   }
 
-  // Shop name and tagline match the single-table Admin QR card.
+  // Shop name
   ctx.textAlign = 'center';
   ctx.fillStyle = brandDark;
-  ctx.font = '700 34px "Playfair Display", serif';
-  ctx.fillText('Coffee-r Attokahon', CARD_W / 2, 178);
+  ctx.font = '700 38px "Playfair Display", serif';
+  ctx.fillText('Coffee-r Attokahon', CARD_W / 2, 212);
 
-  ctx.font = '600 12px "Outfit", sans-serif';
-  ctx.fillStyle = brandLight;
-  ctx.fillText('ARTISAN COFFEE & CUISINE', CARD_W / 2, 202);
+  // Tagline
+  ctx.font = '700 13px "Outfit", sans-serif';
+  ctx.fillStyle = brandSub;
+  ctx.letterSpacing = '3px';
+  ctx.fillText('ARTISAN COFFEE & CUISINE', CARD_W / 2, 238);
 
-  ctx.strokeStyle = 'rgba(160,108,40,0.35)';
+  // Divider with diamond
+  ctx.strokeStyle = 'rgba(196,146,70,0.40)';
   ctx.lineWidth = 1.5;
-  ctx.lineCap = 'butt';
   ctx.beginPath();
-  ctx.moveTo(CARD_W / 2 - 100, 222);
-  ctx.lineTo(CARD_W / 2 - 12, 222);
+  ctx.moveTo(CARD_W / 2 - 90, 268);
+  ctx.lineTo(CARD_W / 2 - 12, 268);
   ctx.stroke();
-  ctx.fillStyle = brandMid;
-  ctx.font = '700 14px serif';
-  ctx.fillText('\u2756', CARD_W / 2, 227);
+  ctx.fillStyle = brandGold;
+  ctx.font = '700 12px serif';
+  ctx.fillText('❖', CARD_W / 2, 272);
   ctx.beginPath();
-  ctx.moveTo(CARD_W / 2 + 12, 222);
-  ctx.lineTo(CARD_W / 2 + 100, 222);
+  ctx.moveTo(CARD_W / 2 + 12, 268);
+  ctx.lineTo(CARD_W / 2 + 90, 268);
   ctx.stroke();
 
-  // Table badge is always above the QR code, matching the Admin preview card.
+  // Table Badge
   const badgeLabel = (tableName || ('Table ' + tableId)).toUpperCase();
-  const badgeH = 46, badgeW = 240, badgeX = (CARD_W - badgeW) / 2, badgeTop = 244;
+  const badgeH = 46, badgeW = 210, badgeX = (CARD_W - badgeW) / 2, badgeTop = 296;
   const badgeGrad = ctx.createLinearGradient(badgeX, badgeTop, badgeX + badgeW, badgeTop + badgeH);
-  badgeGrad.addColorStop(0, '#D4A445');
-  badgeGrad.addColorStop(1, '#A06C28');
+  badgeGrad.addColorStop(0, '#CF983C');
+  badgeGrad.addColorStop(1, '#A36F25');
   ctx.save();
-  ctx.shadowColor = 'rgba(140,90,20,0.4)';
+  ctx.shadowColor = 'rgba(140,90,20,0.35)';
   ctx.shadowBlur = 12;
   ctx.shadowOffsetY = 4;
   ctx.fillStyle = badgeGrad;
@@ -151,25 +153,25 @@ async function buildCardCanvas(tableId, tableName) {
   ctx.fillText(badgeLabel, CARD_W / 2, badgeTop + badgeH / 2 + 7);
 
   // White QR panel
-  const qrBoxSize = 370, qrBoxX = (CARD_W - qrBoxSize) / 2, qrBoxY = 306;
+  const qrBoxSize = 360, qrBoxX = (CARD_W - qrBoxSize) / 2, qrBoxY = 370;
   ctx.save();
-  ctx.shadowColor = 'rgba(100,60,10,0.15)';
-  ctx.shadowBlur = 18;
-  ctx.shadowOffsetY = 4;
+  ctx.shadowColor = 'rgba(50,30,10,0.15)';
+  ctx.shadowBlur = 22;
+  ctx.shadowOffsetY = 8;
   ctx.fillStyle = '#fff';
-  roundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 20);
+  roundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 24);
   ctx.fill();
   ctx.restore();
   ctx.lineWidth = 1.5;
-  ctx.strokeStyle = 'rgba(160,108,40,0.25)';
-  roundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 20);
+  ctx.strokeStyle = 'rgba(196,146,70,0.20)';
+  roundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 24);
   ctx.stroke();
 
-  // Draw the actual QR image (grabbed from the on-page generated QR canvas)
+  // Draw QR code image
   const qrHolder = document.getElementById(`qr${tableId}`);
   const qrSrcCanvas = qrHolder ? qrHolder.querySelector('canvas') : null;
   const qrSrcImg = qrHolder ? qrHolder.querySelector('img') : null;
-  const qrPad = 26;
+  const qrPad = 22;
   const qrDrawSize = qrBoxSize - qrPad * 2;
   if (qrSrcCanvas) {
     ctx.drawImage(qrSrcCanvas, qrBoxX + qrPad, qrBoxY + qrPad, qrDrawSize, qrDrawSize);
@@ -177,16 +179,11 @@ async function buildCardCanvas(tableId, tableName) {
     ctx.drawImage(qrSrcImg, qrBoxX + qrPad, qrBoxY + qrPad, qrDrawSize, qrDrawSize);
   }
 
-  // Instruction text
-  const scanY = qrBoxY + qrBoxSize + 36;
-  ctx.font = '700 12px "Outfit", sans-serif';
-  ctx.fillStyle = brandLight;
+  // Scan text
+  const scanY = qrBoxY + qrBoxSize + 44;
+  ctx.font = '700 13px "Outfit", sans-serif';
+  ctx.fillStyle = brandSub;
   ctx.fillText('SCAN TO VIEW MENU & ORDER', CARD_W / 2, scanY);
-
-  // Footer
-  ctx.font = '400 13px "Outfit", sans-serif';
-  ctx.fillStyle = 'rgba(154,120,80,0.75)';
-  ctx.fillText('☕  Thank you for visiting  ☕', CARD_W / 2, CARD_H - 36);
 
   return canvas;
 }
@@ -324,7 +321,7 @@ export default function QRPrintPage() {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
           font-family: var(--font-outfit), 'Outfit', sans-serif;
-          background: #F0E8D8;
+          background: #ECE1CE;
           color: #2E1C08;
           padding: 30px 20px;
         }
@@ -345,7 +342,7 @@ export default function QRPrintPage() {
 
         /* ── URL INPUT ── */
         .url-box {
-          background: #FAF4E8;
+          background: #ECE1CE;
           border: 1px solid rgba(160,108,40,0.25);
           border-radius: 14px;
           padding: 22px 24px;

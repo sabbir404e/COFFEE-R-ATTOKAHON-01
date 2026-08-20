@@ -219,11 +219,7 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {activeOrder && (
-        <div style={{ display: 'block', background: 'rgba(200,148,56,0.10)', borderBottom: '1px solid var(--border)', padding: '8px 20px', fontSize: '12px', color: 'var(--text2)', textAlign: 'center', position: 'relative', zIndex: 10 }}>
-          📍 <span>Order #{activeOrder.id} — {statusLabels[activeOrder.status] || activeOrder.status}</span>
-        </div>
-      )}
+      
 
       {/* Steps */}
       <div className="steps">

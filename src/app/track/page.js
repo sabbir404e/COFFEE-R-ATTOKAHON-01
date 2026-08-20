@@ -55,9 +55,10 @@ function esc(s) { return String(s); }
 function TrackPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { toggleTheme, products } = useApp();
+  const { toggleTheme, products, tableNum: appTableNum } = useApp();
 
-  const tableNum = parseInt(searchParams.get('table')) || null;
+  const urlTable = parseInt(searchParams.get('table')) || null;
+  const [tableNum, setTableNumState] = useState(urlTable || appTableNum || null);
   const [orders, setOrders] = useState([]);
   const [mounted, setMounted] = useState(false);
   
@@ -65,6 +66,19 @@ function TrackPageContent() {
   const [feedbacks, setFeedbacks] = useState([]);
   const [pendingRating, setPendingRating] = useState({});
   const [pendingComment, setPendingComment] = useState({});
+
+  useEffect(() => {
+    if (urlTable) {
+      setTableNumState(urlTable);
+    } else if (appTableNum) {
+      setTableNumState(appTableNum);
+    } else if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('ca_table_num');
+        if (saved) setTableNumState(parseInt(saved, 10));
+      } catch (e) {}
+    }
+  }, [urlTable, appTableNum]);
 
   const loadOrders = useCallback(async () => {
     try {

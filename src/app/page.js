@@ -14,10 +14,24 @@ export default function HomePage() {
       const params = new URLSearchParams(window.location.search);
       const t = params.get('table');
       if (t) {
-        setTableNum(parseInt(t, 10));
+        const num = parseInt(t, 10);
+        if (!isNaN(num) && num >= 1) {
+          setTableNum(num);
+          try { localStorage.setItem('ca_table_num', String(num)); } catch (e) {}
+        }
+      } else {
+        try {
+          const savedTable = localStorage.getItem('ca_table_num');
+          if (savedTable) {
+            const num = parseInt(savedTable, 10);
+            if (!isNaN(num) && num >= 1 && !tableNum) {
+              setTableNum(num);
+            }
+          }
+        } catch (e) {}
       }
     }
-  }, [setTableNum]);
+  }, [setTableNum, tableNum]);
 
   useEffect(() => {
     const updateGreeting = () => {
@@ -390,18 +404,18 @@ export default function HomePage() {
           transform:scale(0);pointer-events:none;animation:bhpRippleAnim 0.6s ease-out forwards;
         }
         @keyframes bhpRippleAnim{to{transform:scale(2.6);opacity:0;}}
-        .track-order-wrap{display:none;justify-content:center;margin-top:14px;animation:fadeUp 0.6s cubic-bezier(0.16,1,0.3,1) both;}
-        .track-order-wrap.show{display:flex;}
+        .track-order-wrap{display:flex;justify-content:center;margin-top:14px;animation:fadeUp 0.8s 0.45s cubic-bezier(0.16,1,0.3,1) both;}
         .btn-track-order{
+          position:relative;overflow:hidden;
           display:inline-flex;align-items:center;gap:9px;
-          padding:11px 26px;border-radius:50px;
-          background:var(--card);border:1px solid var(--border-h);color:var(--gold);
-          font-size:13.5px;font-weight:600;text-decoration:none;
-          box-shadow:var(--shadow);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1),box-shadow 0.25s ease,border-color 0.25s ease;
+          padding:12px 28px;border-radius:50px;
+          background:var(--card);border:1.5px solid var(--border-h);color:var(--gold);
+          font-size:14px;font-weight:600;text-decoration:none;
+          box-shadow:var(--shadow);transition:transform 0.25s cubic-bezier(0.16,1,0.3,1),box-shadow 0.25s ease,border-color 0.25s ease,background-color 0.25s ease;
         }
-        .btn-track-order:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:var(--gold);}
-        .btn-track-order .tob-dot{width:6px;height:6px;border-radius:50%;background:#4CAF6D;box-shadow:0 0 0 3px rgba(76,175,109,0.18);animation:tableDotBlink 1.6s steps(1) infinite;}
-        .btn-track-order .tob-arrow{transition:transform 0.25s;}
+        .btn-track-order:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:var(--gold);background:var(--bg2);}
+        .btn-track-order .tob-dot{width:7px;height:7px;border-radius:50%;background:#4CAF6D;box-shadow:0 0 0 3px rgba(76,175,109,0.22);animation:tableDotBlink 1.6s steps(1) infinite;}
+        .btn-track-order .tob-arrow{transition:transform 0.25s;display:inline-block;}
         .btn-track-order:hover .tob-arrow{transform:translateX(3px);}
         .hero-stats{
           display:flex;align-items:center;justify-content:center;gap:36px;
@@ -568,8 +582,8 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className={`track-order-wrap ${hasActiveOrder ? 'show' : ''}`} id="trackOrderWrap">
-            <Link className="btn-track-order" id="trackOrderBtn" href={tableNum ? `/track?table=${tableNum}` : '/track'}>
+          <div className="track-order-wrap" id="trackOrderWrap">
+            <Link className="btn-track-order" id="trackOrderBtn" href={tableNum ? `/track?table=${tableNum}` : '/track'} onClick={handleRipple}>
               <span className="tob-dot"></span> Track Your Order <span className="tob-arrow">→</span>
             </Link>
           </div>

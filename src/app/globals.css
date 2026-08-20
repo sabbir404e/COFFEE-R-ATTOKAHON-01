@@ -38,9 +38,9 @@
 }
 
 [data-theme="light"] {
-  --bg:         #F0E8D8;
-  --bg2:        #E8DEC8;
-  --card:       #FAF4E8;
+  --bg:         #ECE1CE;
+  --bg2:        #E2D4BF;
+  --card:       #ECE1CE;
   --border:     rgba(160,108,40,0.20);
   --border-h:   rgba(160,108,40,0.48);
   --gold:       #A06C28;
@@ -48,7 +48,7 @@
   --text:       #2E1C08;
   --text-2:     #5C4020;
   --muted:      #9A7850;
-  --input-bg:   #E8DEC8;
+  --input-bg:   #E2D4BF;
   --hover-bg:   rgba(160,108,40,0.08);
   --shadow:     0 4px 24px rgba(100,60,10,0.10);
   --pill-bg:    rgba(160,108,40,0.12);

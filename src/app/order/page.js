@@ -14,9 +14,10 @@ function OrderPageContent() {
   const urlTable = parseInt(searchParams.get('table'));
   const isPreview = searchParams.get('preview') === 'true';
   const [step, setStep] = useState('table'); // 'table' | 'menu' | 'success'
-  const [localTable, setLocalTable] = useState(1);
-  const [customTableInput, setCustomTableInput] = useState('1');
-  const [selectedBtn, setSelectedBtn] = useState(1);
+  const [localTable, setLocalTable] = useState(null);
+  const [customTableInput, setCustomTableInput] = useState('');
+  const [selectedBtn, setSelectedBtn] = useState(null);
+  const [tableError, setTableError] = useState('');
   const [menuCat, setMenuCat] = useState('all');
   const [cartOpen, setCartOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -45,6 +46,9 @@ function OrderPageContent() {
         setStep('menu');
       } else {
         setStep('table');
+        setLocalTable(null);
+        setSelectedBtn(null);
+        setCustomTableInput('');
       }
     });
     return () => cancelAnimationFrame(handle);
@@ -63,15 +67,24 @@ function OrderPageContent() {
   }, [lastOrderId]);
 
   const confirmTable = () => {
-    const val = parseInt(customTableInput, 10) || localTable || selectedBtn || 1;
+    const val = parseInt(customTableInput, 10) || localTable || selectedBtn;
+    if (!val || isNaN(val) || val < 1) {
+      setTableError('Please select or enter your table number to start ordering.');
+      return;
+    }
+    if (val > maxTable) {
+      setTableError(`Please enter a valid table number (1–${maxTable}).`);
+      return;
+    }
+    setTableError('');
     setLocalTable(val);
     setTableNum(val);
     if (typeof window !== 'undefined') {
       try { localStorage.setItem('ca_table_num', String(val)); } catch (e) {}
     }
     if (clearCart) clearCart();
-    // Stay on order page and go directly to menu — do NOT redirect to homepage
-    setStep('menu');
+    // Redirect to the welcome page with the selected table
+    router.push(`/?table=${val}`);
   };
 
   const cartItems = Object.values(cart);
@@ -154,7 +167,7 @@ function OrderPageContent() {
     const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
     const serviceCharge = Math.round(subtotal * 0.05);
     const total = subtotal + serviceCharge;
-    localStorage.setItem('ca_pending_cart', JSON.stringify({ tableNum: localTable, items, subtotal, serviceCharge, total }));
+    localStorage.setItem('ca_pending_cart', JSON.stringify({ tableNum: localTable || tableNum || 1, items, subtotal, serviceCharge, total }));
     setCartOpen(false);
     router.push('/checkout');
   };
@@ -458,11 +471,12 @@ function OrderPageContent() {
               {allTables.map(table => (
                 <button
                   key={table.id}
-                  className={`t-btn${(selectedBtn === table.id || localTable === table.id || customTableInput === String(table.id)) ? ' sel' : ''}`}
+                  className={`t-btn${(selectedBtn === table.id || customTableInput === String(table.id)) ? ' sel' : ''}`}
                   onClick={() => {
                     setSelectedBtn(table.id);
                     setLocalTable(table.id);
                     setCustomTableInput(String(table.id));
+                    setTableError('');
                   }}
                 >
                   {table.id}
@@ -470,10 +484,36 @@ function OrderPageContent() {
               ))}
             </div>
             <div className="or-line">or enter manually</div>
-            <input className="custom-inp" type="number" value={customTableInput}
-              onChange={e => setCustomTableInput(e.target.value)}
-              placeholder={`Table number (1–${maxTable})...`} min="1" max={maxTable} />
-            <button className="btn-primary" onClick={confirmTable}>Start Ordering →</button>
+            <input
+              className="custom-inp"
+              type="number"
+              value={customTableInput}
+              onChange={e => {
+                const val = e.target.value;
+                setCustomTableInput(val);
+                const num = parseInt(val, 10);
+                if (!isNaN(num) && num >= 1) {
+                  setSelectedBtn(num);
+                  setLocalTable(num);
+                } else {
+                  setSelectedBtn(null);
+                  setLocalTable(null);
+                }
+                setTableError('');
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') confirmTable();
+              }}
+              placeholder={`Table number (1–${maxTable})...`}
+              min="1"
+              max={maxTable}
+            />
+            {tableError && (
+              <div style={{ color: '#E74C3C', fontSize: '12px', marginTop: '6px', fontWeight: 600, textAlign: 'center' }}>
+                {tableError}
+              </div>
+            )}
+            <button className="btn-primary" onClick={confirmTable} style={{ marginTop: '12px' }}>Start Ordering →</button>
           </div>
         </div>
       )}
@@ -503,7 +543,31 @@ function OrderPageContent() {
               <p>Fresh, made to order — just for you.</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
-              <div className="table-chip" style={{ marginBottom: 0 }}>📍 Table {localTable}</div>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep('table');
+                  setTableError('');
+                }}
+                className="table-chip"
+                style={{
+                  marginBottom: 0,
+                  cursor: 'pointer',
+                  border: '1px solid var(--border-h)',
+                  background: 'var(--card)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontFamily: 'inherit',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  padding: '6px 12px',
+                  borderRadius: '20px',
+                }}
+                title="Click to switch table"
+              >
+                📍 Table {localTable || tableNum || '—'} <span style={{ fontSize: '11px', opacity: 0.75 }}>✎ Change</span>
+              </button>
             </div>
             <div className="cat-bar">
               {cats.map(c => (

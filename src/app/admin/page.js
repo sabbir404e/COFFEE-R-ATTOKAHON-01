@@ -66,8 +66,8 @@ function roundRect(ctx, x, y, w, h, r) {
 async function buildCardCanvas(tableId, tableName, qrCanvasElement) {
   await Promise.all([
     document.fonts.load('700 40px "Playfair Display"'),
-    document.fonts.load('italic 400 20px "Playfair Display"'),
     document.fonts.load('600 20px "Outfit"'),
+    document.fonts.load('700 20px "Outfit"'),
     document.fonts.load('400 20px "Outfit"')
   ]).catch(() => {});
 
@@ -76,26 +76,26 @@ async function buildCardCanvas(tableId, tableName, qrCanvasElement) {
   canvas.height = CARD_H;
   const ctx = canvas.getContext('2d');
 
-  const brandDark = '#2E1C08';
-  const brandMid = '#A06C28';
-  const brandLight = '#9A7850';
-  const cream = '#FBF6EC';
+  const brandDark = '#261608';
+  const brandGold = '#C49246';
+  const brandSub = '#9E7642';
+  const cream = '#ECE1CE';
 
-  // ── Background ──────────────────────────────────────────────────────────────
+  // Background
   ctx.fillStyle = cream;
   ctx.fillRect(0, 0, CARD_W, CARD_H);
 
-  // Outer border
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = brandMid;
-  roundRect(ctx, 14, 14, CARD_W - 28, CARD_H - 28, 28);
+  // Outer rounded border
+  ctx.lineWidth = 3.5;
+  ctx.strokeStyle = brandGold;
+  roundRect(ctx, 16, 16, CARD_W - 32, CARD_H - 32, 34);
   ctx.stroke();
 
-  // Corner accent marks
-  const cLen = 26, cInset = 34;
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = brandMid;
-  ctx.lineCap = 'round';
+  // Decorative corner brackets
+  const cLen = 28, cInset = 36;
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = brandGold;
+  ctx.lineCap = 'square';
   const corners = [
     [[cInset, cInset + cLen], [cInset, cInset], [cInset + cLen, cInset]],
     [[CARD_W - cInset - cLen, cInset], [CARD_W - cInset, cInset], [CARD_W - cInset, cInset + cLen]],
@@ -110,9 +110,9 @@ async function buildCardCanvas(tableId, tableName, qrCanvasElement) {
     ctx.stroke();
   });
 
-  // ── Logo ────────────────────────────────────────────────────────────────────
+  // Logo (circular)
   const logo = await getLogoImg();
-  const logoR = 60, logoCx = CARD_W / 2, logoCy = 88;
+  const logoR = 56, logoCx = CARD_W / 2, logoCy = 115;
   if (logo) {
     ctx.save();
     ctx.beginPath();
@@ -122,95 +122,85 @@ async function buildCardCanvas(tableId, tableName, qrCanvasElement) {
     ctx.fillRect(logoCx - logoR, logoCy - logoR, logoR * 2, logoR * 2);
     ctx.drawImage(logo, logoCx - logoR, logoCy - logoR, logoR * 2, logoR * 2);
     ctx.restore();
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = brandMid;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = brandGold;
     ctx.beginPath();
     ctx.arc(logoCx, logoCy, logoR, 0, Math.PI * 2);
     ctx.stroke();
   }
 
-  // ── Brand name ──────────────────────────────────────────────────────────────
+  // Shop name
   ctx.textAlign = 'center';
   ctx.fillStyle = brandDark;
-  ctx.font = '700 34px "Playfair Display", serif';
-  ctx.fillText('Coffee-r Attokahon', CARD_W / 2, 178);
+  ctx.font = '700 38px "Playfair Display", serif';
+  ctx.fillText('Coffee-r Attokahon', CARD_W / 2, 212);
 
-  // ── Tagline ─────────────────────────────────────────────────────────────────
-  ctx.font = '600 12px "Outfit", sans-serif';
-  ctx.fillStyle = brandLight;
-  ctx.fillText('ARTISAN COFFEE & CUISINE', CARD_W / 2, 202);
+  // Tagline
+  ctx.font = '700 13px "Outfit", sans-serif';
+  ctx.fillStyle = brandSub;
+  ctx.letterSpacing = '3px';
+  ctx.fillText('ARTISAN COFFEE & CUISINE', CARD_W / 2, 238);
 
-  // ── Divider with ❖ ──────────────────────────────────────────────────────────
-  ctx.strokeStyle = 'rgba(160,108,40,0.35)';
+  // Divider with diamond
+  ctx.strokeStyle = 'rgba(196,146,70,0.40)';
   ctx.lineWidth = 1.5;
-  ctx.lineCap = 'butt';
   ctx.beginPath();
-  ctx.moveTo(CARD_W / 2 - 100, 222);
-  ctx.lineTo(CARD_W / 2 - 12, 222);
+  ctx.moveTo(CARD_W / 2 - 90, 268);
+  ctx.lineTo(CARD_W / 2 - 12, 268);
   ctx.stroke();
-  ctx.fillStyle = brandMid;
-  ctx.font = '700 14px serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('❖', CARD_W / 2, 227);
+  ctx.fillStyle = brandGold;
+  ctx.font = '700 12px serif';
+  ctx.fillText('❖', CARD_W / 2, 272);
   ctx.beginPath();
-  ctx.moveTo(CARD_W / 2 + 12, 222);
-  ctx.lineTo(CARD_W / 2 + 100, 222);
+  ctx.moveTo(CARD_W / 2 + 12, 268);
+  ctx.lineTo(CARD_W / 2 + 90, 268);
   ctx.stroke();
 
-  // ── TABLE BADGE — placed ABOVE the QR code ──────────────────────────────────
+  // Table Badge
   const badgeLabel = (tableName || ('Table ' + tableId)).toUpperCase();
-  const badgeH = 46, badgeW = 240, badgeX = (CARD_W - badgeW) / 2, badgeTop = 244;
-
+  const badgeH = 46, badgeW = 210, badgeX = (CARD_W - badgeW) / 2, badgeTop = 296;
   const badgeGrad = ctx.createLinearGradient(badgeX, badgeTop, badgeX + badgeW, badgeTop + badgeH);
-  badgeGrad.addColorStop(0, '#D4A445');
-  badgeGrad.addColorStop(1, '#A06C28');
+  badgeGrad.addColorStop(0, '#CF983C');
+  badgeGrad.addColorStop(1, '#A36F25');
   ctx.save();
-  ctx.shadowColor = 'rgba(140,90,20,0.4)';
+  ctx.shadowColor = 'rgba(140,90,20,0.35)';
   ctx.shadowBlur = 12;
   ctx.shadowOffsetY = 4;
   ctx.fillStyle = badgeGrad;
   roundRect(ctx, badgeX, badgeTop, badgeW, badgeH, 23);
   ctx.fill();
   ctx.restore();
-
   ctx.fillStyle = '#fff';
   ctx.font = '700 20px "Playfair Display", serif';
-  ctx.textAlign = 'center';
   ctx.fillText(badgeLabel, CARD_W / 2, badgeTop + badgeH / 2 + 7);
 
-  // ── QR Code box (below badge) ────────────────────────────────────────────────
-  const qrBoxSize = 370, qrBoxX = (CARD_W - qrBoxSize) / 2, qrBoxY = 306;
+  // White QR panel
+  const qrBoxSize = 360, qrBoxX = (CARD_W - qrBoxSize) / 2, qrBoxY = 370;
   ctx.save();
-  ctx.shadowColor = 'rgba(100,60,10,0.15)';
-  ctx.shadowBlur = 18;
-  ctx.shadowOffsetY = 4;
+  ctx.shadowColor = 'rgba(50,30,10,0.15)';
+  ctx.shadowBlur = 22;
+  ctx.shadowOffsetY = 8;
   ctx.fillStyle = '#fff';
-  roundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 20);
+  roundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 24);
   ctx.fill();
   ctx.restore();
   ctx.lineWidth = 1.5;
-  ctx.strokeStyle = 'rgba(160,108,40,0.25)';
-  roundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 20);
+  ctx.strokeStyle = 'rgba(196,146,70,0.20)';
+  roundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 24);
   ctx.stroke();
 
-  const qrPad = 26;
+  // Draw QR code image
+  const qrPad = 22;
   const qrDrawSize = qrBoxSize - qrPad * 2;
   if (qrCanvasElement) {
     ctx.drawImage(qrCanvasElement, qrBoxX + qrPad, qrBoxY + qrPad, qrDrawSize, qrDrawSize);
   }
 
-  // ── "SCAN TO VIEW MENU & ORDER" ──────────────────────────────────────────────
-  const scanY = qrBoxY + qrBoxSize + 36;
-  ctx.font = '700 12px "Outfit", sans-serif';
-  ctx.fillStyle = brandLight;
-  ctx.textAlign = 'center';
+  // Scan text
+  const scanY = qrBoxY + qrBoxSize + 44;
+  ctx.font = '700 13px "Outfit", sans-serif';
+  ctx.fillStyle = brandSub;
   ctx.fillText('SCAN TO VIEW MENU & ORDER', CARD_W / 2, scanY);
-
-  // ── Footer ──────────────────────────────────────────────────────────────────
-  ctx.font = '400 13px "Outfit", sans-serif';
-  ctx.fillStyle = 'rgba(154,120,80,0.75)';
-  ctx.textAlign = 'center';
-  ctx.fillText('☕  Thank you for visiting  ☕', CARD_W / 2, CARD_H - 36);
 
   return canvas;
 }
@@ -793,8 +783,13 @@ export default function AdminPage() {
         
         .empty-tbl { text-align: center; padding: 28px; color: var(--muted); font-size: 13px; }
 
+        /* Tables Page Card Styles */
+        .table-metric-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px 22px; box-shadow: var(--shadow); transition: var(--transition-theme); }
+        .table-item-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 12px 12px 12px; display: flex; flex-direction: column; gap: 4px; box-shadow: var(--shadow); transition: var(--transition-theme), transform 0.15s ease; }
+        .table-item-card:hover { transform: translateY(-2px); border-color: var(--border-h); }
+
         /* QR Card Tent Frame */
-        .qr-modal { max-width: 440px; background: #1C1610 !important; border: 1px solid rgba(160,108,40,0.35) !important; border-radius: 24px !important; padding: 24px !important; box-shadow: 0 20px 50px rgba(0,0,0,0.6) !important; }
+        .qr-modal { max-width: 440px; background: var(--card) !important; border: 1px solid var(--border) !important; border-radius: 24px !important; padding: 24px !important; box-shadow: var(--shadow) !important; transition: var(--transition-theme); }
         .qr-card-frame { position: relative; background: linear-gradient(160deg, #FAF4E8 0%, #EFE1C3 100%); border: 1.5px solid #C89438; border-radius: 20px; padding: 7px; box-shadow: 0 10px 25px rgba(0,0,0,0.35); }
         .qr-card-inner { position: relative; border: 1px solid rgba(160,108,40,0.35); border-radius: 14px; padding: 22px 16px 18px; text-align: center; }
         .qr-card-corner { position: absolute; width: 18px; height: 18px; border: 2px solid #C89438; z-index: 2; }
@@ -902,6 +897,12 @@ export default function AdminPage() {
           </div>
           <div className="topbar-right">
             <div className="role-badge">Admin</div>
+            <div className="glow" />
+            <div className="ts-theme">
+              <span className="theme-label">🌙</span>
+              <button className="theme-toggle" onClick={toggleTheme} title="Toggle dark/light mode" />
+              <span className="theme-label">☀️</span>
+            </div>
             <button className="logout-btn" onClick={doLogout}>Sign out</button>
           </div>
         </div>
@@ -1782,14 +1783,14 @@ export default function AdminPage() {
                   {/* Header */}
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '22px', flexWrap: 'wrap', gap: '12px' }}>
                     <div>
-                      <div className="pg-title" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '28px', color: '#F5EBE0', marginBottom: '4px', fontWeight: 700 }}>Tables</div>
-                      <div className="pg-sub" style={{ fontSize: '13px', color: 'rgba(245, 235, 224, 0.5)' }}>Floor map & seating status — {tables.length} tables.</div>
+                      <div className="pg-title" style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '28px', color: 'var(--text)', marginBottom: '4px', fontWeight: 700 }}>Tables</div>
+                      <div className="pg-sub" style={{ fontSize: '13px', color: 'var(--muted)' }}>Floor map & seating status — {tables.length} tables.</div>
                     </div>
                     <button
                       className="btn-add"
                       style={{
-                        background: '#D4A445',
-                        color: '#17110B',
+                        background: 'var(--gold)',
+                        color: '#fff',
                         fontWeight: 700,
                         fontSize: '13px',
                         padding: '10px 20px',
@@ -1798,7 +1799,8 @@ export default function AdminPage() {
                         cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '6px'
+                        gap: '6px',
+                        transition: 'background 0.2s ease',
                       }}
                       onClick={() => openTableModal(null)}
                       disabled={tables.length >= 100}
@@ -1809,20 +1811,20 @@ export default function AdminPage() {
 
                   {/* Top 4 Status Metric Cards */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-                    <div style={{ background: '#17120B', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '18px 22px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(245, 235, 224, 0.5)' }}>AVAILABLE</div>
+                    <div className="table-metric-card">
+                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'var(--muted)' }}>AVAILABLE</div>
                       <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '32px', fontWeight: 700, color: '#2ECC71', marginTop: '6px' }}>{availableCount}</div>
                     </div>
-                    <div style={{ background: '#17120B', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '18px 22px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(245, 235, 224, 0.5)' }}>OCCUPIED</div>
+                    <div className="table-metric-card">
+                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'var(--muted)' }}>OCCUPIED</div>
                       <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '32px', fontWeight: 700, color: '#E74C3C', marginTop: '6px' }}>{occupiedCount}</div>
                     </div>
-                    <div style={{ background: '#17120B', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '18px 22px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(245, 235, 224, 0.5)' }}>RESERVED</div>
+                    <div className="table-metric-card">
+                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'var(--muted)' }}>RESERVED</div>
                       <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '32px', fontWeight: 700, color: '#3498DB', marginTop: '6px' }}>{reservedCount}</div>
                     </div>
-                    <div style={{ background: '#17120B', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '18px 22px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(245, 235, 224, 0.5)' }}>CLEANING</div>
+                    <div className="table-metric-card">
+                      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'var(--muted)' }}>CLEANING</div>
                       <div style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '32px', fontWeight: 700, color: '#F39C12', marginTop: '6px' }}>{cleaningCount}</div>
                     </div>
                   </div>
@@ -1840,23 +1842,14 @@ export default function AdminPage() {
                       const nextLabel = tableStatusStyles[nextStatus]?.label || 'OCCUPIED';
 
                       return (
-                        <div key={t.id} style={{
-                          background: '#17120B',
-                          border: '1px solid rgba(255, 255, 255, 0.06)',
-                          borderRadius: '16px',
-                          padding: '16px 12px 12px 12px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '4px',
-                          transition: 'all 0.2s',
-                        }}>
+                        <div key={t.id} className="table-item-card">
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ fontSize: '15px' }}>🪑</span>
-                            <span style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '16px', fontWeight: 700, color: '#F5EBE0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <span style={{ fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '16px', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {tableLabel}
                             </span>
                           </div>
-                          <div style={{ fontSize: '11px', color: 'rgba(245, 235, 224, 0.5)', marginBottom: '8px' }}>
+                          <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '8px' }}>
                             {t.seats ? `${t.seats} seats` : 'No seats'}
                           </div>
                           
@@ -1904,9 +1897,9 @@ export default function AdminPage() {
                                 fontSize: '11px',
                                 padding: '4px 0',
                                 borderRadius: '6px',
-                                border: '1px solid rgba(200, 148, 56, 0.4)',
-                                background: 'none',
-                                color: '#D4A445',
+                                border: '1px solid var(--border-h)',
+                                background: 'var(--bg2)',
+                                color: 'var(--gold)',
                                 cursor: 'pointer',
                                 transition: 'all 0.15s',
                                 display: 'inline-flex',
@@ -1926,7 +1919,7 @@ export default function AdminPage() {
                                 padding: '4px 0',
                                 borderRadius: '6px',
                                 border: '1px solid rgba(58, 120, 200, 0.4)',
-                                background: 'none',
+                                background: 'var(--bg2)',
                                 color: '#6AABFF',
                                 cursor: 'pointer',
                                 transition: 'all 0.15s',
@@ -1948,9 +1941,9 @@ export default function AdminPage() {
                                 fontSize: '12px',
                                 padding: '6px 0',
                                 borderRadius: '10px',
-                                border: '1px solid rgba(192, 64, 64, 0.4)',
-                                background: 'none',
-                                color: '#E08080',
+                                border: '1px solid var(--d-bd)',
+                                background: 'var(--bg2)',
+                                color: 'var(--d-tx)',
                                 cursor: tables.length <= 1 ? 'not-allowed' : 'pointer',
                                 opacity: tables.length <= 1 ? 0.5 : 1,
                                 transition: 'all 0.15s',
@@ -2116,8 +2109,8 @@ export default function AdminPage() {
       {/* Table QR Modal Overlay */}
       <div className={`overlay${ovTableQR ? ' open' : ''}`} onClick={e => e.target === e.currentTarget && setOvTableQR(false)}>
         {qrTable && (
-          <div className="modal qr-modal" style={{ background: '#1C1610', border: '1px solid rgba(160,108,40,0.35)', borderRadius: '24px', padding: '24px' }}>
-            <h3 style={{ textAlign: 'center', fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '24px', color: '#9E8056', fontWeight: 400, marginBottom: '18px', letterSpacing: '0.5px' }}>
+          <div className="modal qr-modal" style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '24px', padding: '24px', boxShadow: 'var(--shadow)', transition: 'var(--transition-theme)' }}>
+            <h3 style={{ textAlign: 'center', fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: '24px', color: 'var(--text)', fontWeight: 600, marginBottom: '18px', letterSpacing: '0.5px' }}>
               QR Code — {qrTable.name || (`Table ${qrTable.id}`)}
             </h3>
 
@@ -2128,7 +2121,7 @@ export default function AdminPage() {
             />
 
             <div className="field" style={{ marginTop: '20px' }}>
-              <label style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '11px', letterSpacing: '1px', textTransform: 'uppercase', color: '#8C7250', fontWeight: 600, marginBottom: '8px' }}>
+              <label style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '11px', letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 600, marginBottom: '8px' }}>
                 WEBSITE URL <span style={{ color: '#4CAF50', fontWeight: 700 }}>(AUTO-DETECTED)</span>
               </label>
               <input
@@ -2140,19 +2133,19 @@ export default function AdminPage() {
                   localStorage.setItem('ca_site_url', e.target.value);
                 }}
                 placeholder="https://coffeer-attokahon.vercel.app"
-                style={{ background: '#140F0A', border: '1px solid #332617', borderRadius: '8px', color: '#F5EBE0', padding: '10px 12px', fontSize: '13px', fontFamily: 'monospace', width: '100%' }}
+                style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px 12px', fontSize: '13px', fontFamily: 'monospace', width: '100%' }}
               />
-              <div style={{ fontSize: '11px', color: '#8A7255', marginTop: '8px', lineHeight: 1.45, textAlign: 'left' }}>
+              <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '8px', lineHeight: 1.45, textAlign: 'left' }}>
                 Detected automatically from this page — the QR is generated instantly above. Only edit this if your site is actually hosted somewhere else.
               </div>
-              <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '12px', color: '#9E8056', fontFamily: 'monospace' }}>
+              <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '12px', color: 'var(--gold)', fontFamily: 'monospace' }}>
                 {`${qrSiteUrl.trim().replace(/\/$/, '')}/?table=${qrTable.id}`}
               </div>
             </div>
 
             <div className="modal-btns" style={{ marginTop: '20px', display: 'flex', gap: '12px' }}>
-              <button className="btn-cancel" onClick={() => setOvTableQR(false)} style={{ flex: 1, padding: '11px', background: 'rgba(255,255,255,0.03)', border: '1px solid #332617', borderRadius: '10px', color: '#9E8056', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Close</button>
-              <button className="btn-save" onClick={downloadSingleTableQR} style={{ flex: 1.5, padding: '11px', background: 'linear-gradient(135deg, #D4A445 0%, #A06C28 100%)', color: '#ffffff', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(160,108,40,0.3)' }}>⬇ Download PNG</button>
+              <button className="btn-cancel" onClick={() => setOvTableQR(false)} style={{ flex: 1, padding: '11px', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--muted)', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>Close</button>
+              <button className="btn-save" onClick={downloadSingleTableQR} style={{ flex: 1.5, padding: '11px', background: 'var(--gold)', color: '#ffffff', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(160,108,40,0.3)' }}>⬇ Download PNG</button>
             </div>
           </div>
         )}
