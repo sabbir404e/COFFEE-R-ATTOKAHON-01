@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import { getDeviceOrderIds } from '@/lib/deviceOrders';
 
 export default function HomePage() {
   const { theme, toggleTheme, tableNum, setTableNum } = useApp();
@@ -50,10 +51,8 @@ export default function HomePage() {
 
   useEffect(() => {
     try {
-      const lastOrderId = localStorage.getItem('ca_last_order_id');
-      if (lastOrderId) {
-        setHasActiveOrder(true);
-      }
+      const deviceOrderIds = getDeviceOrderIds();
+      setHasActiveOrder(deviceOrderIds.length > 0);
     } catch (e) {
       // no active order data available
     }

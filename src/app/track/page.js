@@ -6,6 +6,7 @@ import { useApp } from '@/context/AppContext';
 import { resolveProductImage } from '@/lib/products';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { getDeviceOrderIds } from '@/lib/deviceOrders';
 
 const FLOW_ORDER = ['paid', 'confirmed', 'preparing', 'ready', 'served'];
 
@@ -57,8 +58,8 @@ function TrackPageContent() {
   const router = useRouter();
   const { toggleTheme, products, tableNum: appTableNum } = useApp();
 
-  const urlTable = parseInt(searchParams.get('table')) || null;
-  const [tableNum, setTableNumState] = useState(urlTable || appTableNum || null);
+  const urlTable = parseInt(searchParams.get('table'), 10) || null;
+  const tableNum = urlTable || appTableNum || null;
   const [orders, setOrders] = useState([]);
   const [mounted, setMounted] = useState(false);
   
@@ -67,33 +68,34 @@ function TrackPageContent() {
   const [pendingRating, setPendingRating] = useState({});
   const [pendingComment, setPendingComment] = useState({});
 
-  useEffect(() => {
-    if (urlTable) {
-      setTableNumState(urlTable);
-    } else if (appTableNum) {
-      setTableNumState(appTableNum);
-    } else if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('ca_table_num');
-        if (saved) setTableNumState(parseInt(saved, 10));
-      } catch (e) {}
-    }
-  }, [urlTable, appTableNum]);
-
   const loadOrders = useCallback(async () => {
     try {
-      let query = supabase
+      const deviceIds = getDeviceOrderIds();
+      if (!deviceIds || deviceIds.length === 0) {
+        setOrders([]);
+        return;
+      }
+
+      const { data } = await supabase
         .from('orders')
         .select('*, order_items(*)')
-        .order('created_at', { ascending: false })
-        .limit(10);
-      if (tableNum) query = query.eq('table_id', tableNum);
-      const { data } = await query;
+        .in('id', deviceIds)
+        .order('created_at', { ascending: false });
+
       if (data) {
         setOrders(data.map(o => ({
-          id: o.id, invoiceNum: o.invoice_num, table: o.table_id,
-          items: (o.order_items || []).map(i => ({ id: i.product_id, name: i.product_name, qty: i.quantity, emoji: '☕' })),
-          total: Number(o.total), status: o.status, time: o.created_at
+          id: o.id,
+          invoiceNum: o.invoice_num,
+          table: o.table_id,
+          items: (o.order_items || []).map(i => ({
+            id: i.product_id,
+            name: i.product_name,
+            qty: i.quantity,
+            emoji: '☕'
+          })),
+          total: Number(o.total),
+          status: o.status,
+          time: o.created_at
         })));
         
         // Load feedback for served orders
@@ -104,7 +106,7 @@ function TrackPageContent() {
         }
       }
     } catch {}
-  }, [tableNum]);
+  }, []);
 
   useEffect(() => {
     const handle = requestAnimationFrame(() => {
@@ -114,25 +116,27 @@ function TrackPageContent() {
 
     let insertTimer;
 
-    // Real-time: listen for order status changes for this table
+    // Real-time: listen for order status changes on this device's orders
     const channel = supabase
-      .channel(`rt_track_orders_${tableNum ?? 'all'}`)
+      .channel('rt_track_device_orders')
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
           table: 'orders',
-          ...(tableNum ? { filter: `table_id=eq.${tableNum}` } : {}),
         },
         ({ new: updated }) => {
-          setOrders(prev =>
-            prev.map(o =>
-              o.id === updated.id ? { ...o, status: updated.status } : o
-            )
-          );
-          if (updated.status === 'served') {
-            setTimeout(loadOrders, 500); // Reload to potentially grab feedback
+          const deviceIds = getDeviceOrderIds();
+          if (deviceIds.includes(updated.id)) {
+            setOrders(prev =>
+              prev.map(o =>
+                o.id === updated.id ? { ...o, status: updated.status } : o
+              )
+            );
+            if (updated.status === 'served') {
+              setTimeout(loadOrders, 500); // Reload to grab feedback
+            }
           }
         }
       )
@@ -142,14 +146,15 @@ function TrackPageContent() {
           event: 'INSERT',
           schema: 'public',
           table: 'orders',
-          ...(tableNum ? { filter: `table_id=eq.${tableNum}` } : {}),
         },
-        () => {
-          // New order came in — reload to get order_items too (debounced to allow items to be inserted)
-          if (insertTimer) clearTimeout(insertTimer);
-          insertTimer = setTimeout(() => {
-            loadOrders();
-          }, 300);
+        ({ new: inserted }) => {
+          const deviceIds = getDeviceOrderIds();
+          if (deviceIds.includes(inserted.id)) {
+            if (insertTimer) clearTimeout(insertTimer);
+            insertTimer = setTimeout(() => {
+              loadOrders();
+            }, 300);
+          }
         }
       )
       .on(
@@ -159,12 +164,14 @@ function TrackPageContent() {
           schema: 'public',
           table: 'order_items',
         },
-        () => {
-          // Order items inserted — reload orders to capture them
-          if (insertTimer) clearTimeout(insertTimer);
-          insertTimer = setTimeout(() => {
-            loadOrders();
-          }, 100);
+        ({ new: item }) => {
+          const deviceIds = getDeviceOrderIds();
+          if (deviceIds.includes(item.order_id)) {
+            if (insertTimer) clearTimeout(insertTimer);
+            insertTimer = setTimeout(() => {
+              loadOrders();
+            }, 100);
+          }
         }
       )
       .subscribe();
@@ -174,7 +181,7 @@ function TrackPageContent() {
       if (insertTimer) clearTimeout(insertTimer);
       channel.unsubscribe();
     };
-  }, [loadOrders, tableNum]);
+  }, [loadOrders]);
 
   const submitFeedback = async (orderId, tableId) => {
     const rating = pendingRating[orderId];
@@ -340,7 +347,7 @@ function TrackPageContent() {
       <div className="main">
         <div className="page-header">
           <h1>Track Your Order</h1>
-          <p>Live status updates for your table.</p>
+          <p>Live status of orders placed on this device (expires in 24 hours).</p>
           {tableNum && <div className="table-chip">🪑 Table {tableNum}</div>}
           <br />
           <div className="live-badge"><div className="live-dot" />LIVE · instant updates</div>
@@ -350,8 +357,8 @@ function TrackPageContent() {
           {sorted.length === 0 ? (
             <div className="empty-state">
               <div className="empty-icon">🔍</div>
-              <h3>No orders yet</h3>
-              <p>Once you place and pay for an order, its status will appear here — live.</p>
+              <h3>No active orders on this device</h3>
+              <p>Orders you place on this device will appear here automatically and expire after 24 hours.</p>
               <button className="btn-go-menu" onClick={() => router.push('/order' + (tableNum ? '?table=' + tableNum : ''))}>Browse the Menu →</button>
             </div>
           ) : (

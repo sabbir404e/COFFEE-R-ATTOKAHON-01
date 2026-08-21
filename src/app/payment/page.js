@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { saveDeviceOrder } from '@/lib/deviceOrders';
 
 const METHODS = {
   bkash:  { name: 'bKash',  num: '01995883215' },
@@ -168,6 +169,7 @@ export default function PaymentPage() {
       if (clearCart) clearCart();
       localStorage.removeItem('ca_pending_cart');
       localStorage.setItem('ca_last_order_id', String(orderId));
+      saveDeviceOrder(orderId, new Date(orderData.created_at || Date.now()).getTime());
 
       setConfirmedOrder({
         id: orderId,

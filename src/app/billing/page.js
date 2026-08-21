@@ -6,6 +6,7 @@ import { useApp } from '@/context/AppContext';
 import { resolveProductImage } from '@/lib/products';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { getDeviceOrderIds } from '@/lib/deviceOrders';
 
 const STATUS_FLOW = ['paid','confirmed','preparing','ready','served'];
 const STATUS_META = {
@@ -19,11 +20,23 @@ const STATUS_META = {
 
 function esc(s) { return String(s); }
 
-const readOrders = async () => {
+const readOrders = async (targetId) => {
   try {
-    const { data: ordersData } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-    const { data: itemsData } = await supabase.from('order_items').select('*');
-    if (!ordersData) return [];
+    let query = supabase.from('orders').select('*').order('created_at', { ascending: false });
+    if (targetId) {
+      query = query.eq('id', targetId);
+    } else {
+      const deviceIds = getDeviceOrderIds();
+      if (!deviceIds.length) return [];
+      query = query.in('id', deviceIds);
+    }
+
+    const { data: ordersData } = await query;
+    if (!ordersData || !ordersData.length) return [];
+
+    const orderIds = ordersData.map(o => o.id);
+    const { data: itemsData } = await supabase.from('order_items').select('*').in('order_id', orderIds);
+
     return ordersData.map(o => ({
       id: o.id, invoiceNum: o.invoice_num, table: o.table_id,
       items: (itemsData || []).filter(i => i.order_id === o.id).map(i => ({
@@ -58,13 +71,9 @@ export default function BillingPage() {
   const [fixProgress, setFixProgress] = useState(0);
 
   const loadOrder = useCallback(async () => {
-    const lastId = parseInt(localStorage.getItem('ca_last_order_id'));
-    const orders = await readOrders();
+    const lastId = parseInt(localStorage.getItem('ca_last_order_id'), 10) || null;
+    const orders = await readOrders(lastId);
     if (!orders.length) return null;
-    if (lastId) {
-      const o = orders.find(x => x.id === lastId);
-      if (o) return o;
-    }
     return orders[0];
   }, []);
 
