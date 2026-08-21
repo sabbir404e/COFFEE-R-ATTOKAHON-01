@@ -720,9 +720,11 @@ export default function AdminPage() {
         .nav-item.active { background: rgba(200,148,56,0.12); color: var(--gold); }
         .nav-sep { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
         .content { flex: 1; padding: 24px; overflow-y: auto; }
-        .role-badge { background: var(--pill-bg); border: 1px solid var(--border-h); border-radius: 20px; padding: 3px 12px; font-size: 11px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; }
+        .topbar-right { display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .ts-theme { display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .role-badge { background: var(--pill-bg); border: 1px solid var(--border-h); border-radius: 20px; padding: 3px 12px; font-size: 11px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; display: inline-flex; align-items: center; justify-content: center; }
         .badge.b-refunded { background: var(--x-bg); border-color: var(--x-bd); color: var(--x-tx); }
-        .logout-btn { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; font-size: 12px; color: var(--muted); cursor: pointer; transition: all 0.18s; }
+        .logout-btn { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; font-size: 12px; color: var(--muted); cursor: pointer; transition: all 0.18s; display: inline-flex; align-items: center; justify-content: center; }
         .logout-btn:hover { border-color: var(--border-h); color: var(--text); }
         
         .pg-title { font-family: var(--font-playfair), 'Playfair Display', serif; font-size: 26px; margin-bottom: 4px; }
@@ -730,6 +732,24 @@ export default function AdminPage() {
         
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 12px; margin-bottom: 26px; }
         .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; transition: var(--transition-theme); }
+        
+        /* Light Mode dynamic styling for Navbar and all Cards */
+        [data-theme="light"] {
+          --card: #FAF4E8;
+        }
+        [data-theme="light"] .topbar,
+        [data-theme="light"] .stat-card,
+        [data-theme="light"] .table-metric-card,
+        [data-theme="light"] .table-item-card,
+        [data-theme="light"] .login-card,
+        [data-theme="light"] .tbl-wrap,
+        [data-theme="light"] .modal,
+        [data-theme="light"] .confirm-box,
+        [data-theme="light"] .invoice-modal,
+        [data-theme="light"] .invoice,
+        [data-theme="light"] .qr-modal {
+          background: #FAF4E8 !important;
+        }
         .stat-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 8px; }
         .stat-val { font-family: var(--font-playfair), 'Playfair Display', serif; font-size: 30px; line-height: 1; }
         .stat-val small { font-size: 15px; color: var(--gold); }
@@ -787,6 +807,19 @@ export default function AdminPage() {
         .table-metric-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px 22px; box-shadow: var(--shadow); transition: var(--transition-theme); }
         .table-item-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 12px 12px 12px; display: flex; flex-direction: column; gap: 4px; box-shadow: var(--shadow); transition: var(--transition-theme), transform 0.15s ease; }
         .table-item-card:hover { transform: translateY(-2px); border-color: var(--border-h); }
+        .table-item-card .btn-edit,
+        .table-item-card .btn-qr,
+        .table-item-card .btn-del {
+          background: var(--bg2);
+        }
+        [data-theme="light"] .table-item-card .btn-edit,
+        [data-theme="light"] .table-item-card .btn-qr,
+        [data-theme="light"] .table-item-card .btn-del {
+          background: #FAF4E8 !important;
+        }
+        [data-theme="light"] .table-item-card .btn-edit:hover { background: rgba(200,148,56,0.15) !important; }
+        [data-theme="light"] .table-item-card .btn-qr:hover { background: rgba(200,148,56,0.15) !important; }
+        [data-theme="light"] .table-item-card .btn-del:hover { background: var(--d-bg) !important; }
 
         /* QR Card Tent Frame */
         .qr-modal { max-width: 440px; background: var(--card) !important; border: 1px solid var(--border) !important; border-radius: 24px !important; padding: 24px !important; box-shadow: var(--shadow) !important; transition: var(--transition-theme); }
@@ -895,15 +928,15 @@ export default function AdminPage() {
               <span><em>Coffee-r</em> Attokahon</span>
             </Link>
           </div>
-          <div className="topbar-right">
-            <div className="role-badge">Admin</div>
+          <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+            <div className="role-badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>Admin</div>
             <div className="glow" />
-            <div className="ts-theme">
-              <span className="theme-label">🌙</span>
-              <button className="theme-toggle" onClick={toggleTheme} title="Toggle dark/light mode" />
-              <span className="theme-label">☀️</span>
+            <div className="ts-theme theme-toggle-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <span className="theme-label" style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>🌙</span>
+              <button className="theme-toggle" onClick={toggleTheme} title="Toggle dark/light mode" aria-label="Toggle dark/light mode" />
+              <span className="theme-label" style={{ display: 'inline-flex', alignItems: 'center', lineHeight: 1 }}>☀️</span>
             </div>
-            <button className="logout-btn" onClick={doLogout}>Sign out</button>
+            <button className="logout-btn" onClick={doLogout} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>Sign out</button>
           </div>
         </div>
 
@@ -1898,7 +1931,6 @@ export default function AdminPage() {
                                 padding: '4px 0',
                                 borderRadius: '6px',
                                 border: '1px solid var(--border-h)',
-                                background: 'var(--bg2)',
                                 color: 'var(--gold)',
                                 cursor: 'pointer',
                                 transition: 'all 0.15s',
@@ -1919,7 +1951,6 @@ export default function AdminPage() {
                                 padding: '4px 0',
                                 borderRadius: '6px',
                                 border: '1px solid rgba(58, 120, 200, 0.4)',
-                                background: 'var(--bg2)',
                                 color: '#6AABFF',
                                 cursor: 'pointer',
                                 transition: 'all 0.15s',
@@ -1942,7 +1973,6 @@ export default function AdminPage() {
                                 padding: '6px 0',
                                 borderRadius: '10px',
                                 border: '1px solid var(--d-bd)',
-                                background: 'var(--bg2)',
                                 color: 'var(--d-tx)',
                                 cursor: tables.length <= 1 ? 'not-allowed' : 'pointer',
                                 opacity: tables.length <= 1 ? 0.5 : 1,

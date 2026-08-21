@@ -409,24 +409,24 @@ export default function KitchenPage() {
         .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
         .order-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px;
           padding: 20px; display: flex; flex-direction: column; position: relative; gap: 12px;
-          overflow: hidden; transition: var(--tt); box-shadow: var(--shadow); }
-        .order-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
-        .order-card.s-paid::before      { background: #5060B8; }
-        .order-card.s-confirmed::before { background: #38A6A8; }
-        .order-card.s-preparing::before { background: var(--warn); }
-        .order-card.s-ready::before     { background: var(--ok); }
-        .order-card.s-cancelled::before { background: var(--danger); }
+          overflow: hidden; transition: none; box-shadow: var(--shadow); }
         .order-card.s-cancelled { opacity: 0.5; }
         /* Keep completed orders fully readable; their Served badge already indicates status. */
         .order-card.s-served { opacity: 1; }
-        .order-card.is-late { border-color: rgba(192,64,64,0.5); animation: ring 2s ease infinite; }
+        .order-card.is-late { border-color: rgba(192,64,64,0.5); }
+
+        /* Light Mode dynamic styling for Navbar and Order Card */
+        [data-theme="light"] .topbar,
+        [data-theme="light"] .order-card {
+          background: #FAF4E8;
+        }
 
         .o-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 2px; }
         .o-num { font-family: var(--font-playfair),'Playfair Display',serif; font-size: 18px; font-weight: 700; }
         .badge { display: inline-block; padding: 4px 10px; border-radius: 10px; font-size: 10px;
           font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; border: 1px solid; }
-        .b-paid      { background: rgba(70,100,180,0.14); border-color: rgba(70,100,180,0.28); color: #90A8E0; }
-        .b-confirmed { background: rgba(56,150,168,0.14); border-color: rgba(56,150,168,0.30); color: #5BC8DA; }
+        .b-paid      { background: var(--pill-bg); border-color: var(--border-h); color: var(--gold); }
+        .b-confirmed { background: var(--w-bg); border-color: var(--w-bd); color: var(--w-tx); }
         .b-preparing { background: var(--w-bg); border-color: var(--w-bd); color: var(--w-tx); }
         .b-ready     { background: var(--o-bg); border-color: var(--o-bd); color: var(--o-tx); }
         .b-served    { background: var(--x-bg); border-color: var(--x-bd); color: var(--x-tx); }
@@ -443,8 +443,8 @@ export default function KitchenPage() {
 
         .adv-btn { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid;
           font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.18s; margin-top: 4px; }
-        .adv-confirm { background: rgba(56,150,168,0.14); border-color: rgba(56,150,168,0.30); color: #5BC8DA; }
-        .adv-confirm:hover { background: #2C8688; color: #fff; border-color: #2C8688; }
+        .adv-confirm { background: var(--pill-bg); border-color: var(--border-h); color: var(--gold); }
+        .adv-confirm:hover { background: var(--gold); color: #fff; border-color: var(--gold); }
         .adv-new   { background: var(--d-bg); border-color: var(--d-bd); color: var(--d-tx); }
         .adv-new:hover   { background: var(--danger); color: #fff; border-color: var(--danger); }
         .adv-prep  { background: var(--w-bg); border-color: var(--w-bd); color: var(--w-tx); }
