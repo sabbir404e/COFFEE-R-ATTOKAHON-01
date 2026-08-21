@@ -2008,6 +2008,7 @@ export default function AdminPage() {
             <label>Category</label>
             <select className="inp" value={pCat} onChange={e => setPCat(e.target.value)}>
               <option>Coffee</option>
+              <option>Tea</option>
               <option>Specialty</option>
               <option>Food</option>
               <option>Dessert</option>
