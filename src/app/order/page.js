@@ -545,10 +545,6 @@ function OrderPageContent() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
               <button
                 type="button"
-                onClick={() => {
-                  setStep('table');
-                  setTableError('');
-                }}
                 className="table-chip"
                 style={{
                   marginBottom: 0,
@@ -566,7 +562,7 @@ function OrderPageContent() {
                 }}
                 title="Click to switch table"
               >
-                📍 Table {localTable || tableNum || '—'} <span style={{ fontSize: '11px', opacity: 0.75 }}>✎ Change</span>
+                📍 Table {localTable || tableNum || '—'}
               </button>
             </div>
             <div className="cat-bar">
