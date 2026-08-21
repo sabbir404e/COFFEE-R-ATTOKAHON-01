@@ -361,24 +361,41 @@ export default function AdminPage() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
+      // If the uploaded file is SVG and under 100KB, use raw data URL to preserve vector crispness and transparency
+      if (file.type === 'image/svg+xml' && file.size <= 102400) {
+        setPImage(event.target.result);
+        return;
+      }
+
       const img = new window.Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const MAX_SIZE = 400;
-        let width = img.width;
-        let height = img.height;
+        let width = img.naturalWidth || img.width || 400;
+        let height = img.naturalHeight || img.height || 400;
         if (width > height && width > MAX_SIZE) {
-          height *= MAX_SIZE / width;
+          height = Math.round(height * (MAX_SIZE / width));
           width = MAX_SIZE;
         } else if (height > MAX_SIZE) {
-          width *= MAX_SIZE / height;
+          width = Math.round(width * (MAX_SIZE / height));
           height = MAX_SIZE;
         }
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = Math.max(1, Math.round(width));
+        canvas.height = Math.max(1, Math.round(height));
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Preserve transparency by using WebP or PNG (JPEG turns transparent pixels solid black)
+        let dataUrl;
+        try {
+          dataUrl = canvas.toDataURL('image/webp', 0.85);
+          if (!dataUrl || !dataUrl.startsWith('data:image/webp')) {
+            dataUrl = canvas.toDataURL('image/png');
+          }
+        } catch {
+          dataUrl = canvas.toDataURL('image/png');
+        }
         setPImage(dataUrl);
       };
       img.src = event.target.result;
@@ -405,6 +422,7 @@ export default function AdminPage() {
     } else {
       await supabase.from('products').insert(data);
     }
+    await fetchData();
     setOvProduct(false);
   };
 
@@ -1168,9 +1186,9 @@ export default function AdminPage() {
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                               {p.image ? (
-                                <img src={p.image} alt={p.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border)' }} />
+                                <img src={p.image} alt={p.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg2)' }} />
                               ) : (
-                                <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'var(--bg2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>{p.emoji || '☕'}</div>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--bg2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>{p.emoji || '☕'}</div>
                               )}
                               <div>
                                 <strong style={{ color: 'var(--text)' }}>{p.name}</strong>
@@ -2029,12 +2047,12 @@ export default function AdminPage() {
             <label>Product Image</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               {pImage ? (
-                <div style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
-                  <img src={pImage} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  <button type="button" onClick={() => setPImage('')} style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', cursor: 'pointer', padding: '2px 6px', fontSize: '12px' }}>&times;</button>
+                <div style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg2)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <img src={pImage} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                  <button type="button" onClick={() => setPImage('')} style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', cursor: 'pointer', width: '18px', height: '18px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', lineHeight: 1, padding: 0 }}>&times;</button>
                 </div>
               ) : (
-                <div style={{ width: '60px', height: '60px', borderRadius: '8px', border: '1px dashed var(--border-h)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: 'var(--muted)', flexShrink: 0 }}>
+                <div style={{ width: '60px', height: '60px', borderRadius: '50%', border: '1px dashed var(--border-h)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: 'var(--muted)', flexShrink: 0 }}>
                   {pEmoji || '☕'}
                 </div>
               )}

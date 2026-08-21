@@ -109,7 +109,7 @@ export function AppProvider({ children }) {
         { data: feedbackData },
       ] = await Promise.all([
         supabase.from('dining_tables').select('*').order('id', { ascending: true }),
-        supabase.from('products').select('*').order('id', { ascending: true }),
+        supabase.from('products').select('*').order('id', { ascending: false }),
         supabase.from('orders').select('*').order('created_at', { ascending: false }),
         supabase.from('payments').select('*').order('created_at', { ascending: false }),
         supabase.from('users').select('*'),
@@ -196,7 +196,10 @@ export function AppProvider({ children }) {
     const productsSub = supabase
       .channel('rt_products')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'products' }, ({ new: row }) => {
-        setProducts((prev) => [...prev, mapProduct(row)]);
+        setProducts((prev) => {
+          if (prev.some((p) => p.id === row.id)) return prev;
+          return [mapProduct(row), ...prev];
+        });
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'products' }, ({ new: row }) => {
         setProducts((prev) => prev.map((p) => (p.id === row.id ? mapProduct(row) : p)));
